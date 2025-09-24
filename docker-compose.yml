@@ -1,0 +1,25 @@
+version: "3.9"
+services:
+  gateway:
+    build: ./services/gateway
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/postgres
+    depends_on:
+      - db
+  db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+  ui:
+    build: ./services/ui
+    ports:
+      - "3000:3000"
+    depends_on:
+      - gateway
