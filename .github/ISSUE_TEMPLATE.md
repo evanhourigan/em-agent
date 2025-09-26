@@ -1,27 +1,30 @@
 ## Summary
-
 Describe the task succinctly.
 
 ## Context / Background
-
-Why are we doing this? Link to ADR/plan sections in `ARCHITECTURE.md`.
-
-## Acceptance Criteria
-
-- [ ] Criteria 1
-- [ ] Criteria 2
+- Why are we doing this?
+- Links to ARCHITECTURE.md sections / ADRs / designs
 
 ## Scope
-
 - In scope:
 - Out of scope:
 
-## Validation / Testing
+## Acceptance Criteria
+- [ ] Behavior is described and verifiable
+- [ ] Observability/metrics updated (if applicable)
+- [ ] Security/privacy reviewed (if applicable)
+- [ ] Docs updated (README/ARCHITECTURE/CHANGELOG)
 
-How will we verify this is done? Include curl/commands or test notes.
+## Validation / Testing Plan
+- Scenarios / curl commands / test cases
+- Data setup / fixtures
+
+## Rollout / Risk
+- Risk level: low | medium | high
+- Rollback plan
 
 ## Tracking
-
 - Phase: `phase:1|2|3|...`
 - Area: `area:gateway|db|connectors|workers|metrics|ui|infra`
 - Type: `type:feature|task|bug|infra|doc`
+- Linked PRs:

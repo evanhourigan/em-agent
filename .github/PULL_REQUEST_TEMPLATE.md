@@ -1,29 +1,30 @@
 ## Summary
-
 What does this PR change?
 
 ## Related Issues
-
 Fixes #
 Refs #
 
 ## Context / Decision Links
-
 Link to `ARCHITECTURE.md` sections or ADRs driving this change.
 
 ## Changes
-
 - [ ] Code
 - [ ] Tests
 - [ ] Docs
 - [ ] Migrations
-
-## Screenshots / Logs (optional)
+- [ ] Observability (metrics/logs/traces)
+- [ ] Security/Privacy review (if applicable)
 
 ## Validation
-
-Steps to validate locally (commands, curl, endpoints).
+- Local steps (commands/curl):
+```
+# example
+```
+- Expected outputs
 
 ## Risk & Rollback
+- Risk: low | medium | high
+- Rollback plan
 
-Risk level, mitigation, and how to rollback if needed.
+## Screenshots / Logs (optional)
