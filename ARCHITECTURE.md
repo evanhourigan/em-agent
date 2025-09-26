@@ -142,3 +142,55 @@ An AI-assisted “Chief of Staff” for engineering that plugs into your stack, 
 - One-click demo: sample Jira/GitHub, canned sprint.
 
 ---
+
+## Human-in-the-Loop (HITL) & Approvals
+
+Keep humans in control for risky actions; automate read-only analysis and low-risk nudges.
+
+### Principles
+- Modes: auto (read-only/low risk), ask (default), require_approval (high risk).
+- Tiers: high (irreversible/prod-impact/security), medium (visible but reversible), low (private drafts/labels).
+
+### Where HITL applies
+- Required: PR merges/closures/backports; ticket transitions/reassignments; paging/escalations; Statuspage updates; policy/rule changes; actions above cost/PII thresholds.
+- Configurable: PR triage (assign/label), sprint nudges, posting reports to public channels, creating low-priority tickets.
+- Not required: ingestion/normalization, embeddings, metrics calc, private drafts/DM summaries, audit logging.
+
+### Architecture placement
+- Orchestrator (Temporal): workflows include a wait-for-approval step (external signal).
+- Gateway (API/Edge): Approvals API to propose actions and record decisions.
+- Admin UI & Slack: decision UX (modals/buttons), queue of pending approvals.
+- Audit & Observability: every propose/decision/execution logged and traced.
+
+### Policy (per-tenant)
+```yaml
+actions:
+  pr.merge:             { risk: high,   mode: require_approval }
+  pr.label:             { risk: low,    mode: auto }
+  pr.comment.summary:   { risk: medium, mode: ask_if_channel_public: true }
+  issue.create.low:     { risk: medium, mode: ask }
+  incident.page:        { risk: high,   mode: require_approval }
+limits:
+  max_monthly_cost_usd: 200
+  max_channel_size_auto_post: 10
+  pii_redaction: strict
+```
+
+### API surface
+- POST /v1/actions/propose → { action_id, risk, ttl }
+- GET  /v1/approvals/{id} → status/detail
+- POST /v1/approvals/{id}/decision → { approve|decline|modify }
+- Slack interactivity endpoint → forwards decisions with trace_id
+
+### Data model
+- approvals(id, action_type, target_ref, risk_level, proposed_payload, requester, ttl, status, decided_by, decided_at, decision, reason, model_version, trace_id)
+- audit_events(id, subject, verb, payload, actor, outcome, ts, correlation_id)
+
+### Observability & metrics
+- Spans: propose → wait_for_approval → execute
+- Metrics: approval_latency_ms, approval_override_rate, auto_vs_hitl_counts
+
+### Delivery plan alignment
+- Phase 3 (Signal/Policy): define policy and add workflow gating.
+- Phase 5 (Slack & ChatOps): user-facing approvals UX and endpoints.
+- Phase 6 (Reliability & Safety): audit, redaction, evals, cost caps, approval metrics.
