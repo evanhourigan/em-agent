@@ -11,7 +11,9 @@ def map_github_identity(login: Optional[str], email: Optional[str]) -> Optional[
     }
 
 
-def map_slack_identity(user_id: Optional[str], email: Optional[str], real_name: Optional[str]) -> Optional[dict]:
+def map_slack_identity(
+    user_id: Optional[str], email: Optional[str], real_name: Optional[str]
+) -> Optional[dict]:
     if not user_id and not email:
         return None
     return {
