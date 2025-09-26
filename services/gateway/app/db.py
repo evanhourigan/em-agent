@@ -3,8 +3,10 @@ from typing import Optional
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, sessionmaker
 
 _engine: Optional[Engine] = None
+_SessionLocal: Optional[sessionmaker[Session]] = None
 
 
 def _normalize_database_url(url: str) -> str:
@@ -37,6 +39,16 @@ def get_engine() -> Engine:
         future=True,
     )
     return _engine
+
+
+def get_sessionmaker() -> sessionmaker[Session]:
+    global _SessionLocal
+    if _SessionLocal is not None:
+        return _SessionLocal
+
+    engine = get_engine()
+    _SessionLocal = sessionmaker(bind=engine, expire_on_commit=False, future=True)
+    return _SessionLocal
 
 
 def check_database_health() -> dict:
