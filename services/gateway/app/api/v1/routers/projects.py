@@ -1,19 +1,23 @@
-from fastapi import APIRouter, HTTPException, Depends
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 from typing import List
 
-from ....db import get_sessionmaker
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from ...deps import get_db_session
-from ...schemas.projects import ProjectCreate, ProjectUpdate, ProjectOut
-from ...models.projects import Project
+from ....models.projects import Project
+from ....schemas.projects import ProjectCreate, ProjectOut, ProjectUpdate
 
 router = APIRouter(prefix="/v1/projects", tags=["projects"])
 
 
 @router.post("", response_model=ProjectOut, status_code=201)
-def create_project(payload: ProjectCreate, session: Session = Depends(get_db_session)) -> ProjectOut:
-    existing = session.execute(select(Project).where(Project.key == payload.key)).scalar_one_or_none()
+def create_project(
+    payload: ProjectCreate, session: Session = Depends(get_db_session)
+) -> ProjectOut:
+    existing = session.execute(
+        select(Project).where(Project.key == payload.key)
+    ).scalar_one_or_none()
     if existing:
         raise HTTPException(status_code=409, detail="project key already exists")
     project = Project(key=payload.key, name=payload.name)
@@ -38,13 +42,17 @@ def get_project(project_id: int, session: Session = Depends(get_db_session)) -> 
 
 
 @router.patch("/{project_id}", response_model=ProjectOut)
-def update_project(project_id: int, payload: ProjectUpdate, session: Session = Depends(get_db_session)) -> ProjectOut:
+def update_project(
+    project_id: int, payload: ProjectUpdate, session: Session = Depends(get_db_session)
+) -> ProjectOut:
     project = session.get(Project, project_id)
     if not project:
         raise HTTPException(status_code=404, detail="not found")
     if payload.key is not None:
         # ensure uniqueness
-        exists = session.execute(select(Project).where(Project.key == payload.key, Project.id != project_id)).scalar_one_or_none()
+        exists = session.execute(
+            select(Project).where(Project.key == payload.key, Project.id != project_id)
+        ).scalar_one_or_none()
         if exists:
             raise HTTPException(status_code=409, detail="project key already exists")
         project.key = payload.key
