@@ -15,7 +15,7 @@ class Identity(Base):
     external_id: Mapped[str] = mapped_column(String(128), nullable=False)
     user_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     display_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    metadata: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    meta: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=datetime.utcnow
     )

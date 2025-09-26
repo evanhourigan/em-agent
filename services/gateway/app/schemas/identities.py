@@ -9,7 +9,7 @@ class IdentityCreate(BaseModel):
     external_id: str = Field(min_length=1, max_length=128)
     user_id: Optional[int] = None
     display_name: Optional[str] = Field(default=None, max_length=255)
-    metadata: Optional[str] = None
+    meta: Optional[str] = None
 
 
 class IdentityOut(BaseModel):
@@ -18,7 +18,7 @@ class IdentityOut(BaseModel):
     external_id: str
     user_id: Optional[int]
     display_name: Optional[str]
-    metadata: Optional[str]
+    meta: Optional[str]
     created_at: datetime
     updated_at: datetime
 

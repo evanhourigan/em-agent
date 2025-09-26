@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "0004_identities"
@@ -18,9 +18,19 @@ def upgrade() -> None:
         sa.Column("external_id", sa.String(length=128), nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=True),
         sa.Column("display_name", sa.String(length=255), nullable=True),
-        sa.Column("metadata", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
+        sa.Column("meta", sa.Text(), nullable=True),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
     )
     op.create_index(
         "ix_identities_external", "identities", ["external_type", "external_id"], unique=True
