@@ -3,7 +3,7 @@ from typing import Optional
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session, sessionmaker, DeclarativeBase
 
 _engine: Optional[Engine] = None
 _SessionLocal: Optional[sessionmaker[Session]] = None
@@ -39,6 +39,10 @@ def get_engine() -> Engine:
         future=True,
     )
     return _engine
+
+
+class Base(DeclarativeBase):
+    pass
 
 
 def get_sessionmaker() -> sessionmaker[Session]:
