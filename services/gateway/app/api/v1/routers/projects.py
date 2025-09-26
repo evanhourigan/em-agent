@@ -4,9 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ...deps import get_db_session
 from ....models.projects import Project
 from ....schemas.projects import ProjectCreate, ProjectOut, ProjectUpdate
+from ...deps import get_db_session
 
 router = APIRouter(prefix="/v1/projects", tags=["projects"])
 

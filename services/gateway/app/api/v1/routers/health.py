@@ -6,8 +6,8 @@ from sqlalchemy.orm import Session
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from ...deps import get_db_session
 from ....db import check_database_health
+from ...deps import get_db_session
 
 router = APIRouter(tags=["ops"])
 
