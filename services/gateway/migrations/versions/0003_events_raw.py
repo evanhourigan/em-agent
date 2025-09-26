@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "0003_events_raw"
@@ -20,9 +20,16 @@ def upgrade() -> None:
         sa.Column("signature", sa.String(length=256), nullable=True),
         sa.Column("headers", sa.JSON(), nullable=False, server_default=sa.text("'{}'::json")),
         sa.Column("payload", sa.Text(), nullable=False),
-        sa.Column("received_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
+        sa.Column(
+            "received_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
     )
-    op.create_index("ix_events_raw_source_delivery", "events_raw", ["source", "delivery_id"], unique=True)
+    op.create_index(
+        "ix_events_raw_source_delivery", "events_raw", ["source", "delivery_id"], unique=True
+    )
 
 
 def downgrade() -> None:

@@ -5,36 +5,45 @@ An AI-assisted “Chief of Staff” for engineering. Plugs into your stack, surf
 See `ARCHITECTURE.md` for the vision, reference architecture, phases, and execution tracker.
 
 ## Status
+
 - Phase 0 complete (gateway, Postgres, logging/metrics)
 - Phase 1 in progress (ingestion + normalization)
 
 ## Quickstart (Docker)
+
 Prereqs
+
 - Docker Desktop running
 - Homebrew with docker-compose: `brew install docker-compose`
 
 Run (gateway + db)
+
 ```bash
 make up
 ```
 
 Check status
+
 ```bash
 make ps
 ```
 
 Follow logs
+
 ```bash
 make logs
 ```
 
 Stop and clean
+
 ```bash
 make down
 ```
 
 ## Health and Metrics
+
 Health check
+
 ```bash
 make health
 # or
@@ -42,6 +51,7 @@ curl -sS http://localhost:8000/health
 ```
 
 Prometheus metrics
+
 ```bash
 make metrics
 # or
@@ -49,24 +59,29 @@ curl -sS http://localhost:8000/metrics | head -50
 ```
 
 ## Database & Migrations
+
 Alembic migrations are bundled into the gateway image.
 
 Apply latest migrations
+
 ```bash
 make mig.up
 ```
 
 Create a new revision (interactive message prompt)
+
 ```bash
 make mig.revision
 ```
 
 Show migration history
+
 ```bash
 make mig.history
 ```
 
 ## API (alpha)
+
 Base URL: `http://localhost:8000`
 
 - `GET /` → service info
@@ -74,6 +89,7 @@ Base URL: `http://localhost:8000`
 - `GET /metrics` → Prometheus exposition format
 
 Projects CRUD
+
 ```bash
 # create
 curl -sS -X POST localhost:8000/v1/projects \
@@ -93,6 +109,7 @@ curl -sS -X DELETE -o /dev/null -w '%{http_code}\n' localhost:8000/v1/projects/1
 ```
 
 Webhooks (intake stubs)
+
 ```bash
 # GitHub (no secret)
 curl -sS -X POST http://localhost:8000/webhooks/github \
@@ -109,15 +126,18 @@ curl -sS -X POST http://localhost:8000/webhooks/jira \
 ```
 
 ## Development Notes
+
 - Service: `services/gateway` (FastAPI + SQLAlchemy + Alembic)
 - DB: Postgres (compose `db` service)
 - Logging: `structlog` (JSON)
 - Metrics: `starlette-exporter` Prometheus endpoint
 
 ## Contributing
+
 - Issues: use the enhanced issue template (acceptance criteria, validation, risk)
 - PRs: use the PR template; prefer squash merges for linear history
 - Project board: `gh project view 1 --owner evanhourigan --web`
 
 ## License
+
 See `LICENSE`.
