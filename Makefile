@@ -29,3 +29,16 @@ metrics:
 clean:
 	git clean -xdf -e .venv
 
+# --- Migrations (gateway) ---
+.PHONY: mig.up mig.revision mig.history
+
+mig.up:
+	docker-compose exec -T gateway alembic -c /app/alembic.ini upgrade head
+
+mig.revision:
+	@read -p "Message: " MSG; \
+	docker-compose exec -T gateway alembic -c /app/alembic.ini revision -m "$$MSG"
+
+mig.history:
+	docker-compose exec -T gateway alembic -c /app/alembic.ini history | tail -50
+
