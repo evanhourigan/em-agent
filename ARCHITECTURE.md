@@ -231,34 +231,35 @@ This section is the single place any agent/human should consult for status and n
 
 Short-term objective: capture, normalize, and persist events; establish DB migrations and simple domain CRUD to verify stack.
 
-- [ ] 1.1 Add Alembic and migration workflow
+- [x] 1.1 Add Alembic and migration workflow
 
-  - [ ] Add Alembic dependency and `alembic.ini`
-  - [ ] Create `migrations/` with env script wired to SQLAlchemy 2.0 engine
-  - [ ] First migration: `schema_version` stamp and base tables
+  - [x] Add Alembic dependency and `alembic.ini`
+  - [x] Create `migrations/` with env script wired to SQLAlchemy 2.0 engine
+  - [x] First migration: `schema_version` stamp and base tables
 
-- [ ] 1.2 Database session scaffolding
+- [x] 1.2 Database session scaffolding
 
-  - [ ] Session/Unit-of-work helpers (context-managed sessions)
-  - [ ] Healthcheck uses session roundtrip
+  - [x] Session/Unit-of-work helpers (context-managed sessions)
+  - [x] Healthcheck uses session roundtrip
 
-- [ ] 1.3 "Projects" vertical to exercise stack
+- [x] 1.3 "Projects" vertical to exercise stack
 
-  - [ ] Model: `projects` table (id, key, name, created_at, updated_at)
-  - [ ] Pydantic schemas: create/update/read
-  - [ ] Repo/service: basic CRUD with uniqueness on `key`
-  - [ ] Router: `POST /v1/projects`, `GET /v1/projects`, `GET /v1/projects/{id}`, `PUT/PATCH`, `DELETE`
-  - [ ] Migration for `projects`
+  - [x] Model: `projects` table (id, key, name, created_at, updated_at)
+  - [x] Pydantic schemas: create/update/read
+  - [x] Repo/service: basic CRUD with uniqueness on `key`
+  - [x] Router: `POST /v1/projects`, `GET /v1/projects`, `GET /v1/projects/{id}`, `PUT/PATCH`, `DELETE`
+  - [x] Migration for `projects`
 
-- [ ] 1.4 Webhook intake (stubs, signed)
+- [x] 1.4 Webhook intake (stubs, signed)
 
-  - [ ] `POST /webhooks/github` (HMAC stub, idempotency key)
-  - [ ] `POST /webhooks/jira` (JWT or shared-secret stub)
-  - [ ] Persist raw payloads to `events_raw` with headers/signature and dedupe
+  - [x] `POST /webhooks/github` (HMAC stub, idempotency key)
+  - [x] `POST /webhooks/jira` (JWT or shared-secret stub)
+  - [x] Persist raw payloads to `events_raw` with headers/signature and dedupe
 
-- [ ] 1.5 Identity mapping (skeleton)
-  - [ ] `identities` table (external_type, external_id, user_id, metadata)
-  - [ ] Mapper utilities (GitHub login → user, Slack user → user)
+- [ ] 1.5 Identity mapping (skeleton) — in progress
+  - [x] `identities` table (external_type, external_id, user_id, metadata)
+  - [x] Mapper utilities (GitHub login → user, Slack user → user)
+  - [ ] Minimal `/v1/identities` list/create for verification
 
 Milestone exit for Phase 1: raw events reliably land; `projects` CRUD green; migrations and local workflows documented.
 

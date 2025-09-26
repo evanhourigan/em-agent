@@ -49,6 +49,7 @@ curl -sS http://localhost:8000/metrics | head -50
 ```
 
 ## Database & Migrations
+
 Alembic migrations are bundled into the gateway image.
 
 Apply latest migrations
