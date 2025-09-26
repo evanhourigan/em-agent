@@ -3,12 +3,13 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
+from .api.v1.routers.health import router as health_router
+from .api.v1.routers.metrics import router as metrics_router
+from .api.v1.routers.projects import router as projects_router
 from .core.config import get_settings
 from .core.logging import configure_structlog, get_logger
 from .core.observability import add_prometheus
 from .db import get_engine
-from .api.v1.routers.health import router as health_router
-from .api.v1.routers.metrics import router as metrics_router
 
 
 def create_app() -> FastAPI:
@@ -40,6 +41,7 @@ def create_app() -> FastAPI:
     # Routers
     app.include_router(health_router)
     app.include_router(metrics_router)
+    app.include_router(projects_router)
 
     @app.get("/")
     def root() -> dict:
