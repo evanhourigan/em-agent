@@ -1,1 +1,1 @@
-{"_invocation_id": "e6ccf53b-85a6-48a7-a43e-03cb32561d13", "linked": {"0": {"name": "model.em_agent_metrics.dora_example", "type": "model"}, "1": {"name": "model.em_agent_metrics.dora_lead_time", "type": "model"}}}
+{"_invocation_id": "e93a203a-ef29-48bd-afb3-7abcbd3368e7", "linked": {"0": {"name": "model.em_agent_metrics.dora_example", "type": "model"}, "1": {"name": "model.em_agent_metrics.dora_lead_time", "type": "model"}, "2": {"name": "model.em_agent_metrics.pr_idle_time", "type": "model"}}}

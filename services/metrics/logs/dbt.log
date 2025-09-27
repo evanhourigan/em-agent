@@ -516,3 +516,309 @@ drop view if exists "postgres"."public"."dora_lead_time__dbt_backup" cascade
 [0m11:20:13.851124 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x109cbab70>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10af37260>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10878cc50>]}
 [0m11:20:13.851364 [debug] [MainThread]: Flushing usage events
 [0m11:20:14.231340 [debug] [MainThread]: An error was encountered while trying to flush usage events
+[0m11:28:06.055528 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x109ddbe00>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10b32b750>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10b32b610>]}
+
+
+============================== 11:28:06.059270 | e93a203a-ef29-48bd-afb3-7abcbd3368e7 ==============================
+[0m11:28:06.059270 [info ] [MainThread]: Running with dbt=1.10.13
+[0m11:28:06.059764 [debug] [MainThread]: running dbt with arguments {'send_anonymous_usage_stats': 'True', 'profiles_dir': '/Users/evan/code/ema/em-agent/services/metrics', 'fail_fast': 'False', 'no_print': 'None', 'log_path': '/Users/evan/code/ema/em-agent/services/metrics/logs', 'log_cache_events': 'False', 'invocation_command': 'dbt run', 'write_json': 'True', 'cache_selected_only': 'False', 'static_parser': 'True', 'log_format': 'default', 'partial_parse': 'True', 'empty': 'False', 'introspect': 'True', 'quiet': 'False', 'version_check': 'True', 'use_colors': 'True', 'warn_error': 'None', 'debug': 'False', 'indirect_selection': 'eager', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'target_path': 'None', 'use_experimental_parser': 'False', 'printer_width': '80'}
+[0m11:28:06.173067 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'project_id', 'label': 'e93a203a-ef29-48bd-afb3-7abcbd3368e7', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10a627e10>]}
+[0m11:28:06.203214 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'adapter_info', 'label': 'e93a203a-ef29-48bd-afb3-7abcbd3368e7', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10b1b7df0>]}
+[0m11:28:06.204250 [info ] [MainThread]: Registered adapter: postgres=1.9.1
+[0m11:28:06.259727 [debug] [MainThread]: checksum: 9f0c81e2574b4ff463f3d16d080df83c6982fc0372c9feeacae0504ac9ea3ffe, vars: {}, profile: , target: , version: 1.10.13
+[0m11:28:06.326279 [debug] [MainThread]: Partial parsing enabled: 0 files deleted, 1 files added, 1 files changed.
+[0m11:28:06.326605 [debug] [MainThread]: Partial parsing: added file: em_agent_metrics://models/pr_idle_time.sql
+[0m11:28:06.326873 [debug] [MainThread]: Partial parsing: updated file: em_agent_metrics://models/schema.yml
+[0m11:28:06.480857 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'load_project', 'label': 'e93a203a-ef29-48bd-afb3-7abcbd3368e7', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10c3ac050>]}
+[0m11:28:06.511719 [debug] [MainThread]: Wrote artifact WritableManifest to /Users/evan/code/ema/em-agent/services/metrics/target/manifest.json
+[0m11:28:06.513853 [debug] [MainThread]: Wrote artifact SemanticManifest to /Users/evan/code/ema/em-agent/services/metrics/target/semantic_manifest.json
+[0m11:28:06.565736 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'resource_counts', 'label': 'e93a203a-ef29-48bd-afb3-7abcbd3368e7', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10c034d70>]}
+[0m11:28:06.566142 [info ] [MainThread]: Found 3 models, 434 macros
+[0m11:28:06.566350 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'runnable_timing', 'label': 'e93a203a-ef29-48bd-afb3-7abcbd3368e7', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10b7fe890>]}
+[0m11:28:06.567340 [info ] [MainThread]: 
+[0m11:28:06.567758 [info ] [MainThread]: Concurrency: 2 threads (target='dev')
+[0m11:28:06.567966 [info ] [MainThread]: 
+[0m11:28:06.568257 [debug] [MainThread]: Acquiring new postgres connection 'master'
+[0m11:28:06.570369 [debug] [ThreadPool]: Acquiring new postgres connection 'list_postgres'
+[0m11:28:06.602175 [debug] [ThreadPool]: Using postgres connection "list_postgres"
+[0m11:28:06.602511 [debug] [ThreadPool]: On list_postgres: /* {"app": "dbt", "dbt_version": "1.10.13", "profile_name": "em_agent", "target_name": "dev", "connection_name": "list_postgres"} */
+
+    select distinct nspname from pg_namespace
+  
+[0m11:28:06.602704 [debug] [ThreadPool]: Opening a new connection, currently in state init
+[0m11:28:06.649513 [debug] [ThreadPool]: SQL status: SELECT 4 in 0.047 seconds
+[0m11:28:06.650484 [debug] [ThreadPool]: On list_postgres: Close
+[0m11:28:06.651439 [debug] [ThreadPool]: Re-using an available connection from the pool (formerly list_postgres, now list_postgres_public)
+[0m11:28:06.654938 [debug] [ThreadPool]: Using postgres connection "list_postgres_public"
+[0m11:28:06.655343 [debug] [ThreadPool]: On list_postgres_public: BEGIN
+[0m11:28:06.655529 [debug] [ThreadPool]: Opening a new connection, currently in state closed
+[0m11:28:06.663782 [debug] [ThreadPool]: SQL status: BEGIN in 0.008 seconds
+[0m11:28:06.664106 [debug] [ThreadPool]: Using postgres connection "list_postgres_public"
+[0m11:28:06.664293 [debug] [ThreadPool]: On list_postgres_public: /* {"app": "dbt", "dbt_version": "1.10.13", "profile_name": "em_agent", "target_name": "dev", "connection_name": "list_postgres_public"} */
+select
+      'postgres' as database,
+      tablename as name,
+      schemaname as schema,
+      'table' as type
+    from pg_tables
+    where schemaname ilike 'public'
+    union all
+    select
+      'postgres' as database,
+      viewname as name,
+      schemaname as schema,
+      'view' as type
+    from pg_views
+    where schemaname ilike 'public'
+    union all
+    select
+      'postgres' as database,
+      matviewname as name,
+      schemaname as schema,
+      'materialized_view' as type
+    from pg_matviews
+    where schemaname ilike 'public'
+  
+[0m11:28:06.667954 [debug] [ThreadPool]: SQL status: SELECT 6 in 0.003 seconds
+[0m11:28:06.668730 [debug] [ThreadPool]: On list_postgres_public: ROLLBACK
+[0m11:28:06.669341 [debug] [ThreadPool]: On list_postgres_public: Close
+[0m11:28:06.672211 [debug] [MainThread]: Using postgres connection "master"
+[0m11:28:06.672414 [debug] [MainThread]: On master: BEGIN
+[0m11:28:06.672569 [debug] [MainThread]: Opening a new connection, currently in state init
+[0m11:28:06.680736 [debug] [MainThread]: SQL status: BEGIN in 0.008 seconds
+[0m11:28:06.680937 [debug] [MainThread]: Using postgres connection "master"
+[0m11:28:06.681152 [debug] [MainThread]: On master: /* {"app": "dbt", "dbt_version": "1.10.13", "profile_name": "em_agent", "target_name": "dev", "connection_name": "master"} */
+select distinct
+        dependent_namespace.nspname as dependent_schema,
+        dependent_class.relname as dependent_name,
+        referenced_namespace.nspname as referenced_schema,
+        referenced_class.relname as referenced_name
+
+    -- Query for views: views are entries in pg_class with an entry in pg_rewrite, but we avoid
+    -- a seq scan on pg_rewrite by leveraging the fact there is an "internal" row in pg_depend for
+    -- the view...
+    from pg_class as dependent_class
+    join pg_namespace as dependent_namespace on dependent_namespace.oid = dependent_class.relnamespace
+    join pg_depend as dependent_depend on dependent_depend.refobjid = dependent_class.oid
+        and dependent_depend.classid = 'pg_rewrite'::regclass
+        and dependent_depend.refclassid = 'pg_class'::regclass
+        and dependent_depend.deptype = 'i'
+
+    -- ... and via pg_depend (that has a row per column, hence the need for "distinct" above, and
+    -- making sure to exclude the internal row to avoid a view appearing to depend on itself)...
+    join pg_depend as joining_depend on joining_depend.objid = dependent_depend.objid
+        and joining_depend.classid = 'pg_rewrite'::regclass
+        and joining_depend.refclassid = 'pg_class'::regclass
+        and joining_depend.refobjid != dependent_depend.refobjid
+
+    -- ... we can find the tables they query from in pg_class, but excluding system tables. Note we
+    -- don't need need to exclude _dependent_ system tables, because they only query from other
+    -- system tables, and so are automatically excluded by excluding _referenced_ system tables
+    join pg_class as referenced_class on referenced_class.oid = joining_depend.refobjid
+    join pg_namespace as referenced_namespace on referenced_namespace.oid = referenced_class.relnamespace
+        and referenced_namespace.nspname != 'information_schema'
+        and referenced_namespace.nspname not like 'pg\_%'
+
+    order by
+        dependent_schema, dependent_name, referenced_schema, referenced_name;
+[0m11:28:06.685106 [debug] [MainThread]: SQL status: SELECT 1 in 0.004 seconds
+[0m11:28:06.686095 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'runnable_timing', 'label': 'e93a203a-ef29-48bd-afb3-7abcbd3368e7', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10c3942c0>]}
+[0m11:28:06.686375 [debug] [MainThread]: On master: ROLLBACK
+[0m11:28:06.686951 [debug] [MainThread]: Using postgres connection "master"
+[0m11:28:06.687206 [debug] [MainThread]: On master: BEGIN
+[0m11:28:06.687934 [debug] [MainThread]: SQL status: BEGIN in 0.001 seconds
+[0m11:28:06.688137 [debug] [MainThread]: On master: COMMIT
+[0m11:28:06.688302 [debug] [MainThread]: Using postgres connection "master"
+[0m11:28:06.688452 [debug] [MainThread]: On master: COMMIT
+[0m11:28:06.688952 [debug] [MainThread]: SQL status: COMMIT in 0.000 seconds
+[0m11:28:06.689206 [debug] [MainThread]: On master: Close
+[0m11:28:06.691461 [debug] [Thread-2 (]: Began running node model.em_agent_metrics.dora_lead_time
+[0m11:28:06.691738 [debug] [Thread-1 (]: Began running node model.em_agent_metrics.dora_example
+[0m11:28:06.692046 [info ] [Thread-2 (]: 2 of 3 START sql view model public.dora_lead_time .............................. [RUN]
+[0m11:28:06.692326 [info ] [Thread-1 (]: 1 of 3 START sql view model public.dora_example ................................ [RUN]
+[0m11:28:06.692662 [debug] [Thread-2 (]: Acquiring new postgres connection 'model.em_agent_metrics.dora_lead_time'
+[0m11:28:06.692963 [debug] [Thread-1 (]: Re-using an available connection from the pool (formerly list_postgres_public, now model.em_agent_metrics.dora_example)
+[0m11:28:06.693204 [debug] [Thread-2 (]: Began compiling node model.em_agent_metrics.dora_lead_time
+[0m11:28:06.693416 [debug] [Thread-1 (]: Began compiling node model.em_agent_metrics.dora_example
+[0m11:28:06.696853 [debug] [Thread-2 (]: Writing injected SQL for node "model.em_agent_metrics.dora_lead_time"
+[0m11:28:06.697754 [debug] [Thread-1 (]: Writing injected SQL for node "model.em_agent_metrics.dora_example"
+[0m11:28:06.698213 [debug] [Thread-1 (]: Began executing node model.em_agent_metrics.dora_example
+[0m11:28:06.716423 [debug] [Thread-1 (]: Writing runtime sql for node "model.em_agent_metrics.dora_example"
+[0m11:28:06.716714 [debug] [Thread-2 (]: Began executing node model.em_agent_metrics.dora_lead_time
+[0m11:28:06.719082 [debug] [Thread-2 (]: Writing runtime sql for node "model.em_agent_metrics.dora_lead_time"
+[0m11:28:06.719507 [debug] [Thread-1 (]: Using postgres connection "model.em_agent_metrics.dora_example"
+[0m11:28:06.719735 [debug] [Thread-1 (]: On model.em_agent_metrics.dora_example: BEGIN
+[0m11:28:06.719956 [debug] [Thread-2 (]: Using postgres connection "model.em_agent_metrics.dora_lead_time"
+[0m11:28:06.720166 [debug] [Thread-1 (]: Opening a new connection, currently in state closed
+[0m11:28:06.720382 [debug] [Thread-2 (]: On model.em_agent_metrics.dora_lead_time: BEGIN
+[0m11:28:06.720659 [debug] [Thread-2 (]: Opening a new connection, currently in state init
+[0m11:28:06.729118 [debug] [Thread-1 (]: SQL status: BEGIN in 0.009 seconds
+[0m11:28:06.729485 [debug] [Thread-1 (]: Using postgres connection "model.em_agent_metrics.dora_example"
+[0m11:28:06.729757 [debug] [Thread-2 (]: SQL status: BEGIN in 0.009 seconds
+[0m11:28:06.730013 [debug] [Thread-1 (]: On model.em_agent_metrics.dora_example: /* {"app": "dbt", "dbt_version": "1.10.13", "profile_name": "em_agent", "target_name": "dev", "node_id": "model.em_agent_metrics.dora_example"} */
+
+  create view "postgres"."public"."dora_example__dbt_tmp"
+    
+    
+  as (
+    select 'deployment_frequency' as metric, 0::int as value
+union all
+select 'lead_time_for_changes' as metric, 0::int as value
+  );
+[0m11:28:06.730287 [debug] [Thread-2 (]: Using postgres connection "model.em_agent_metrics.dora_lead_time"
+[0m11:28:06.730633 [debug] [Thread-2 (]: On model.em_agent_metrics.dora_lead_time: /* {"app": "dbt", "dbt_version": "1.10.13", "profile_name": "em_agent", "target_name": "dev", "node_id": "model.em_agent_metrics.dora_lead_time"} */
+
+  create view "postgres"."public"."dora_lead_time__dbt_tmp"
+    
+    
+  as (
+    -- Lead time for changes (placeholder): difference between first commit (push) and deployment event per delivery id
+with commits as (
+  select delivery_id, min(received_at) as first_commit_at
+  from public.events_raw
+  where source = 'github' and event_type in ('push', 'pull_request')
+  group by delivery_id
+),
+deploys as (
+  select delivery_id, min(received_at) as first_deploy_at
+  from public.events_raw
+  where source = 'github' and event_type in ('deployment_status', 'release')
+  group by delivery_id
+)
+select
+  c.delivery_id,
+  c.first_commit_at,
+  d.first_deploy_at,
+  extract(epoch from (d.first_deploy_at - c.first_commit_at)) / 3600.0 as lead_time_hours
+from commits c
+join deploys d on d.delivery_id = c.delivery_id
+where d.first_deploy_at > c.first_commit_at
+  );
+[0m11:28:06.734089 [debug] [Thread-1 (]: SQL status: CREATE VIEW in 0.004 seconds
+[0m11:28:06.737301 [debug] [Thread-1 (]: Using postgres connection "model.em_agent_metrics.dora_example"
+[0m11:28:06.737586 [debug] [Thread-2 (]: SQL status: CREATE VIEW in 0.007 seconds
+[0m11:28:06.737900 [debug] [Thread-1 (]: On model.em_agent_metrics.dora_example: /* {"app": "dbt", "dbt_version": "1.10.13", "profile_name": "em_agent", "target_name": "dev", "node_id": "model.em_agent_metrics.dora_example"} */
+alter table "postgres"."public"."dora_example" rename to "dora_example__dbt_backup"
+[0m11:28:06.739710 [debug] [Thread-2 (]: Using postgres connection "model.em_agent_metrics.dora_lead_time"
+[0m11:28:06.739963 [debug] [Thread-2 (]: On model.em_agent_metrics.dora_lead_time: /* {"app": "dbt", "dbt_version": "1.10.13", "profile_name": "em_agent", "target_name": "dev", "node_id": "model.em_agent_metrics.dora_lead_time"} */
+alter table "postgres"."public"."dora_lead_time" rename to "dora_lead_time__dbt_backup"
+[0m11:28:06.740650 [debug] [Thread-1 (]: SQL status: ALTER TABLE in 0.001 seconds
+[0m11:28:06.740923 [debug] [Thread-2 (]: SQL status: ALTER TABLE in 0.001 seconds
+[0m11:28:06.742807 [debug] [Thread-1 (]: Using postgres connection "model.em_agent_metrics.dora_example"
+[0m11:28:06.744231 [debug] [Thread-2 (]: Using postgres connection "model.em_agent_metrics.dora_lead_time"
+[0m11:28:06.744452 [debug] [Thread-1 (]: On model.em_agent_metrics.dora_example: /* {"app": "dbt", "dbt_version": "1.10.13", "profile_name": "em_agent", "target_name": "dev", "node_id": "model.em_agent_metrics.dora_example"} */
+alter table "postgres"."public"."dora_example__dbt_tmp" rename to "dora_example"
+[0m11:28:06.744703 [debug] [Thread-2 (]: On model.em_agent_metrics.dora_lead_time: /* {"app": "dbt", "dbt_version": "1.10.13", "profile_name": "em_agent", "target_name": "dev", "node_id": "model.em_agent_metrics.dora_lead_time"} */
+alter table "postgres"."public"."dora_lead_time__dbt_tmp" rename to "dora_lead_time"
+[0m11:28:06.745548 [debug] [Thread-1 (]: SQL status: ALTER TABLE in 0.001 seconds
+[0m11:28:06.752652 [debug] [Thread-2 (]: SQL status: ALTER TABLE in 0.008 seconds
+[0m11:28:06.754019 [debug] [Thread-1 (]: On model.em_agent_metrics.dora_example: COMMIT
+[0m11:28:06.754994 [debug] [Thread-2 (]: On model.em_agent_metrics.dora_lead_time: COMMIT
+[0m11:28:06.755226 [debug] [Thread-1 (]: Using postgres connection "model.em_agent_metrics.dora_example"
+[0m11:28:06.755757 [debug] [Thread-2 (]: Using postgres connection "model.em_agent_metrics.dora_lead_time"
+[0m11:28:06.755954 [debug] [Thread-1 (]: On model.em_agent_metrics.dora_example: COMMIT
+[0m11:28:06.756140 [debug] [Thread-2 (]: On model.em_agent_metrics.dora_lead_time: COMMIT
+[0m11:28:06.757615 [debug] [Thread-2 (]: SQL status: COMMIT in 0.001 seconds
+[0m11:28:06.757916 [debug] [Thread-1 (]: SQL status: COMMIT in 0.002 seconds
+[0m11:28:06.761696 [debug] [Thread-2 (]: Applying DROP to: "postgres"."public"."dora_lead_time__dbt_backup"
+[0m11:28:06.762951 [debug] [Thread-1 (]: Applying DROP to: "postgres"."public"."dora_example__dbt_backup"
+[0m11:28:06.765513 [debug] [Thread-2 (]: Using postgres connection "model.em_agent_metrics.dora_lead_time"
+[0m11:28:06.765965 [debug] [Thread-1 (]: Using postgres connection "model.em_agent_metrics.dora_example"
+[0m11:28:06.766161 [debug] [Thread-2 (]: On model.em_agent_metrics.dora_lead_time: /* {"app": "dbt", "dbt_version": "1.10.13", "profile_name": "em_agent", "target_name": "dev", "node_id": "model.em_agent_metrics.dora_lead_time"} */
+drop view if exists "postgres"."public"."dora_lead_time__dbt_backup" cascade
+[0m11:28:06.766358 [debug] [Thread-1 (]: On model.em_agent_metrics.dora_example: /* {"app": "dbt", "dbt_version": "1.10.13", "profile_name": "em_agent", "target_name": "dev", "node_id": "model.em_agent_metrics.dora_example"} */
+drop view if exists "postgres"."public"."dora_example__dbt_backup" cascade
+[0m11:28:06.769600 [debug] [Thread-2 (]: SQL status: DROP VIEW in 0.003 seconds
+[0m11:28:06.769888 [debug] [Thread-1 (]: SQL status: DROP VIEW in 0.003 seconds
+[0m11:28:06.771381 [debug] [Thread-2 (]: On model.em_agent_metrics.dora_lead_time: Close
+[0m11:28:06.772142 [debug] [Thread-1 (]: On model.em_agent_metrics.dora_example: Close
+[0m11:28:06.774091 [debug] [Thread-1 (]: Sending event: {'category': 'dbt', 'action': 'run_model', 'label': 'e93a203a-ef29-48bd-afb3-7abcbd3368e7', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10c668f50>]}
+[0m11:28:06.774386 [debug] [Thread-2 (]: Sending event: {'category': 'dbt', 'action': 'run_model', 'label': 'e93a203a-ef29-48bd-afb3-7abcbd3368e7', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10c5edbd0>]}
+[0m11:28:06.774809 [info ] [Thread-1 (]: 1 of 3 OK created sql view model public.dora_example ........................... [[32mCREATE VIEW[0m in 0.08s]
+[0m11:28:06.775502 [debug] [Thread-1 (]: Finished running node model.em_agent_metrics.dora_example
+[0m11:28:06.775750 [debug] [Thread-1 (]: Began running node model.em_agent_metrics.pr_idle_time
+[0m11:28:06.775140 [info ] [Thread-2 (]: 2 of 3 OK created sql view model public.dora_lead_time ......................... [[32mCREATE VIEW[0m in 0.08s]
+[0m11:28:06.776112 [info ] [Thread-1 (]: 3 of 3 START sql view model public.pr_idle_time ................................ [RUN]
+[0m11:28:06.776445 [debug] [Thread-2 (]: Finished running node model.em_agent_metrics.dora_lead_time
+[0m11:28:06.776677 [debug] [Thread-1 (]: Re-using an available connection from the pool (formerly model.em_agent_metrics.dora_example, now model.em_agent_metrics.pr_idle_time)
+[0m11:28:06.776940 [debug] [Thread-1 (]: Began compiling node model.em_agent_metrics.pr_idle_time
+[0m11:28:06.778249 [debug] [Thread-1 (]: Writing injected SQL for node "model.em_agent_metrics.pr_idle_time"
+[0m11:28:06.778668 [debug] [Thread-1 (]: Began executing node model.em_agent_metrics.pr_idle_time
+[0m11:28:06.780606 [debug] [Thread-1 (]: Writing runtime sql for node "model.em_agent_metrics.pr_idle_time"
+[0m11:28:06.781165 [debug] [Thread-1 (]: Using postgres connection "model.em_agent_metrics.pr_idle_time"
+[0m11:28:06.781365 [debug] [Thread-1 (]: On model.em_agent_metrics.pr_idle_time: BEGIN
+[0m11:28:06.781544 [debug] [Thread-1 (]: Opening a new connection, currently in state closed
+[0m11:28:06.790499 [debug] [Thread-1 (]: SQL status: BEGIN in 0.009 seconds
+[0m11:28:06.790782 [debug] [Thread-1 (]: Using postgres connection "model.em_agent_metrics.pr_idle_time"
+[0m11:28:06.791005 [debug] [Thread-1 (]: On model.em_agent_metrics.pr_idle_time: /* {"app": "dbt", "dbt_version": "1.10.13", "profile_name": "em_agent", "target_name": "dev", "node_id": "model.em_agent_metrics.pr_idle_time"} */
+
+  create view "postgres"."public"."pr_idle_time__dbt_tmp"
+    
+    
+  as (
+    -- PR idle time (placeholder): time from PR opened to first review request or comment
+with prs as (
+  select delivery_id, min(received_at) as opened_at
+  from public.events_raw
+  where source = 'github' and event_type in ('pull_request')
+  group by delivery_id
+),
+reviews as (
+  select delivery_id, min(received_at) as first_review_at
+  from public.events_raw
+  where source = 'github' and event_type in ('pull_request_review', 'pull_request_review_comment')
+  group by delivery_id
+)
+select
+  p.delivery_id,
+  p.opened_at,
+  r.first_review_at,
+  extract(epoch from (coalesce(r.first_review_at, now()) - p.opened_at)) / 3600.0 as idle_hours
+from prs p
+left join reviews r on r.delivery_id = p.delivery_id
+  );
+[0m11:28:06.794932 [debug] [Thread-1 (]: SQL status: CREATE VIEW in 0.004 seconds
+[0m11:28:06.796875 [debug] [Thread-1 (]: Using postgres connection "model.em_agent_metrics.pr_idle_time"
+[0m11:28:06.797096 [debug] [Thread-1 (]: On model.em_agent_metrics.pr_idle_time: /* {"app": "dbt", "dbt_version": "1.10.13", "profile_name": "em_agent", "target_name": "dev", "node_id": "model.em_agent_metrics.pr_idle_time"} */
+alter table "postgres"."public"."pr_idle_time__dbt_tmp" rename to "pr_idle_time"
+[0m11:28:06.797855 [debug] [Thread-1 (]: SQL status: ALTER TABLE in 0.001 seconds
+[0m11:28:06.798681 [debug] [Thread-1 (]: On model.em_agent_metrics.pr_idle_time: COMMIT
+[0m11:28:06.798890 [debug] [Thread-1 (]: Using postgres connection "model.em_agent_metrics.pr_idle_time"
+[0m11:28:06.799063 [debug] [Thread-1 (]: On model.em_agent_metrics.pr_idle_time: COMMIT
+[0m11:28:06.800270 [debug] [Thread-1 (]: SQL status: COMMIT in 0.001 seconds
+[0m11:28:06.801335 [debug] [Thread-1 (]: Applying DROP to: "postgres"."public"."pr_idle_time__dbt_backup"
+[0m11:28:06.801732 [debug] [Thread-1 (]: Using postgres connection "model.em_agent_metrics.pr_idle_time"
+[0m11:28:06.801911 [debug] [Thread-1 (]: On model.em_agent_metrics.pr_idle_time: /* {"app": "dbt", "dbt_version": "1.10.13", "profile_name": "em_agent", "target_name": "dev", "node_id": "model.em_agent_metrics.pr_idle_time"} */
+drop view if exists "postgres"."public"."pr_idle_time__dbt_backup" cascade
+[0m11:28:06.802442 [debug] [Thread-1 (]: SQL status: DROP VIEW in 0.000 seconds
+[0m11:28:06.803075 [debug] [Thread-1 (]: On model.em_agent_metrics.pr_idle_time: Close
+[0m11:28:06.803360 [debug] [Thread-1 (]: Sending event: {'category': 'dbt', 'action': 'run_model', 'label': 'e93a203a-ef29-48bd-afb3-7abcbd3368e7', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10c6d6530>]}
+[0m11:28:06.803666 [info ] [Thread-1 (]: 3 of 3 OK created sql view model public.pr_idle_time ........................... [[32mCREATE VIEW[0m in 0.03s]
+[0m11:28:06.803938 [debug] [Thread-1 (]: Finished running node model.em_agent_metrics.pr_idle_time
+[0m11:28:06.804743 [debug] [MainThread]: Using postgres connection "master"
+[0m11:28:06.804949 [debug] [MainThread]: On master: BEGIN
+[0m11:28:06.805123 [debug] [MainThread]: Opening a new connection, currently in state closed
+[0m11:28:06.811732 [debug] [MainThread]: SQL status: BEGIN in 0.007 seconds
+[0m11:28:06.811913 [debug] [MainThread]: On master: COMMIT
+[0m11:28:06.812081 [debug] [MainThread]: Using postgres connection "master"
+[0m11:28:06.812231 [debug] [MainThread]: On master: COMMIT
+[0m11:28:06.812658 [debug] [MainThread]: SQL status: COMMIT in 0.000 seconds
+[0m11:28:06.812941 [debug] [MainThread]: On master: Close
+[0m11:28:06.813211 [debug] [MainThread]: Connection 'master' was properly closed.
+[0m11:28:06.813382 [debug] [MainThread]: Connection 'model.em_agent_metrics.pr_idle_time' was properly closed.
+[0m11:28:06.813537 [debug] [MainThread]: Connection 'model.em_agent_metrics.dora_lead_time' was properly closed.
+[0m11:28:06.813820 [info ] [MainThread]: 
+[0m11:28:06.814094 [info ] [MainThread]: Finished running 3 view models in 0 hours 0 minutes and 0.25 seconds (0.25s).
+[0m11:28:06.814617 [debug] [MainThread]: Command end result
+[0m11:28:06.826900 [debug] [MainThread]: Wrote artifact WritableManifest to /Users/evan/code/ema/em-agent/services/metrics/target/manifest.json
+[0m11:28:06.827855 [debug] [MainThread]: Wrote artifact SemanticManifest to /Users/evan/code/ema/em-agent/services/metrics/target/semantic_manifest.json
+[0m11:28:06.831117 [debug] [MainThread]: Wrote artifact RunExecutionResult to /Users/evan/code/ema/em-agent/services/metrics/target/run_results.json
+[0m11:28:06.831308 [info ] [MainThread]: 
+[0m11:28:06.831518 [info ] [MainThread]: [32mCompleted successfully[0m
+[0m11:28:06.831691 [info ] [MainThread]: 
+[0m11:28:06.831865 [info ] [MainThread]: Done. PASS=3 WARN=0 ERROR=0 SKIP=0 NO-OP=0 TOTAL=3
+[0m11:28:06.834267 [debug] [MainThread]: Resource report: {"command_name": "run", "command_success": true, "command_wall_clock_time": 0.82733893, "process_in_blocks": "0", "process_kernel_time": 0.25999, "process_mem_max_rss": "134103040", "process_out_blocks": "0", "process_user_time": 1.299497}
+[0m11:28:06.834567 [debug] [MainThread]: Command `dbt run` succeeded at 11:28:06.834523 after 0.83 seconds
+[0m11:28:06.834767 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10c3dc050>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10c1e1550>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x107573b60>]}
+[0m11:28:06.834961 [debug] [MainThread]: Flushing usage events
+[0m11:28:07.227024 [debug] [MainThread]: An error was encountered while trying to flush usage events

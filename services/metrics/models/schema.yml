@@ -19,3 +19,14 @@ models:
         tests: []
       - name: lead_time_hours
         tests: []
+  - name: pr_idle_time
+    description: Time from PR opened to first review activity
+    columns:
+      - name: delivery_id
+        tests: []
+      - name: opened_at
+        tests: []
+      - name: first_review_at
+        tests: []
+      - name: idle_hours
+        tests: []

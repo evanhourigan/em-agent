@@ -1,0 +1,36 @@
+name: dbt
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  dbt:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dbt-postgres
+        run: |
+          python -m pip install --upgrade pip
+          pip install dbt-postgres
+      - name: Run dbt debug
+        working-directory: services/metrics
+        env:
+          DBT_PROFILES_DIR: ${{ github.workspace }}/services/metrics
+          # Postgres defaults assume a runner Postgres. For now, just parse/validate without connection.
+        run: |
+          dbt --version
+          # Validate parsing even if connection fails
+          dbt parse
+      - name: Run dbt run (parse-only fallback)
+        if: always()
+        working-directory: services/metrics
+        env:
+          DBT_PROFILES_DIR: ${{ github.workspace }}/services/metrics
+        run: |
+          dbt compile
+

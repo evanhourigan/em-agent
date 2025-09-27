@@ -21,5 +21,6 @@ DBT_PROFILES_DIR=$(pwd) dbt run
 Connection defaults to local Postgres (compose db) via `profiles.yml`.
 
 ## Models
+
 - `dora_example`: placeholder view
 - `dora_lead_time`: computes lead time in hours from `events_raw` by pairing first commit (push/pr) with first deployment (deployment_status/release) per delivery id.
