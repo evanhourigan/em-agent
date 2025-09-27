@@ -1,0 +1,7 @@
+{
+  "title": "Delivery Metrics (Placeholder)",
+  "panels": [
+    {"type": "table", "title": "DORA Example", "targets": []}
+  ],
+  "version": 1
+}

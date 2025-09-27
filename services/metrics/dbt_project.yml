@@ -1,0 +1,14 @@
+name: 'em_agent_metrics'
+version: '1.0.0'
+config-version: 2
+
+profile: 'em_agent'
+
+model-paths: ['models']
+seed-paths: ['seeds']
+analysis-paths: ['analyses']
+macro-paths: ['macros']
+
+models:
+  em_agent_metrics:
+    +materialized: view

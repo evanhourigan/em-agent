@@ -1,0 +1,10 @@
+version: 2
+
+models:
+  - name: dora_example
+    description: Example DORA metrics view (placeholder)
+    columns:
+      - name: metric
+        tests: []
+      - name: value
+        tests: []
