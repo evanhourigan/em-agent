@@ -8,3 +8,14 @@ models:
         tests: []
       - name: value
         tests: []
+  - name: dora_lead_time
+    description: Lead time for changes derived from events_raw (first commit to first deploy)
+    columns:
+      - name: delivery_id
+        tests: []
+      - name: first_commit_at
+        tests: []
+      - name: first_deploy_at
+        tests: []
+      - name: lead_time_hours
+        tests: []

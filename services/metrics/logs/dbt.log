@@ -1,0 +1,518 @@
+[0m11:17:16.920486 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10c373e00>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10d89b750>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10d89b610>]}
+
+
+============================== 11:17:16.923960 | 3f76f2ab-5373-4ed9-8454-a5e4fc03df15 ==============================
+[0m11:17:16.923960 [info ] [MainThread]: Running with dbt=1.10.13
+[0m11:17:16.924364 [debug] [MainThread]: running dbt with arguments {'empty': 'None', 'no_print': 'None', 'static_parser': 'True', 'write_json': 'True', 'use_experimental_parser': 'False', 'version_check': 'True', 'indirect_selection': 'eager', 'log_path': '/Users/evan/code/ema/em-agent/services/metrics/logs', 'log_cache_events': 'False', 'quiet': 'False', 'invocation_command': 'dbt debug', 'warn_error': 'None', 'send_anonymous_usage_stats': 'True', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'use_colors': 'True', 'partial_parse': 'True', 'fail_fast': 'False', 'introspect': 'True', 'debug': 'False', 'cache_selected_only': 'False', 'printer_width': '80', 'log_format': 'default', 'target_path': 'None', 'profiles_dir': '/Users/evan/code/ema/em-agent/services/metrics'}
+[0m11:17:16.937116 [info ] [MainThread]: dbt version: 1.10.13
+[0m11:17:16.937405 [info ] [MainThread]: python version: 3.13.7
+[0m11:17:16.937577 [info ] [MainThread]: python path: /Users/evan/.local/pipx/venvs/dbt-core/bin/python
+[0m11:17:16.937739 [info ] [MainThread]: os info: macOS-26.0-arm64-arm-64bit-Mach-O
+[0m11:17:16.940234 [info ] [MainThread]: Error importing adapter: No module named 'dbt.adapters.postgres'
+[0m11:17:16.940559 [info ] [MainThread]: Using profiles dir at /Users/evan/code/ema/em-agent/services/metrics
+[0m11:17:16.940729 [info ] [MainThread]: Using profiles.yml file at /Users/evan/code/ema/em-agent/services/metrics/profiles.yml
+[0m11:17:16.940895 [info ] [MainThread]: Using dbt_project.yml file at /Users/evan/code/ema/em-agent/services/metrics/dbt_project.yml
+[0m11:17:16.990457 [info ] [MainThread]: Configuration:
+[0m11:17:16.990693 [info ] [MainThread]:   profiles.yml file [[31mERROR invalid[0m]
+[0m11:17:16.990855 [info ] [MainThread]:   dbt_project.yml file [[32mOK found and valid[0m]
+[0m11:17:16.991012 [info ] [MainThread]: Required dependencies:
+[0m11:17:16.991216 [debug] [MainThread]: Executing "git --help"
+[0m11:17:17.012579 [debug] [MainThread]: STDOUT: "b"usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]\n           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]\n           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--no-lazy-fetch]\n           [--no-optional-locks] [--no-advice] [--bare] [--git-dir=<path>]\n           [--work-tree=<path>] [--namespace=<name>] [--config-env=<name>=<envvar>]\n           <command> [<args>]\n\nThese are common Git commands used in various situations:\n\nstart a working area (see also: git help tutorial)\n   clone      Clone a repository into a new directory\n   init       Create an empty Git repository or reinitialize an existing one\n\nwork on the current change (see also: git help everyday)\n   add        Add file contents to the index\n   mv         Move or rename a file, a directory, or a symlink\n   restore    Restore working tree files\n   rm         Remove files from the working tree and from the index\n\nexamine the history and state (see also: git help revisions)\n   bisect     Use binary search to find the commit that introduced a bug\n   diff       Show changes between commits, commit and working tree, etc\n   grep       Print lines matching a pattern\n   log        Show commit logs\n   show       Show various types of objects\n   status     Show the working tree status\n\ngrow, mark and tweak your common history\n   backfill   Download missing objects in a partial clone\n   branch     List, create, or delete branches\n   commit     Record changes to the repository\n   merge      Join two or more development histories together\n   rebase     Reapply commits on top of another base tip\n   reset      Reset current HEAD to the specified state\n   switch     Switch branches\n   tag        Create, list, delete or verify a tag object signed with GPG\n\ncollaborate (see also: git help workflows)\n   fetch      Download objects and refs from another repository\n   pull       Fetch from and integrate with another repository or a local branch\n   push       Update remote refs along with associated objects\n\n'git help -a' and 'git help -g' list available subcommands and some\nconcept guides. See 'git help <command>' or 'git help <concept>'\nto read about a specific subcommand or concept.\nSee 'git help git' for an overview of the system.\n""
+[0m11:17:17.013389 [debug] [MainThread]: STDERR: "b''"
+[0m11:17:17.013616 [info ] [MainThread]:  - git [[32mOK found[0m]
+
+[0m11:17:17.013828 [info ] [MainThread]: Connection test skipped since no profile was found
+[0m11:17:17.014005 [info ] [MainThread]: [31m1 check failed:[0m
+[0m11:17:17.014169 [info ] [MainThread]: Profile loading failed for the following reason:
+Runtime Error
+  Credentials in profile "em_agent", target "dev" invalid: Runtime Error
+    Could not find adapter type postgres!
+
+
+[0m11:17:17.020092 [debug] [MainThread]: Resource report: {"command_name": "debug", "command_success": false, "command_wall_clock_time": 0.14630517, "process_in_blocks": "0", "process_kernel_time": 0.162528, "process_mem_max_rss": "108183552", "process_out_blocks": "0", "process_user_time": 0.829603}
+[0m11:17:17.020491 [debug] [MainThread]: Command `dbt debug` failed at 11:17:17.020415 after 0.15 seconds
+[0m11:17:17.020944 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10cba9350>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10da58050>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10d732f10>]}
+[0m11:17:17.021232 [debug] [MainThread]: Flushing usage events
+[0m11:17:17.531337 [debug] [MainThread]: An error was encountered while trying to flush usage events
+[0m11:17:50.026075 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x109b97e00>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10b0db750>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10b0db610>]}
+
+
+============================== 11:17:50.029673 | 982ca70e-ec46-42b9-8002-44dee65ccfbd ==============================
+[0m11:17:50.029673 [info ] [MainThread]: Running with dbt=1.10.13
+[0m11:17:50.030011 [debug] [MainThread]: running dbt with arguments {'quiet': 'False', 'warn_error': 'None', 'log_path': '/Users/evan/code/ema/em-agent/services/metrics/logs', 'empty': 'None', 'log_cache_events': 'False', 'no_print': 'None', 'fail_fast': 'False', 'profiles_dir': '/Users/evan/code/ema/em-agent/services/metrics', 'invocation_command': 'dbt debug', 'debug': 'False', 'introspect': 'True', 'indirect_selection': 'eager', 'use_experimental_parser': 'False', 'partial_parse': 'True', 'use_colors': 'True', 'log_format': 'default', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'static_parser': 'True', 'cache_selected_only': 'False', 'send_anonymous_usage_stats': 'True', 'write_json': 'True', 'target_path': 'None', 'version_check': 'True', 'printer_width': '80'}
+[0m11:17:50.042808 [info ] [MainThread]: dbt version: 1.10.13
+[0m11:17:50.043079 [info ] [MainThread]: python version: 3.13.7
+[0m11:17:50.043248 [info ] [MainThread]: python path: /Users/evan/.local/pipx/venvs/dbt-postgres/bin/python
+[0m11:17:50.043407 [info ] [MainThread]: os info: macOS-26.0-arm64-arm-64bit-Mach-O
+[0m11:17:51.699032 [info ] [MainThread]: Using profiles dir at /Users/evan/code/ema/em-agent/services/metrics
+[0m11:17:51.699437 [info ] [MainThread]: Using profiles.yml file at /Users/evan/code/ema/em-agent/services/metrics/profiles.yml
+[0m11:17:51.699696 [info ] [MainThread]: Using dbt_project.yml file at /Users/evan/code/ema/em-agent/services/metrics/dbt_project.yml
+[0m11:17:51.700326 [info ] [MainThread]: adapter type: postgres
+[0m11:17:51.700607 [info ] [MainThread]: adapter version: 1.9.1
+[0m11:17:51.758445 [info ] [MainThread]: Configuration:
+[0m11:17:51.758745 [info ] [MainThread]:   profiles.yml file [[32mOK found and valid[0m]
+[0m11:17:51.758914 [info ] [MainThread]:   dbt_project.yml file [[32mOK found and valid[0m]
+[0m11:17:51.759072 [info ] [MainThread]: Required dependencies:
+[0m11:17:51.759334 [debug] [MainThread]: Executing "git --help"
+[0m11:17:51.776379 [debug] [MainThread]: STDOUT: "b"usage: git [-v | --version] [-h | --help] [-C <path>] [-c <name>=<value>]\n           [--exec-path[=<path>]] [--html-path] [--man-path] [--info-path]\n           [-p | --paginate | -P | --no-pager] [--no-replace-objects] [--no-lazy-fetch]\n           [--no-optional-locks] [--no-advice] [--bare] [--git-dir=<path>]\n           [--work-tree=<path>] [--namespace=<name>] [--config-env=<name>=<envvar>]\n           <command> [<args>]\n\nThese are common Git commands used in various situations:\n\nstart a working area (see also: git help tutorial)\n   clone      Clone a repository into a new directory\n   init       Create an empty Git repository or reinitialize an existing one\n\nwork on the current change (see also: git help everyday)\n   add        Add file contents to the index\n   mv         Move or rename a file, a directory, or a symlink\n   restore    Restore working tree files\n   rm         Remove files from the working tree and from the index\n\nexamine the history and state (see also: git help revisions)\n   bisect     Use binary search to find the commit that introduced a bug\n   diff       Show changes between commits, commit and working tree, etc\n   grep       Print lines matching a pattern\n   log        Show commit logs\n   show       Show various types of objects\n   status     Show the working tree status\n\ngrow, mark and tweak your common history\n   backfill   Download missing objects in a partial clone\n   branch     List, create, or delete branches\n   commit     Record changes to the repository\n   merge      Join two or more development histories together\n   rebase     Reapply commits on top of another base tip\n   reset      Reset current HEAD to the specified state\n   switch     Switch branches\n   tag        Create, list, delete or verify a tag object signed with GPG\n\ncollaborate (see also: git help workflows)\n   fetch      Download objects and refs from another repository\n   pull       Fetch from and integrate with another repository or a local branch\n   push       Update remote refs along with associated objects\n\n'git help -a' and 'git help -g' list available subcommands and some\nconcept guides. See 'git help <command>' or 'git help <concept>'\nto read about a specific subcommand or concept.\nSee 'git help git' for an overview of the system.\n""
+[0m11:17:51.777010 [debug] [MainThread]: STDERR: "b''"
+[0m11:17:51.777230 [info ] [MainThread]:  - git [[32mOK found[0m]
+
+[0m11:17:51.777421 [info ] [MainThread]: Connection:
+[0m11:17:51.777598 [info ] [MainThread]:   host: localhost
+[0m11:17:51.777746 [info ] [MainThread]:   port: 5432
+[0m11:17:51.777884 [info ] [MainThread]:   user: postgres
+[0m11:17:51.778021 [info ] [MainThread]:   database: postgres
+[0m11:17:51.778157 [info ] [MainThread]:   schema: public
+[0m11:17:51.778302 [info ] [MainThread]:   connect_timeout: 10
+[0m11:17:51.778446 [info ] [MainThread]:   role: None
+[0m11:17:51.778589 [info ] [MainThread]:   search_path: None
+[0m11:17:51.778730 [info ] [MainThread]:   keepalives_idle: 0
+[0m11:17:51.778872 [info ] [MainThread]:   sslmode: None
+[0m11:17:51.779015 [info ] [MainThread]:   sslcert: None
+[0m11:17:51.779152 [info ] [MainThread]:   sslkey: None
+[0m11:17:51.779287 [info ] [MainThread]:   sslrootcert: None
+[0m11:17:51.779425 [info ] [MainThread]:   application_name: dbt
+[0m11:17:51.779578 [info ] [MainThread]:   retries: 1
+[0m11:17:51.779984 [info ] [MainThread]: Registered adapter: postgres=1.9.1
+[0m11:17:51.833377 [debug] [MainThread]: Acquiring new postgres connection 'debug'
+[0m11:17:51.860568 [debug] [MainThread]: Using postgres connection "debug"
+[0m11:17:51.860901 [debug] [MainThread]: On debug: select 1 as id
+[0m11:17:51.861079 [debug] [MainThread]: Opening a new connection, currently in state init
+[0m11:17:52.021779 [debug] [MainThread]: SQL status: SELECT 1 in 0.161 seconds
+[0m11:17:52.022616 [debug] [MainThread]: On debug: Close
+[0m11:17:52.022941 [info ] [MainThread]:   Connection test: [[32mOK connection ok[0m]
+
+[0m11:17:52.023227 [info ] [MainThread]: [32mAll checks passed![0m
+[0m11:17:52.026080 [debug] [MainThread]: Resource report: {"command_name": "debug", "command_success": true, "command_wall_clock_time": 2.0452757, "process_in_blocks": "0", "process_kernel_time": 0.23557, "process_mem_max_rss": "117522432", "process_out_blocks": "0", "process_user_time": 0.926728}
+[0m11:17:52.026544 [debug] [MainThread]: Command `dbt debug` succeeded at 11:17:52.026437 after 2.05 seconds
+[0m11:17:52.026816 [debug] [MainThread]: Connection 'debug' was properly closed.
+[0m11:17:52.027098 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10b77a8b0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10b71dc70>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10b1ae580>]}
+[0m11:17:52.027419 [debug] [MainThread]: Flushing usage events
+[0m11:17:52.397634 [debug] [MainThread]: An error was encountered while trying to flush usage events
+[0m11:17:59.998845 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10bea7e00>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10d3ef750>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10d3ef610>]}
+
+
+============================== 11:18:00.002342 | e2dd8859-4fd3-463f-811a-ceeb3d3ff96b ==============================
+[0m11:18:00.002342 [info ] [MainThread]: Running with dbt=1.10.13
+[0m11:18:00.002700 [debug] [MainThread]: running dbt with arguments {'cache_selected_only': 'False', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'quiet': 'False', 'profiles_dir': '/Users/evan/code/ema/em-agent/services/metrics', 'use_colors': 'True', 'static_parser': 'True', 'use_experimental_parser': 'False', 'warn_error': 'None', 'write_json': 'True', 'debug': 'False', 'invocation_command': 'dbt run', 'log_path': '/Users/evan/code/ema/em-agent/services/metrics/logs', 'fail_fast': 'False', 'empty': 'False', 'send_anonymous_usage_stats': 'True', 'partial_parse': 'True', 'indirect_selection': 'eager', 'introspect': 'True', 'printer_width': '80', 'version_check': 'True', 'target_path': 'None', 'no_print': 'None', 'log_cache_events': 'False', 'log_format': 'default'}
+[0m11:18:00.102856 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'project_id', 'label': 'e2dd8859-4fd3-463f-811a-ceeb3d3ff96b', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10c6efe10>]}
+[0m11:18:00.132499 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'adapter_info', 'label': 'e2dd8859-4fd3-463f-811a-ceeb3d3ff96b', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10d27fdf0>]}
+[0m11:18:00.133247 [info ] [MainThread]: Registered adapter: postgres=1.9.1
+[0m11:18:00.187757 [debug] [MainThread]: checksum: 9f0c81e2574b4ff463f3d16d080df83c6982fc0372c9feeacae0504ac9ea3ffe, vars: {}, profile: , target: , version: 1.10.13
+[0m11:18:00.188316 [info ] [MainThread]: Unable to do partial parsing because saved manifest not found. Starting full parse.
+[0m11:18:00.188551 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'partial_parser', 'label': 'e2dd8859-4fd3-463f-811a-ceeb3d3ff96b', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10d283a50>]}
+[0m11:18:00.728428 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'load_project', 'label': 'e2dd8859-4fd3-463f-811a-ceeb3d3ff96b', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10e0e5b80>]}
+[0m11:18:00.759516 [debug] [MainThread]: Wrote artifact WritableManifest to /Users/evan/code/ema/em-agent/services/metrics/target/manifest.json
+[0m11:18:00.761069 [debug] [MainThread]: Wrote artifact SemanticManifest to /Users/evan/code/ema/em-agent/services/metrics/target/semantic_manifest.json
+[0m11:18:00.774082 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'resource_counts', 'label': 'e2dd8859-4fd3-463f-811a-ceeb3d3ff96b', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10e247930>]}
+[0m11:18:00.774415 [info ] [MainThread]: Found 1 model, 434 macros
+[0m11:18:00.774625 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'runnable_timing', 'label': 'e2dd8859-4fd3-463f-811a-ceeb3d3ff96b', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10e0f7380>]}
+[0m11:18:00.775478 [info ] [MainThread]: 
+[0m11:18:00.775683 [info ] [MainThread]: Concurrency: 2 threads (target='dev')
+[0m11:18:00.775843 [info ] [MainThread]: 
+[0m11:18:00.776128 [debug] [MainThread]: Acquiring new postgres connection 'master'
+[0m11:18:00.776588 [debug] [ThreadPool]: Acquiring new postgres connection 'list_postgres'
+[0m11:18:00.802875 [debug] [ThreadPool]: Using postgres connection "list_postgres"
+[0m11:18:00.803219 [debug] [ThreadPool]: On list_postgres: /* {"app": "dbt", "dbt_version": "1.10.13", "profile_name": "em_agent", "target_name": "dev", "connection_name": "list_postgres"} */
+
+    select distinct nspname from pg_namespace
+  
+[0m11:18:00.803447 [debug] [ThreadPool]: Opening a new connection, currently in state init
+[0m11:18:00.857555 [debug] [ThreadPool]: SQL status: SELECT 4 in 0.054 seconds
+[0m11:18:00.858517 [debug] [ThreadPool]: On list_postgres: Close
+[0m11:18:00.859605 [debug] [ThreadPool]: Re-using an available connection from the pool (formerly list_postgres, now list_postgres_public)
+[0m11:18:00.863131 [debug] [ThreadPool]: Using postgres connection "list_postgres_public"
+[0m11:18:00.863348 [debug] [ThreadPool]: On list_postgres_public: BEGIN
+[0m11:18:00.863522 [debug] [ThreadPool]: Opening a new connection, currently in state closed
+[0m11:18:00.873888 [debug] [ThreadPool]: SQL status: BEGIN in 0.010 seconds
+[0m11:18:00.874136 [debug] [ThreadPool]: Using postgres connection "list_postgres_public"
+[0m11:18:00.874328 [debug] [ThreadPool]: On list_postgres_public: /* {"app": "dbt", "dbt_version": "1.10.13", "profile_name": "em_agent", "target_name": "dev", "connection_name": "list_postgres_public"} */
+select
+      'postgres' as database,
+      tablename as name,
+      schemaname as schema,
+      'table' as type
+    from pg_tables
+    where schemaname ilike 'public'
+    union all
+    select
+      'postgres' as database,
+      viewname as name,
+      schemaname as schema,
+      'view' as type
+    from pg_views
+    where schemaname ilike 'public'
+    union all
+    select
+      'postgres' as database,
+      matviewname as name,
+      schemaname as schema,
+      'materialized_view' as type
+    from pg_matviews
+    where schemaname ilike 'public'
+  
+[0m11:18:00.911783 [debug] [ThreadPool]: SQL status: SELECT 4 in 0.037 seconds
+[0m11:18:00.912695 [debug] [ThreadPool]: On list_postgres_public: ROLLBACK
+[0m11:18:00.913503 [debug] [ThreadPool]: On list_postgres_public: Close
+[0m11:18:00.916306 [debug] [MainThread]: Using postgres connection "master"
+[0m11:18:00.916523 [debug] [MainThread]: On master: BEGIN
+[0m11:18:00.916684 [debug] [MainThread]: Opening a new connection, currently in state init
+[0m11:18:00.924682 [debug] [MainThread]: SQL status: BEGIN in 0.008 seconds
+[0m11:18:00.924882 [debug] [MainThread]: Using postgres connection "master"
+[0m11:18:00.925102 [debug] [MainThread]: On master: /* {"app": "dbt", "dbt_version": "1.10.13", "profile_name": "em_agent", "target_name": "dev", "connection_name": "master"} */
+select distinct
+        dependent_namespace.nspname as dependent_schema,
+        dependent_class.relname as dependent_name,
+        referenced_namespace.nspname as referenced_schema,
+        referenced_class.relname as referenced_name
+
+    -- Query for views: views are entries in pg_class with an entry in pg_rewrite, but we avoid
+    -- a seq scan on pg_rewrite by leveraging the fact there is an "internal" row in pg_depend for
+    -- the view...
+    from pg_class as dependent_class
+    join pg_namespace as dependent_namespace on dependent_namespace.oid = dependent_class.relnamespace
+    join pg_depend as dependent_depend on dependent_depend.refobjid = dependent_class.oid
+        and dependent_depend.classid = 'pg_rewrite'::regclass
+        and dependent_depend.refclassid = 'pg_class'::regclass
+        and dependent_depend.deptype = 'i'
+
+    -- ... and via pg_depend (that has a row per column, hence the need for "distinct" above, and
+    -- making sure to exclude the internal row to avoid a view appearing to depend on itself)...
+    join pg_depend as joining_depend on joining_depend.objid = dependent_depend.objid
+        and joining_depend.classid = 'pg_rewrite'::regclass
+        and joining_depend.refclassid = 'pg_class'::regclass
+        and joining_depend.refobjid != dependent_depend.refobjid
+
+    -- ... we can find the tables they query from in pg_class, but excluding system tables. Note we
+    -- don't need need to exclude _dependent_ system tables, because they only query from other
+    -- system tables, and so are automatically excluded by excluding _referenced_ system tables
+    join pg_class as referenced_class on referenced_class.oid = joining_depend.refobjid
+    join pg_namespace as referenced_namespace on referenced_namespace.oid = referenced_class.relnamespace
+        and referenced_namespace.nspname != 'information_schema'
+        and referenced_namespace.nspname not like 'pg\_%'
+
+    order by
+        dependent_schema, dependent_name, referenced_schema, referenced_name;
+[0m11:18:00.942908 [debug] [MainThread]: SQL status: SELECT 0 in 0.018 seconds
+[0m11:18:00.943798 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'runnable_timing', 'label': 'e2dd8859-4fd3-463f-811a-ceeb3d3ff96b', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10e3bd310>]}
+[0m11:18:00.944106 [debug] [MainThread]: On master: ROLLBACK
+[0m11:18:00.944782 [debug] [MainThread]: Using postgres connection "master"
+[0m11:18:00.944993 [debug] [MainThread]: On master: BEGIN
+[0m11:18:00.945732 [debug] [MainThread]: SQL status: BEGIN in 0.001 seconds
+[0m11:18:00.945984 [debug] [MainThread]: On master: COMMIT
+[0m11:18:00.946177 [debug] [MainThread]: Using postgres connection "master"
+[0m11:18:00.946341 [debug] [MainThread]: On master: COMMIT
+[0m11:18:00.946813 [debug] [MainThread]: SQL status: COMMIT in 0.000 seconds
+[0m11:18:00.947050 [debug] [MainThread]: On master: Close
+[0m11:18:00.950958 [debug] [Thread-1 (]: Began running node model.em_agent_metrics.dora_example
+[0m11:18:00.951280 [info ] [Thread-1 (]: 1 of 1 START sql view model public.dora_example ................................ [RUN]
+[0m11:18:00.951549 [debug] [Thread-1 (]: Re-using an available connection from the pool (formerly list_postgres_public, now model.em_agent_metrics.dora_example)
+[0m11:18:00.951753 [debug] [Thread-1 (]: Began compiling node model.em_agent_metrics.dora_example
+[0m11:18:00.955361 [debug] [Thread-1 (]: Writing injected SQL for node "model.em_agent_metrics.dora_example"
+[0m11:18:00.956199 [debug] [Thread-1 (]: Began executing node model.em_agent_metrics.dora_example
+[0m11:18:00.982158 [debug] [Thread-1 (]: Writing runtime sql for node "model.em_agent_metrics.dora_example"
+[0m11:18:00.982879 [debug] [Thread-1 (]: Using postgres connection "model.em_agent_metrics.dora_example"
+[0m11:18:00.983101 [debug] [Thread-1 (]: On model.em_agent_metrics.dora_example: BEGIN
+[0m11:18:00.983290 [debug] [Thread-1 (]: Opening a new connection, currently in state closed
+[0m11:18:00.994701 [debug] [Thread-1 (]: SQL status: BEGIN in 0.011 seconds
+[0m11:18:00.995011 [debug] [Thread-1 (]: Using postgres connection "model.em_agent_metrics.dora_example"
+[0m11:18:00.995224 [debug] [Thread-1 (]: On model.em_agent_metrics.dora_example: /* {"app": "dbt", "dbt_version": "1.10.13", "profile_name": "em_agent", "target_name": "dev", "node_id": "model.em_agent_metrics.dora_example"} */
+
+  create view "postgres"."public"."dora_example__dbt_tmp"
+    
+    
+  as (
+    select 'deployment_frequency' as metric, 0::int as value
+union all
+select 'lead_time_for_changes' as metric, 0::int as value
+  );
+[0m11:18:01.019598 [debug] [Thread-1 (]: SQL status: CREATE VIEW in 0.024 seconds
+[0m11:18:01.023425 [debug] [Thread-1 (]: Using postgres connection "model.em_agent_metrics.dora_example"
+[0m11:18:01.023781 [debug] [Thread-1 (]: On model.em_agent_metrics.dora_example: /* {"app": "dbt", "dbt_version": "1.10.13", "profile_name": "em_agent", "target_name": "dev", "node_id": "model.em_agent_metrics.dora_example"} */
+alter table "postgres"."public"."dora_example__dbt_tmp" rename to "dora_example"
+[0m11:18:01.025708 [debug] [Thread-1 (]: SQL status: ALTER TABLE in 0.002 seconds
+[0m11:18:01.034078 [debug] [Thread-1 (]: On model.em_agent_metrics.dora_example: COMMIT
+[0m11:18:01.034553 [debug] [Thread-1 (]: Using postgres connection "model.em_agent_metrics.dora_example"
+[0m11:18:01.034858 [debug] [Thread-1 (]: On model.em_agent_metrics.dora_example: COMMIT
+[0m11:18:01.039259 [debug] [Thread-1 (]: SQL status: COMMIT in 0.004 seconds
+[0m11:18:01.043593 [debug] [Thread-1 (]: Applying DROP to: "postgres"."public"."dora_example__dbt_backup"
+[0m11:18:01.046297 [debug] [Thread-1 (]: Using postgres connection "model.em_agent_metrics.dora_example"
+[0m11:18:01.046528 [debug] [Thread-1 (]: On model.em_agent_metrics.dora_example: /* {"app": "dbt", "dbt_version": "1.10.13", "profile_name": "em_agent", "target_name": "dev", "node_id": "model.em_agent_metrics.dora_example"} */
+drop view if exists "postgres"."public"."dora_example__dbt_backup" cascade
+[0m11:18:01.049800 [debug] [Thread-1 (]: SQL status: DROP VIEW in 0.003 seconds
+[0m11:18:01.051153 [debug] [Thread-1 (]: On model.em_agent_metrics.dora_example: Close
+[0m11:18:01.052290 [debug] [Thread-1 (]: Sending event: {'category': 'dbt', 'action': 'run_model', 'label': 'e2dd8859-4fd3-463f-811a-ceeb3d3ff96b', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10e2f6200>]}
+[0m11:18:01.052799 [info ] [Thread-1 (]: 1 of 1 OK created sql view model public.dora_example ........................... [[32mCREATE VIEW[0m in 0.10s]
+[0m11:18:01.053194 [debug] [Thread-1 (]: Finished running node model.em_agent_metrics.dora_example
+[0m11:18:01.054044 [debug] [MainThread]: Using postgres connection "master"
+[0m11:18:01.054245 [debug] [MainThread]: On master: BEGIN
+[0m11:18:01.054405 [debug] [MainThread]: Opening a new connection, currently in state closed
+[0m11:18:01.071580 [debug] [MainThread]: SQL status: BEGIN in 0.017 seconds
+[0m11:18:01.071909 [debug] [MainThread]: On master: COMMIT
+[0m11:18:01.072122 [debug] [MainThread]: Using postgres connection "master"
+[0m11:18:01.072317 [debug] [MainThread]: On master: COMMIT
+[0m11:18:01.072878 [debug] [MainThread]: SQL status: COMMIT in 0.000 seconds
+[0m11:18:01.073059 [debug] [MainThread]: On master: Close
+[0m11:18:01.073387 [debug] [MainThread]: Connection 'master' was properly closed.
+[0m11:18:01.073698 [debug] [MainThread]: Connection 'model.em_agent_metrics.dora_example' was properly closed.
+[0m11:18:01.073933 [info ] [MainThread]: 
+[0m11:18:01.074128 [info ] [MainThread]: Finished running 1 view model in 0 hours 0 minutes and 0.30 seconds (0.30s).
+[0m11:18:01.074567 [debug] [MainThread]: Command end result
+[0m11:18:01.087688 [debug] [MainThread]: Wrote artifact WritableManifest to /Users/evan/code/ema/em-agent/services/metrics/target/manifest.json
+[0m11:18:01.089006 [debug] [MainThread]: Wrote artifact SemanticManifest to /Users/evan/code/ema/em-agent/services/metrics/target/semantic_manifest.json
+[0m11:18:01.091969 [debug] [MainThread]: Wrote artifact RunExecutionResult to /Users/evan/code/ema/em-agent/services/metrics/target/run_results.json
+[0m11:18:01.092166 [info ] [MainThread]: 
+[0m11:18:01.092388 [info ] [MainThread]: [32mCompleted successfully[0m
+[0m11:18:01.092558 [info ] [MainThread]: 
+[0m11:18:01.092738 [info ] [MainThread]: Done. PASS=1 WARN=0 ERROR=0 SKIP=0 NO-OP=0 TOTAL=1
+[0m11:18:01.094597 [debug] [MainThread]: Resource report: {"command_name": "run", "command_success": true, "command_wall_clock_time": 1.1477977, "process_in_blocks": "0", "process_kernel_time": 0.221055, "process_mem_max_rss": "131940352", "process_out_blocks": "0", "process_user_time": 1.542402}
+[0m11:18:01.095006 [debug] [MainThread]: Command `dbt run` succeeded at 11:18:01.094929 after 1.15 seconds
+[0m11:18:01.095258 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10e36ed50>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10e2d35c0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10b9ff650>]}
+[0m11:18:01.095481 [debug] [MainThread]: Flushing usage events
+[0m11:18:01.492148 [debug] [MainThread]: An error was encountered while trying to flush usage events
+[0m11:20:13.112555 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1087ebe00>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x109d17750>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x109d17610>]}
+
+
+============================== 11:20:13.116066 | e6ccf53b-85a6-48a7-a43e-03cb32561d13 ==============================
+[0m11:20:13.116066 [info ] [MainThread]: Running with dbt=1.10.13
+[0m11:20:13.116525 [debug] [MainThread]: running dbt with arguments {'static_parser': 'True', 'partial_parse': 'True', 'fail_fast': 'False', 'use_experimental_parser': 'False', 'indirect_selection': 'eager', 'warn_error': 'None', 'no_print': 'None', 'target_path': 'None', 'empty': 'False', 'send_anonymous_usage_stats': 'True', 'write_json': 'True', 'printer_width': '80', 'log_path': '/Users/evan/code/ema/em-agent/services/metrics/logs', 'debug': 'False', 'introspect': 'True', 'invocation_command': 'dbt run', 'use_colors': 'True', 'quiet': 'False', 'cache_selected_only': 'False', 'log_cache_events': 'False', 'warn_error_options': 'WarnErrorOptionsV2(error=[], warn=[], silence=[])', 'profiles_dir': '/Users/evan/code/ema/em-agent/services/metrics', 'log_format': 'default', 'version_check': 'True'}
+[0m11:20:13.226482 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'project_id', 'label': 'e6ccf53b-85a6-48a7-a43e-03cb32561d13', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x109017e10>]}
+[0m11:20:13.256079 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'adapter_info', 'label': 'e6ccf53b-85a6-48a7-a43e-03cb32561d13', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x109ba7df0>]}
+[0m11:20:13.256817 [info ] [MainThread]: Registered adapter: postgres=1.9.1
+[0m11:20:13.313331 [debug] [MainThread]: checksum: 9f0c81e2574b4ff463f3d16d080df83c6982fc0372c9feeacae0504ac9ea3ffe, vars: {}, profile: , target: , version: 1.10.13
+[0m11:20:13.377205 [debug] [MainThread]: Partial parsing enabled: 0 files deleted, 1 files added, 1 files changed.
+[0m11:20:13.377663 [debug] [MainThread]: Partial parsing: added file: em_agent_metrics://models/dora_lead_time.sql
+[0m11:20:13.377951 [debug] [MainThread]: Partial parsing: updated file: em_agent_metrics://models/schema.yml
+[0m11:20:13.531144 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'load_project', 'label': 'e6ccf53b-85a6-48a7-a43e-03cb32561d13', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10a97fe50>]}
+[0m11:20:13.560938 [debug] [MainThread]: Wrote artifact WritableManifest to /Users/evan/code/ema/em-agent/services/metrics/target/manifest.json
+[0m11:20:13.562710 [debug] [MainThread]: Wrote artifact SemanticManifest to /Users/evan/code/ema/em-agent/services/metrics/target/semantic_manifest.json
+[0m11:20:13.576056 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'resource_counts', 'label': 'e6ccf53b-85a6-48a7-a43e-03cb32561d13', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x109d8b2f0>]}
+[0m11:20:13.613761 [info ] [MainThread]: Found 2 models, 434 macros
+[0m11:20:13.613993 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'runnable_timing', 'label': 'e6ccf53b-85a6-48a7-a43e-03cb32561d13', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10a396dd0>]}
+[0m11:20:13.614916 [info ] [MainThread]: 
+[0m11:20:13.615124 [info ] [MainThread]: Concurrency: 2 threads (target='dev')
+[0m11:20:13.615298 [info ] [MainThread]: 
+[0m11:20:13.615603 [debug] [MainThread]: Acquiring new postgres connection 'master'
+[0m11:20:13.617636 [debug] [ThreadPool]: Acquiring new postgres connection 'list_postgres'
+[0m11:20:13.653220 [debug] [ThreadPool]: Using postgres connection "list_postgres"
+[0m11:20:13.653506 [debug] [ThreadPool]: On list_postgres: /* {"app": "dbt", "dbt_version": "1.10.13", "profile_name": "em_agent", "target_name": "dev", "connection_name": "list_postgres"} */
+
+    select distinct nspname from pg_namespace
+  
+[0m11:20:13.653699 [debug] [ThreadPool]: Opening a new connection, currently in state init
+[0m11:20:13.688772 [debug] [ThreadPool]: SQL status: SELECT 4 in 0.035 seconds
+[0m11:20:13.689858 [debug] [ThreadPool]: On list_postgres: Close
+[0m11:20:13.690871 [debug] [ThreadPool]: Re-using an available connection from the pool (formerly list_postgres, now list_postgres_public)
+[0m11:20:13.694222 [debug] [ThreadPool]: Using postgres connection "list_postgres_public"
+[0m11:20:13.694443 [debug] [ThreadPool]: On list_postgres_public: BEGIN
+[0m11:20:13.694609 [debug] [ThreadPool]: Opening a new connection, currently in state closed
+[0m11:20:13.703400 [debug] [ThreadPool]: SQL status: BEGIN in 0.009 seconds
+[0m11:20:13.703687 [debug] [ThreadPool]: Using postgres connection "list_postgres_public"
+[0m11:20:13.703885 [debug] [ThreadPool]: On list_postgres_public: /* {"app": "dbt", "dbt_version": "1.10.13", "profile_name": "em_agent", "target_name": "dev", "connection_name": "list_postgres_public"} */
+select
+      'postgres' as database,
+      tablename as name,
+      schemaname as schema,
+      'table' as type
+    from pg_tables
+    where schemaname ilike 'public'
+    union all
+    select
+      'postgres' as database,
+      viewname as name,
+      schemaname as schema,
+      'view' as type
+    from pg_views
+    where schemaname ilike 'public'
+    union all
+    select
+      'postgres' as database,
+      matviewname as name,
+      schemaname as schema,
+      'materialized_view' as type
+    from pg_matviews
+    where schemaname ilike 'public'
+  
+[0m11:20:13.712232 [debug] [ThreadPool]: SQL status: SELECT 5 in 0.008 seconds
+[0m11:20:13.713002 [debug] [ThreadPool]: On list_postgres_public: ROLLBACK
+[0m11:20:13.713772 [debug] [ThreadPool]: On list_postgres_public: Close
+[0m11:20:13.716657 [debug] [MainThread]: Using postgres connection "master"
+[0m11:20:13.716854 [debug] [MainThread]: On master: BEGIN
+[0m11:20:13.717007 [debug] [MainThread]: Opening a new connection, currently in state init
+[0m11:20:13.728839 [debug] [MainThread]: SQL status: BEGIN in 0.012 seconds
+[0m11:20:13.729135 [debug] [MainThread]: Using postgres connection "master"
+[0m11:20:13.729360 [debug] [MainThread]: On master: /* {"app": "dbt", "dbt_version": "1.10.13", "profile_name": "em_agent", "target_name": "dev", "connection_name": "master"} */
+select distinct
+        dependent_namespace.nspname as dependent_schema,
+        dependent_class.relname as dependent_name,
+        referenced_namespace.nspname as referenced_schema,
+        referenced_class.relname as referenced_name
+
+    -- Query for views: views are entries in pg_class with an entry in pg_rewrite, but we avoid
+    -- a seq scan on pg_rewrite by leveraging the fact there is an "internal" row in pg_depend for
+    -- the view...
+    from pg_class as dependent_class
+    join pg_namespace as dependent_namespace on dependent_namespace.oid = dependent_class.relnamespace
+    join pg_depend as dependent_depend on dependent_depend.refobjid = dependent_class.oid
+        and dependent_depend.classid = 'pg_rewrite'::regclass
+        and dependent_depend.refclassid = 'pg_class'::regclass
+        and dependent_depend.deptype = 'i'
+
+    -- ... and via pg_depend (that has a row per column, hence the need for "distinct" above, and
+    -- making sure to exclude the internal row to avoid a view appearing to depend on itself)...
+    join pg_depend as joining_depend on joining_depend.objid = dependent_depend.objid
+        and joining_depend.classid = 'pg_rewrite'::regclass
+        and joining_depend.refclassid = 'pg_class'::regclass
+        and joining_depend.refobjid != dependent_depend.refobjid
+
+    -- ... we can find the tables they query from in pg_class, but excluding system tables. Note we
+    -- don't need need to exclude _dependent_ system tables, because they only query from other
+    -- system tables, and so are automatically excluded by excluding _referenced_ system tables
+    join pg_class as referenced_class on referenced_class.oid = joining_depend.refobjid
+    join pg_namespace as referenced_namespace on referenced_namespace.oid = referenced_class.relnamespace
+        and referenced_namespace.nspname != 'information_schema'
+        and referenced_namespace.nspname not like 'pg\_%'
+
+    order by
+        dependent_schema, dependent_name, referenced_schema, referenced_name;
+[0m11:20:13.732768 [debug] [MainThread]: SQL status: SELECT 0 in 0.003 seconds
+[0m11:20:13.733560 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'runnable_timing', 'label': 'e6ccf53b-85a6-48a7-a43e-03cb32561d13', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10ad8fee0>]}
+[0m11:20:13.733858 [debug] [MainThread]: On master: ROLLBACK
+[0m11:20:13.734356 [debug] [MainThread]: Using postgres connection "master"
+[0m11:20:13.734526 [debug] [MainThread]: On master: BEGIN
+[0m11:20:13.735164 [debug] [MainThread]: SQL status: BEGIN in 0.000 seconds
+[0m11:20:13.735397 [debug] [MainThread]: On master: COMMIT
+[0m11:20:13.735578 [debug] [MainThread]: Using postgres connection "master"
+[0m11:20:13.735732 [debug] [MainThread]: On master: COMMIT
+[0m11:20:13.736168 [debug] [MainThread]: SQL status: COMMIT in 0.000 seconds
+[0m11:20:13.736398 [debug] [MainThread]: On master: Close
+[0m11:20:13.738584 [debug] [Thread-2 (]: Began running node model.em_agent_metrics.dora_lead_time
+[0m11:20:13.738865 [debug] [Thread-1 (]: Began running node model.em_agent_metrics.dora_example
+[0m11:20:13.739218 [info ] [Thread-2 (]: 2 of 2 START sql view model public.dora_lead_time .............................. [RUN]
+[0m11:20:13.739594 [info ] [Thread-1 (]: 1 of 2 START sql view model public.dora_example ................................ [RUN]
+[0m11:20:13.739962 [debug] [Thread-2 (]: Acquiring new postgres connection 'model.em_agent_metrics.dora_lead_time'
+[0m11:20:13.740256 [debug] [Thread-1 (]: Re-using an available connection from the pool (formerly list_postgres_public, now model.em_agent_metrics.dora_example)
+[0m11:20:13.740513 [debug] [Thread-2 (]: Began compiling node model.em_agent_metrics.dora_lead_time
+[0m11:20:13.740763 [debug] [Thread-1 (]: Began compiling node model.em_agent_metrics.dora_example
+[0m11:20:13.744186 [debug] [Thread-2 (]: Writing injected SQL for node "model.em_agent_metrics.dora_lead_time"
+[0m11:20:13.745069 [debug] [Thread-1 (]: Writing injected SQL for node "model.em_agent_metrics.dora_example"
+[0m11:20:13.745572 [debug] [Thread-2 (]: Began executing node model.em_agent_metrics.dora_lead_time
+[0m11:20:13.745809 [debug] [Thread-1 (]: Began executing node model.em_agent_metrics.dora_example
+[0m11:20:13.765912 [debug] [Thread-2 (]: Writing runtime sql for node "model.em_agent_metrics.dora_lead_time"
+[0m11:20:13.766333 [debug] [Thread-1 (]: Writing runtime sql for node "model.em_agent_metrics.dora_example"
+[0m11:20:13.766931 [debug] [Thread-1 (]: Using postgres connection "model.em_agent_metrics.dora_example"
+[0m11:20:13.767200 [debug] [Thread-2 (]: Using postgres connection "model.em_agent_metrics.dora_lead_time"
+[0m11:20:13.767413 [debug] [Thread-1 (]: On model.em_agent_metrics.dora_example: BEGIN
+[0m11:20:13.767652 [debug] [Thread-2 (]: On model.em_agent_metrics.dora_lead_time: BEGIN
+[0m11:20:13.767915 [debug] [Thread-1 (]: Opening a new connection, currently in state closed
+[0m11:20:13.768123 [debug] [Thread-2 (]: Opening a new connection, currently in state init
+[0m11:20:13.777039 [debug] [Thread-2 (]: SQL status: BEGIN in 0.009 seconds
+[0m11:20:13.777361 [debug] [Thread-1 (]: SQL status: BEGIN in 0.009 seconds
+[0m11:20:13.777666 [debug] [Thread-2 (]: Using postgres connection "model.em_agent_metrics.dora_lead_time"
+[0m11:20:13.777919 [debug] [Thread-1 (]: Using postgres connection "model.em_agent_metrics.dora_example"
+[0m11:20:13.778150 [debug] [Thread-2 (]: On model.em_agent_metrics.dora_lead_time: /* {"app": "dbt", "dbt_version": "1.10.13", "profile_name": "em_agent", "target_name": "dev", "node_id": "model.em_agent_metrics.dora_lead_time"} */
+
+  create view "postgres"."public"."dora_lead_time__dbt_tmp"
+    
+    
+  as (
+    -- Lead time for changes (placeholder): difference between first commit (push) and deployment event per delivery id
+with commits as (
+  select delivery_id, min(received_at) as first_commit_at
+  from public.events_raw
+  where source = 'github' and event_type in ('push', 'pull_request')
+  group by delivery_id
+),
+deploys as (
+  select delivery_id, min(received_at) as first_deploy_at
+  from public.events_raw
+  where source = 'github' and event_type in ('deployment_status', 'release')
+  group by delivery_id
+)
+select
+  c.delivery_id,
+  c.first_commit_at,
+  d.first_deploy_at,
+  extract(epoch from (d.first_deploy_at - c.first_commit_at)) / 3600.0 as lead_time_hours
+from commits c
+join deploys d on d.delivery_id = c.delivery_id
+where d.first_deploy_at > c.first_commit_at
+  );
+[0m11:20:13.778363 [debug] [Thread-1 (]: On model.em_agent_metrics.dora_example: /* {"app": "dbt", "dbt_version": "1.10.13", "profile_name": "em_agent", "target_name": "dev", "node_id": "model.em_agent_metrics.dora_example"} */
+
+  create view "postgres"."public"."dora_example__dbt_tmp"
+    
+    
+  as (
+    select 'deployment_frequency' as metric, 0::int as value
+union all
+select 'lead_time_for_changes' as metric, 0::int as value
+  );
+[0m11:20:13.780189 [debug] [Thread-1 (]: SQL status: CREATE VIEW in 0.002 seconds
+[0m11:20:13.783568 [debug] [Thread-1 (]: Using postgres connection "model.em_agent_metrics.dora_example"
+[0m11:20:13.783788 [debug] [Thread-1 (]: On model.em_agent_metrics.dora_example: /* {"app": "dbt", "dbt_version": "1.10.13", "profile_name": "em_agent", "target_name": "dev", "node_id": "model.em_agent_metrics.dora_example"} */
+alter table "postgres"."public"."dora_example" rename to "dora_example__dbt_backup"
+[0m11:20:13.784577 [debug] [Thread-1 (]: SQL status: ALTER TABLE in 0.001 seconds
+[0m11:20:13.785968 [debug] [Thread-1 (]: Using postgres connection "model.em_agent_metrics.dora_example"
+[0m11:20:13.786164 [debug] [Thread-1 (]: On model.em_agent_metrics.dora_example: /* {"app": "dbt", "dbt_version": "1.10.13", "profile_name": "em_agent", "target_name": "dev", "node_id": "model.em_agent_metrics.dora_example"} */
+alter table "postgres"."public"."dora_example__dbt_tmp" rename to "dora_example"
+[0m11:20:13.787442 [debug] [Thread-1 (]: SQL status: ALTER TABLE in 0.001 seconds
+[0m11:20:13.796734 [debug] [Thread-1 (]: On model.em_agent_metrics.dora_example: COMMIT
+[0m11:20:13.797035 [debug] [Thread-2 (]: SQL status: CREATE VIEW in 0.018 seconds
+[0m11:20:13.797300 [debug] [Thread-1 (]: Using postgres connection "model.em_agent_metrics.dora_example"
+[0m11:20:13.799213 [debug] [Thread-2 (]: Using postgres connection "model.em_agent_metrics.dora_lead_time"
+[0m11:20:13.799492 [debug] [Thread-1 (]: On model.em_agent_metrics.dora_example: COMMIT
+[0m11:20:13.799728 [debug] [Thread-2 (]: On model.em_agent_metrics.dora_lead_time: /* {"app": "dbt", "dbt_version": "1.10.13", "profile_name": "em_agent", "target_name": "dev", "node_id": "model.em_agent_metrics.dora_lead_time"} */
+alter table "postgres"."public"."dora_lead_time__dbt_tmp" rename to "dora_lead_time"
+[0m11:20:13.800507 [debug] [Thread-2 (]: SQL status: ALTER TABLE in 0.000 seconds
+[0m11:20:13.801418 [debug] [Thread-2 (]: On model.em_agent_metrics.dora_lead_time: COMMIT
+[0m11:20:13.801652 [debug] [Thread-2 (]: Using postgres connection "model.em_agent_metrics.dora_lead_time"
+[0m11:20:13.801872 [debug] [Thread-1 (]: SQL status: COMMIT in 0.002 seconds
+[0m11:20:13.802059 [debug] [Thread-2 (]: On model.em_agent_metrics.dora_lead_time: COMMIT
+[0m11:20:13.805720 [debug] [Thread-1 (]: Applying DROP to: "postgres"."public"."dora_example__dbt_backup"
+[0m11:20:13.808703 [debug] [Thread-1 (]: Using postgres connection "model.em_agent_metrics.dora_example"
+[0m11:20:13.808970 [debug] [Thread-2 (]: SQL status: COMMIT in 0.003 seconds
+[0m11:20:13.809256 [debug] [Thread-1 (]: On model.em_agent_metrics.dora_example: /* {"app": "dbt", "dbt_version": "1.10.13", "profile_name": "em_agent", "target_name": "dev", "node_id": "model.em_agent_metrics.dora_example"} */
+drop view if exists "postgres"."public"."dora_example__dbt_backup" cascade
+[0m11:20:13.810357 [debug] [Thread-2 (]: Applying DROP to: "postgres"."public"."dora_lead_time__dbt_backup"
+[0m11:20:13.810925 [debug] [Thread-2 (]: Using postgres connection "model.em_agent_metrics.dora_lead_time"
+[0m11:20:13.811167 [debug] [Thread-2 (]: On model.em_agent_metrics.dora_lead_time: /* {"app": "dbt", "dbt_version": "1.10.13", "profile_name": "em_agent", "target_name": "dev", "node_id": "model.em_agent_metrics.dora_lead_time"} */
+drop view if exists "postgres"."public"."dora_lead_time__dbt_backup" cascade
+[0m11:20:13.811825 [debug] [Thread-2 (]: SQL status: DROP VIEW in 0.000 seconds
+[0m11:20:13.813319 [debug] [Thread-2 (]: On model.em_agent_metrics.dora_lead_time: Close
+[0m11:20:13.814941 [debug] [Thread-2 (]: Sending event: {'category': 'dbt', 'action': 'run_model', 'label': 'e6ccf53b-85a6-48a7-a43e-03cb32561d13', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10b04c950>]}
+[0m11:20:13.815362 [info ] [Thread-2 (]: 2 of 2 OK created sql view model public.dora_lead_time ......................... [[32mCREATE VIEW[0m in 0.07s]
+[0m11:20:13.815661 [debug] [Thread-2 (]: Finished running node model.em_agent_metrics.dora_lead_time
+[0m11:20:13.819202 [debug] [Thread-1 (]: SQL status: DROP VIEW in 0.009 seconds
+[0m11:20:13.819898 [debug] [Thread-1 (]: On model.em_agent_metrics.dora_example: Close
+[0m11:20:13.820186 [debug] [Thread-1 (]: Sending event: {'category': 'dbt', 'action': 'run_model', 'label': 'e6ccf53b-85a6-48a7-a43e-03cb32561d13', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10afd8c00>]}
+[0m11:20:13.820635 [info ] [Thread-1 (]: 1 of 2 OK created sql view model public.dora_example ........................... [[32mCREATE VIEW[0m in 0.08s]
+[0m11:20:13.820960 [debug] [Thread-1 (]: Finished running node model.em_agent_metrics.dora_example
+[0m11:20:13.821767 [debug] [MainThread]: Using postgres connection "master"
+[0m11:20:13.821942 [debug] [MainThread]: On master: BEGIN
+[0m11:20:13.822100 [debug] [MainThread]: Opening a new connection, currently in state closed
+[0m11:20:13.829698 [debug] [MainThread]: SQL status: BEGIN in 0.008 seconds
+[0m11:20:13.829992 [debug] [MainThread]: On master: COMMIT
+[0m11:20:13.830183 [debug] [MainThread]: Using postgres connection "master"
+[0m11:20:13.830339 [debug] [MainThread]: On master: COMMIT
+[0m11:20:13.830751 [debug] [MainThread]: SQL status: COMMIT in 0.000 seconds
+[0m11:20:13.831001 [debug] [MainThread]: On master: Close
+[0m11:20:13.831227 [debug] [MainThread]: Connection 'master' was properly closed.
+[0m11:20:13.831380 [debug] [MainThread]: Connection 'model.em_agent_metrics.dora_example' was properly closed.
+[0m11:20:13.831524 [debug] [MainThread]: Connection 'model.em_agent_metrics.dora_lead_time' was properly closed.
+[0m11:20:13.831717 [info ] [MainThread]: 
+[0m11:20:13.831909 [info ] [MainThread]: Finished running 2 view models in 0 hours 0 minutes and 0.22 seconds (0.22s).
+[0m11:20:13.832329 [debug] [MainThread]: Command end result
+[0m11:20:13.843148 [debug] [MainThread]: Wrote artifact WritableManifest to /Users/evan/code/ema/em-agent/services/metrics/target/manifest.json
+[0m11:20:13.844424 [debug] [MainThread]: Wrote artifact SemanticManifest to /Users/evan/code/ema/em-agent/services/metrics/target/semantic_manifest.json
+[0m11:20:13.847559 [debug] [MainThread]: Wrote artifact RunExecutionResult to /Users/evan/code/ema/em-agent/services/metrics/target/run_results.json
+[0m11:20:13.847757 [info ] [MainThread]: 
+[0m11:20:13.847951 [info ] [MainThread]: [32mCompleted successfully[0m
+[0m11:20:13.848112 [info ] [MainThread]: 
+[0m11:20:13.848291 [info ] [MainThread]: Done. PASS=2 WARN=0 ERROR=0 SKIP=0 NO-OP=0 TOTAL=2
+[0m11:20:13.850559 [debug] [MainThread]: Resource report: {"command_name": "run", "command_success": true, "command_wall_clock_time": 0.7819741, "process_in_blocks": "0", "process_kernel_time": 0.253789, "process_mem_max_rss": "134791168", "process_out_blocks": "0", "process_user_time": 1.273652}
+[0m11:20:13.850885 [debug] [MainThread]: Command `dbt run` succeeded at 11:20:13.850837 after 0.78 seconds
+[0m11:20:13.851124 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x109cbab70>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10af37260>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10878cc50>]}
+[0m11:20:13.851364 [debug] [MainThread]: Flushing usage events
+[0m11:20:14.231340 [debug] [MainThread]: An error was encountered while trying to flush usage events
