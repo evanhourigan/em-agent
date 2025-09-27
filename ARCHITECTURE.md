@@ -212,8 +212,8 @@ This section is the single place any agent/human should consult for status and n
 ### Phase status
 
 - [x] Phase 0 — Foundations (skeleton gateway, Postgres, logging, metrics)
-- [ ] Phase 1 — Ingestion & Normalization (in progress)
-- [ ] Phase 2 — Metrics & Analytics
+- [x] Phase 1 — Ingestion & Normalization (complete)
+- [ ] Phase 2 — Metrics & Analytics (in progress)
 - [ ] Phase 3 — Signal Engine & Policy
 - [ ] Phase 4 — RAG & Knowledge
 - [ ] Phase 5 — Slack App & ChatOps
@@ -256,10 +256,18 @@ Short-term objective: capture, normalize, and persist events; establish DB migra
   - [x] `POST /webhooks/jira` (JWT or shared-secret stub)
   - [x] Persist raw payloads to `events_raw` with headers/signature and dedupe
 
-- [ ] 1.5 Identity mapping (skeleton) — in progress
+- [x] 1.5 Identity mapping (skeleton)
   - [x] `identities` table (external_type, external_id, user_id, metadata)
   - [x] Mapper utilities (GitHub login → user, Slack user → user)
-  - [ ] Minimal `/v1/identities` list/create for verification
+  - [x] Minimal `/v1/identities` list/create for verification
+
+### Phase 2 — Work Breakdown (initial)
+
+- [ ] 2.1 dbt project scaffold (profiles, seed data)
+- [ ] 2.2 DORA models (lead time, deploy freq, change fail rate, MTTR)
+- [ ] 2.3 Flow metrics (WIP, aging WIP, PR idle time)
+- [ ] 2.4 Backfill jobs and retention windows
+- [ ] 2.5 Grafana dashboards (delivery, flow, quality), JSON exported
 
 Milestone exit for Phase 1: raw events reliably land; `projects` CRUD green; migrations and local workflows documented.
 
