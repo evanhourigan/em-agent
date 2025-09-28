@@ -107,6 +107,14 @@ An AI-assisted “Chief of Staff” for engineering that plugs into your stack, 
 
 - Rule DSL, OPA policies, Temporal workflows.
 
+#### Work Breakdown
+
+- [ ] 3.1 Signals DSL and evaluator (YAML → SQL/filters)
+- [ ] 3.2 Policy stubs (OPA or simple allow/deny) and config
+- [ ] 3.3 Workflow skeleton (queue/scheduler; Temporal later)
+- [ ] 3.4 Approvals API surface (propose/wait/decision) (spec only)
+- [ ] 3.5 Starter rules: `stale_pr > 48h`, `wip_limit_exceeded`, `no_ticket_link`
+
 ### Phase 4 — RAG & Knowledge
 
 - Confluence/repo crawlers, embeddings, retrieval with citations.
@@ -213,7 +221,7 @@ This section is the single place any agent/human should consult for status and n
 
 - [x] Phase 0 — Foundations (skeleton gateway, Postgres, logging, metrics)
 - [x] Phase 1 — Ingestion & Normalization (complete)
-- [ ] Phase 2 — Metrics & Analytics (in progress)
+- [x] Phase 2 — Metrics & Analytics (complete)
 - [ ] Phase 3 — Signal Engine & Policy
 - [ ] Phase 4 — RAG & Knowledge
 - [ ] Phase 5 — Slack App & ChatOps
