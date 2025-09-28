@@ -279,6 +279,16 @@ Short-term objective: capture, normalize, and persist events; establish DB migra
 - [x] 2.5 Grafana dashboards: delivery panels for lead time, PR idle, deploy freq (JSON exported)
 - [x] CI: GitHub Action to parse/compile dbt on PRs (.github/workflows/dbt.yml)
 
+### Metrics API
+- `/v1/metrics/dora/lead-time`
+- `/v1/metrics/dora/deployment-frequency`
+- `/v1/metrics/dora/change-fail-rate`
+- `/v1/metrics/dora/mttr`
+
+### Retention
+- Script: `services/metrics/scripts/purge_old_events.py`
+- Targets: `make purge.events` (RETENTION_DAYS default 30)
+
 Milestone exit for Phase 1: raw events reliably land; `projects` CRUD green; migrations and local workflows documented.
 
 ---
