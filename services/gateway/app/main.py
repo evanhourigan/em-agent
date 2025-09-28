@@ -11,10 +11,13 @@ from .api.v1.routers.projects import router as projects_router
 from .api.v1.routers.signals import router as signals_router
 from .api.v1.routers.webhooks import router as webhooks_router
 from .api.v1.routers.workflows import router as workflows_router
+from .api.v1.routers.approvals import router as approvals_router
 from .core.config import get_settings
 from .core.logging import configure_structlog, get_logger
 from .core.observability import add_prometheus
 from .db import get_engine
+from .api.deps import get_db_connection
+from .services.signal_runner import maybe_start_evaluator
 
 
 def create_app() -> FastAPI:
@@ -42,6 +45,7 @@ def create_app() -> FastAPI:
         # Initialize connection pool early so first requests are fast
         logger.info("startup.init_db_pool")
         get_engine()
+        maybe_start_evaluator(app, lambda: get_db_connection())
 
     # Routers
     app.include_router(health_router)
@@ -51,6 +55,7 @@ def create_app() -> FastAPI:
     app.include_router(identities_router)
     app.include_router(signals_router)
     app.include_router(workflows_router)
+    app.include_router(approvals_router)
     app.include_router(policy_router)
 
     @app.get("/")
