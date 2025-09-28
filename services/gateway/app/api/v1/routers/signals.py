@@ -53,6 +53,20 @@ def _evaluate_rule(session: Session, rule: dict[str, Any]) -> List[dict[str, Any
         rows = session.execute(text(sql), {"pattern": pattern}).mappings().all()
         return [dict(r) for r in rows]
 
+    if kind == "pr_without_review":
+        hours = int(rule.get("older_than_hours", 12))
+        sql = (
+            "with prs as (select delivery_id, min(received_at) opened_at from events_raw "
+            "where source='github' and event_type='pull_request' group by delivery_id), "
+            "reviews as (select delivery_id, min(received_at) reviewed_at from events_raw "
+            "where source='github' and event_type in ('pull_request_review','pull_request_review_comment') group by delivery_id) "
+            "select prs.delivery_id, prs.opened_at from prs left join reviews using (delivery_id) "
+            "where reviews.reviewed_at is null and now() - prs.opened_at > interval '%d hours'"
+            % hours
+        )
+        rows = session.execute(text(sql)).mappings().all()
+        return [dict(r) for r in rows]
+
     raise HTTPException(status_code=400, detail=f"unsupported rule kind: {kind}")
 
 
