@@ -6,13 +6,15 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from ...deps import get_db_session
-from ...models.action_log import ActionLog
+from ....models.action_log import ActionLog
 
 router = APIRouter(prefix="/v1/workflows", tags=["workflows"])
 
 
 @router.post("/run")
-def run_workflow(payload: Dict[str, Any], session: Session = Depends(get_db_session)) -> Dict[str, Any]:
+def run_workflow(
+    payload: Dict[str, Any], session: Session = Depends(get_db_session)
+) -> Dict[str, Any]:
     # Placeholder: log an action as a side effect
     rule = payload.get("rule", "manual")
     subject = payload.get("subject", "n/a")
@@ -21,5 +23,4 @@ def run_workflow(payload: Dict[str, Any], session: Session = Depends(get_db_sess
     session.add(log)
     session.commit()
     return {"status": "queued", "id": log.id}
-
 
