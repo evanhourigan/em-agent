@@ -98,6 +98,25 @@ make dbt.run
 
 ## API (alpha)
 
+## Periodic Evaluator (Phase 3)
+
+Enable the background evaluator that reads rules from YAML (default bundled file) and writes to `action_log`:
+
+```bash
+# turn on (builds gateway and waits for health)
+make eval.on
+
+# turn off
+make eval.off
+
+# apply/override rules and start
+make rules.apply
+
+# environment flags (alternative)
+EVALUATOR_ENABLED=true EVALUATOR_INTERVAL_SEC=60 RULES_PATH=/app/app/config/rules.yml \
+  docker-compose up -d --build gateway
+```
+
 Base URL: `http://localhost:8000`
 
 - `GET /` → service info

@@ -1,6 +1,6 @@
 SHELL := /bin/zsh
 
-.PHONY: up up.migrate eval.on eval.off down restart logs ps rebuild clean health metrics dbt.debug dbt.run seed.events seed.reset purge.events
+.PHONY: up up.migrate eval.on eval.off rules.apply down restart logs ps rebuild clean health metrics dbt.debug dbt.run seed.events seed.reset purge.events
 
 up:
 	docker-compose up -d --build db gateway
@@ -13,6 +13,10 @@ eval.on:
 
 eval.off:
 	EVALUATOR_ENABLED=false docker-compose up -d --build gateway && $(MAKE) health
+
+rules.apply:
+	docker cp services/gateway/app/config/rules.yml em-agent-gateway-1:/app/app/config/rules.yml || true
+	RULES_PATH=/app/app/config/rules.yml EVALUATOR_ENABLED=true docker-compose up -d --build gateway && $(MAKE) health
 
 down:
 	docker-compose down -v

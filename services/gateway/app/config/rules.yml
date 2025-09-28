@@ -1,0 +1,5 @@
+- { name: stale48h,        kind: stale_pr,          older_than_hours: 48 }
+- { name: wip_limit,       kind: wip_limit_exceeded, limit: 5 }
+- { name: pr_no_review,    kind: pr_without_review,  older_than_hours: 12 }
+
+

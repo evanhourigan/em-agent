@@ -4,13 +4,15 @@ import os
 import threading
 import time
 from typing import Any, Dict, List
+import os
+import yaml
 
 from sqlalchemy.orm import Session
 
 from ..api.v1.routers.policy import DEFAULT_POLICY
 from ..api.v1.routers.signals import _evaluate_rule
-from ..models.action_log import ActionLog
 from ..core.logging import get_logger
+from ..models.action_log import ActionLog
 
 DEFAULT_RULES: List[Dict[str, Any]] = [
     {"name": "stale48h", "kind": "stale_pr", "older_than_hours": 48},
@@ -19,8 +21,22 @@ DEFAULT_RULES: List[Dict[str, Any]] = [
 ]
 
 
+def _load_rules() -> List[Dict[str, Any]]:
+    path = os.getenv("RULES_PATH", "/app/app/config/rules.yml")
+    if not os.path.exists(path):
+        return DEFAULT_RULES
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or []
+            if isinstance(data, list):
+                return data
+    except Exception:
+        pass
+    return DEFAULT_RULES
+
+
 def evaluate_and_log(session: Session, rules: List[Dict[str, Any]] | None = None) -> int:
-    rules = rules or DEFAULT_RULES
+    rules = rules or _load_rules()
     inserted = 0
     for rule in rules:
         name = rule.get("name", rule.get("kind", "rule"))
@@ -68,4 +84,3 @@ def maybe_start_evaluator(app, session_factory) -> EvaluatorThread | None:
     app.state.evaluator_thread = t
     get_logger(__name__).info("evaluator.started", interval_sec=interval)
     return t
-
