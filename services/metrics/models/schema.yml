@@ -30,3 +30,32 @@ models:
         tests: []
       - name: idle_hours
         tests: []
+  - name: deployment_frequency
+    description: Daily deployment counts from deployment events
+    columns:
+      - name: day
+        tests: []
+      - name: deployments
+        tests: []
+  - name: change_fail_rate
+    description: Daily fraction of failed deployments
+    columns:
+      - name: day
+        tests: []
+      - name: failures
+        tests: []
+      - name: total
+        tests: []
+      - name: change_fail_rate
+        tests: []
+  - name: mttr
+    description: Time from failure to successful restore per delivery
+    columns:
+      - name: delivery_id
+        tests: []
+      - name: failed_at
+        tests: []
+      - name: restored_at
+        tests: []
+      - name: mttr_hours
+        tests: []

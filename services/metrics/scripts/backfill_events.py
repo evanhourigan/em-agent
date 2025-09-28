@@ -24,8 +24,8 @@ def main() -> None:
                 "push",
                 delivery,
                 None,
-                {"demo": True},
-                "{\"msg\": \"commit\"}",
+                '{"demo": true}',
+                '{"msg": "commit"}',
                 commit_t,
             )
         )
@@ -36,8 +36,8 @@ def main() -> None:
                 "pull_request",
                 delivery,
                 None,
-                {"demo": True},
-                "{\"msg\": \"pr_opened\"}",
+                '{"demo": true}',
+                '{"msg": "pr_opened"}',
                 commit_t + timedelta(hours=1),
             )
         )
@@ -48,23 +48,49 @@ def main() -> None:
                 "pull_request_review",
                 delivery,
                 None,
-                {"demo": True},
-                "{\"msg\": \"review\"}",
+                '{"demo": true}',
+                '{"msg": "review"}',
                 commit_t + timedelta(hours=3),
             )
         )
-        # deploy
-        rows.append(
-            (
-                "github",
-                "deployment_status",
-                delivery,
-                None,
-                {"demo": True},
-                "{\"msg\": \"deploy\"}",
-                deploy_t,
+        # deploy: for demo-2, first fail then succeed later; others succeed
+        if i == 2:
+            # failure
+            rows.append(
+                (
+                    "github",
+                    "deployment_status",
+                    delivery,
+                    None,
+                    '{"demo": true}',
+                    '{"state": "failure"}',
+                    deploy_t,
+                )
             )
-        )
+            # recovery success
+            rows.append(
+                (
+                    "github",
+                    "deployment_status",
+                    delivery,
+                    None,
+                    '{"demo": true}',
+                    '{"state": "success"}',
+                    deploy_t + timedelta(hours=6),
+                )
+            )
+        else:
+            rows.append(
+                (
+                    "github",
+                    "deployment_status",
+                    delivery,
+                    None,
+                    '{"demo": true}',
+                    '{"state": "success"}',
+                    deploy_t,
+                )
+            )
 
     with psycopg.connect(dsn) as conn:
         with conn.cursor() as cur:
@@ -82,13 +108,15 @@ def main() -> None:
                 )
                 """
             )
-            cur.executemany(
-                """
-                insert into events_raw(source, event_type, delivery_id, signature, headers, payload, received_at)
-                values (%s, %s, %s, %s, %s, %s, %s)
-                """,
-                rows,
-            )
+            for row in rows:
+                cur.execute(
+                    """
+                    insert into events_raw(source, event_type, delivery_id, signature, headers, payload, received_at)
+                    values (%s, %s, %s, %s, %s, %s, %s)
+                    on conflict (source, delivery_id, event_type) do nothing
+                    """,
+                    row,
+                )
         conn.commit()
 
     print(f"Seeded {len(rows)} events into events_raw")
@@ -96,5 +124,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-

@@ -261,13 +261,23 @@ Short-term objective: capture, normalize, and persist events; establish DB migra
   - [x] Mapper utilities (GitHub login → user, Slack user → user)
   - [x] Minimal `/v1/identities` list/create for verification
 
-### Phase 2 — Work Breakdown (initial)
+### Phase 2 — Work Breakdown
 
-- [ ] 2.1 dbt project scaffold (profiles, seed data)
-- [ ] 2.2 DORA models (lead time, deploy freq, change fail rate, MTTR)
-- [ ] 2.3 Flow metrics (WIP, aging WIP, PR idle time)
+- [x] 2.1 dbt project scaffold (profiles, seed data)
+- [ ] 2.2 DORA models
+  - [x] Lead time for changes (events_raw → dora_lead_time)
+  - [x] Deployment frequency (events_raw → deployment_frequency)
+  - [x] Change fail rate
+  - [x] MTTR
+- [ ] 2.3 Flow metrics
+  - [x] PR idle time (events_raw → pr_idle_time)
+  - [ ] WIP
+  - [ ] Aging WIP
 - [ ] 2.4 Backfill jobs and retention windows
-- [ ] 2.5 Grafana dashboards (delivery, flow, quality), JSON exported
+  - [x] Seed script added (services/metrics/scripts/backfill_events.py)
+  - [ ] Retention policy + scheduler
+- [x] 2.5 Grafana dashboards: delivery panels for lead time, PR idle, deploy freq (JSON exported)
+- [x] CI: GitHub Action to parse/compile dbt on PRs (.github/workflows/dbt.yml)
 
 Milestone exit for Phase 1: raw events reliably land; `projects` CRUD green; migrations and local workflows documented.
 

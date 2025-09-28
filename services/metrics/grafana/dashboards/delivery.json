@@ -1,5 +1,56 @@
 {
-  "title": "Delivery Metrics (Placeholder)",
-  "panels": [{ "type": "table", "title": "DORA Example", "targets": [] }],
+  "title": "Delivery Metrics",
+  "panels": [
+    {
+      "type": "table",
+      "title": "Lead Time (hours)",
+      "targets": [
+        {
+          "rawSql": "select delivery_id, lead_time_hours from public.dora_lead_time order by lead_time_hours desc limit 50",
+          "format": "table"
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "PR Idle (hours)",
+      "targets": [
+        {
+          "rawSql": "select delivery_id, idle_hours from public.pr_idle_time order by idle_hours desc limit 50",
+          "format": "table"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Deployment Frequency",
+      "targets": [
+        {
+          "rawSql": "select day as time, deployments as value from public.deployment_frequency order by day",
+          "format": "time_series"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Change Fail Rate",
+      "targets": [
+        {
+          "rawSql": "select day as time, change_fail_rate as value from public.change_fail_rate order by day",
+          "format": "time_series"
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "MTTR (hours)",
+      "targets": [
+        {
+          "rawSql": "select delivery_id, mttr_hours from public.mttr order by mttr_hours desc",
+          "format": "table"
+        }
+      ]
+    }
+  ],
   "version": 1
 }
