@@ -271,21 +271,24 @@ Short-term objective: capture, normalize, and persist events; establish DB migra
   - [x] MTTR
 - [ ] 2.3 Flow metrics
   - [x] PR idle time (events_raw → pr_idle_time)
-  - [ ] WIP
-  - [ ] Aging WIP
+  - [x] WIP
+  - [x] Aging WIP
 - [ ] 2.4 Backfill jobs and retention windows
   - [x] Seed script added (services/metrics/scripts/backfill_events.py)
   - [ ] Retention policy + scheduler
 - [x] 2.5 Grafana dashboards: delivery panels for lead time, PR idle, deploy freq (JSON exported)
 - [x] CI: GitHub Action to parse/compile dbt on PRs (.github/workflows/dbt.yml)
+  - [x] Retention purge workflow (.github/workflows/retention.yml)
 
 ### Metrics API
+
 - `/v1/metrics/dora/lead-time`
 - `/v1/metrics/dora/deployment-frequency`
 - `/v1/metrics/dora/change-fail-rate`
 - `/v1/metrics/dora/mttr`
 
 ### Retention
+
 - Script: `services/metrics/scripts/purge_old_events.py`
 - Targets: `make purge.events` (RETENTION_DAYS default 30)
 
