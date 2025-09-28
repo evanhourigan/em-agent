@@ -112,7 +112,7 @@ make eval.off
 # apply/override rules and start
 make rules.apply
 
-# environment flags (alternative)
+# environment flags (alternative). Add UVICORN_ACCESS_LOG=true to re-enable access logs
 EVALUATOR_ENABLED=true EVALUATOR_INTERVAL_SEC=60 RULES_PATH=/app/app/config/rules.yml \
   docker-compose up -d --build gateway
 ```
