@@ -1,6 +1,6 @@
 SHELL := /bin/zsh
 
-.PHONY: up down restart logs ps rebuild clean health metrics dbt.debug dbt.run seed.events
+.PHONY: up down restart logs ps rebuild clean health metrics dbt.debug dbt.run seed.events seed.reset purge.events
 
 up:
 	docker-compose up -d --build db gateway
@@ -59,4 +59,10 @@ dbt.run: .dbt.ensure
 # --- Demo data seeding ---
 seed.events:
 	python3 services/metrics/scripts/backfill_events.py
+
+seed.reset:
+	psql postgresql://postgres:postgres@localhost:5432/postgres -c "truncate table events_raw restart identity;"
+
+purge.events:
+	RETENTION_DAYS?=30; services/metrics/.venv/bin/python services/metrics/scripts/purge_old_events.py
 
