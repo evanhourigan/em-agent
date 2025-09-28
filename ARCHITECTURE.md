@@ -109,11 +109,12 @@ An AI-assisted “Chief of Staff” for engineering that plugs into your stack, 
 
 #### Work Breakdown
 
-- [ ] 3.1 Signals DSL and evaluator (YAML → SQL/filters)
-- [ ] 3.2 Policy stubs (OPA or simple allow/deny) and config
-- [ ] 3.3 Workflow skeleton (queue/scheduler; Temporal later)
-- [ ] 3.4 Approvals API surface (propose/wait/decision) (spec only)
-- [ ] 3.5 Starter rules: `stale_pr > 48h`, `wip_limit_exceeded`, `no_ticket_link`
+- [x] 3.1 Signals DSL and evaluator (YAML → SQL/filters)
+- [x] 3.2 Policy stubs (OPA or simple allow/deny) and config
+- [x] 3.3 Workflow skeleton (queue/scheduler; Temporal later) — `action_log` model, `/v1/workflows/run`
+- [x] 3.4 Approvals API surface (propose/wait/decision) (stubs wired)
+- [x] 3.5 Starter rules: `stale_pr > 48h`, `wip_limit_exceeded`, `pr_without_review`
+- [x] 3.6 Periodic evaluator (startup task), env: `EVALUATOR_ENABLED`, `EVALUATOR_INTERVAL_SEC`
 
 ### Phase 4 — RAG & Knowledge
 

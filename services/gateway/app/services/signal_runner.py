@@ -7,10 +7,10 @@ from typing import Any, Dict, List
 
 from sqlalchemy.orm import Session
 
-from ..api.v1.routers.signals import _evaluate_rule
 from ..api.v1.routers.policy import DEFAULT_POLICY
+from ..api.v1.routers.signals import _evaluate_rule
 from ..models.action_log import ActionLog
-
+from ..core.logging import get_logger
 
 DEFAULT_RULES: List[Dict[str, Any]] = [
     {"name": "stale48h", "kind": "stale_pr", "older_than_hours": 48},
@@ -41,15 +41,17 @@ class EvaluatorThread(threading.Thread):
         self._session_factory = session_factory
         self._interval = interval_sec
         self._stop = threading.Event()
+        self._logger = get_logger(__name__)
 
     def run(self) -> None:  # pragma: no cover - background loop
         while not self._stop.is_set():
             try:
                 with self._session_factory() as session:
-                    evaluate_and_log(session)
-            except Exception:
-                # Swallow to keep loop alive
-                pass
+                    inserted = evaluate_and_log(session)
+                    self._logger.info("evaluator.cycle_complete", inserted=inserted)
+            except Exception as exc:
+                # Keep loop alive; surface for observability
+                self._logger.warning("evaluator.cycle_error", error=str(exc))
             self._stop.wait(self._interval)
 
     def stop(self) -> None:
@@ -64,5 +66,6 @@ def maybe_start_evaluator(app, session_factory) -> EvaluatorThread | None:
     t = EvaluatorThread(session_factory, interval)
     t.start()
     app.state.evaluator_thread = t
+    get_logger(__name__).info("evaluator.started", interval_sec=interval)
     return t
 

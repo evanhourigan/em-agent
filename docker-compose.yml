@@ -5,6 +5,8 @@ services:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/postgres
+      - EVALUATOR_ENABLED=${EVALUATOR_ENABLED:-false}
+      - EVALUATOR_INTERVAL_SEC=${EVALUATOR_INTERVAL_SEC:-600}
     depends_on:
       - db
     healthcheck:
