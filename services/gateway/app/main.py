@@ -8,6 +8,7 @@ from .api.v1.routers.identities import router as identities_router
 from .api.v1.routers.metrics import router as metrics_router
 from .api.v1.routers.projects import router as projects_router
 from .api.v1.routers.webhooks import router as webhooks_router
+from .api.v1.routers.signals import router as signals_router
 from .core.config import get_settings
 from .core.logging import configure_structlog, get_logger
 from .core.observability import add_prometheus
@@ -46,6 +47,7 @@ def create_app() -> FastAPI:
     app.include_router(projects_router)
     app.include_router(webhooks_router)
     app.include_router(identities_router)
+    app.include_router(signals_router)
 
     @app.get("/")
     def root() -> dict:

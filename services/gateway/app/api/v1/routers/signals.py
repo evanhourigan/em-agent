@@ -1,0 +1,62 @@
+from __future__ import annotations
+
+from typing import Any, Dict, List
+
+import yaml
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+
+from ...deps import get_db_session
+
+router = APIRouter(prefix="/v1/signals", tags=["signals"])
+
+
+def _evaluate_rule(session: Session, rule: dict[str, Any]) -> List[dict[str, Any]]:
+    kind = rule.get("kind")
+    if kind == "stale_pr":
+        hours = int(rule.get("older_than_hours", 48))
+        sql = (
+            "select delivery_id, min(received_at) as opened_at "
+            "from events_raw where source='github' and event_type='pull_request' "
+            "group by delivery_id having now() - min(received_at) > interval '%d hours'"
+            % hours
+        )
+        rows = session.execute(text(sql)).mappings().all()
+        return [dict(r) for r in rows]
+
+    if kind == "wip_limit_exceeded":
+        limit = int(rule.get("limit", 5))
+        sql = (
+            "select date_trunc('day', now()) as day, count(*) as wip "
+            "from (select delivery_id, min(received_at) as opened_at from events_raw "
+            "where source='github' and event_type='pull_request' group by delivery_id) o "
+            "left join (select delivery_id, min(received_at) as closed_at from events_raw "
+            "where source='github' and event_type='deployment_status' and payload like '%""state"": ""success""%' group by delivery_id) c "
+            "using (delivery_id) where c.closed_at is null"
+        )
+        row = session.execute(text(sql)).mappings().first()
+        wip = int(row["wip"]) if row else 0
+        return [{"day": str(row["day"]) if row else None, "wip": wip, "exceeded": wip > limit}]
+
+    raise HTTPException(status_code=400, detail=f"unsupported rule kind: {kind}")
+
+
+@router.post("/evaluate")
+def evaluate_signals(
+    body: Dict[str, Any], session: Session = Depends(get_db_session)
+) -> Dict[str, Any]:
+    # Accept either JSON rules or a YAML string under { yaml: "..." }
+    rules: List[dict[str, Any]]
+    if "yaml" in body:
+        rules = yaml.safe_load(body["yaml"]) or []
+    else:
+        rules = body.get("rules", [])
+
+    results: Dict[str, Any] = {}
+    for rule in rules:
+        name = rule.get("name", rule.get("kind", "rule"))
+        results[name] = _evaluate_rule(session, rule)
+    return {"results": results}
+
+
