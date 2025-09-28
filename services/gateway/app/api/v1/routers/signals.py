@@ -19,8 +19,7 @@ def _evaluate_rule(session: Session, rule: dict[str, Any]) -> List[dict[str, Any
         sql = (
             "select delivery_id, min(received_at) as opened_at "
             "from events_raw where source='github' and event_type='pull_request' "
-            "group by delivery_id having now() - min(received_at) > interval '%d hours'"
-            % hours
+            "group by delivery_id having now() - min(received_at) > interval '%d hours'" % hours
         )
         rows = session.execute(text(sql)).mappings().all()
         return [dict(r) for r in rows]
@@ -32,12 +31,27 @@ def _evaluate_rule(session: Session, rule: dict[str, Any]) -> List[dict[str, Any
             "from (select delivery_id, min(received_at) as opened_at from events_raw "
             "where source='github' and event_type='pull_request' group by delivery_id) o "
             "left join (select delivery_id, min(received_at) as closed_at from events_raw "
-            "where source='github' and event_type='deployment_status' and payload like '%""state"": ""success""%' group by delivery_id) c "
+            "where source='github' and event_type='deployment_status' and payload like '%"
+            "state"
+            ": "
+            "success"
+            "%' group by delivery_id) c "
             "using (delivery_id) where c.closed_at is null"
         )
         row = session.execute(text(sql)).mappings().first()
         wip = int(row["wip"]) if row else 0
         return [{"day": str(row["day"]) if row else None, "wip": wip, "exceeded": wip > limit}]
+
+    if kind == "no_ticket_link":
+        # Detect PRs whose payload does not match a ticket pattern (very rough placeholder)
+        pattern = rule.get("ticket_pattern", "[A-Z]+-[0-9]+")
+        sql = (
+            "select delivery_id, min(received_at) as opened_at from events_raw "
+            "where source='github' and event_type='pull_request' and payload !~ :pattern "
+            "group by delivery_id order by opened_at desc limit 200"
+        )
+        rows = session.execute(text(sql), {"pattern": pattern}).mappings().all()
+        return [dict(r) for r in rows]
 
     raise HTTPException(status_code=400, detail=f"unsupported rule kind: {kind}")
 
@@ -58,5 +72,3 @@ def evaluate_signals(
         name = rule.get("name", rule.get("kind", "rule"))
         results[name] = _evaluate_rule(session, rule)
     return {"results": results}
-
-
