@@ -1,9 +1,12 @@
 SHELL := /bin/zsh
 
-.PHONY: up down restart logs ps rebuild clean health metrics dbt.debug dbt.run seed.events seed.reset purge.events
+.PHONY: up up.migrate down restart logs ps rebuild clean health metrics dbt.debug dbt.run seed.events seed.reset purge.events
 
 up:
 	docker-compose up -d --build db gateway
+
+up.migrate:
+	$(MAKE) up && $(MAKE) mig.up && $(MAKE) health
 
 down:
 	docker-compose down -v
