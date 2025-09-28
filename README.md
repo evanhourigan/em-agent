@@ -105,6 +105,7 @@ Base URL: `http://localhost:8000`
 - `GET /metrics` → Prometheus exposition format
 
 ### Metrics API (DORA)
+
 JSON endpoints backed by dbt views (for UI/Grafana or quick checks):
 
 ```bash
@@ -132,6 +133,24 @@ curl -sS -X PATCH localhost:8000/v1/projects/1 \
 
 # delete
 curl -sS -X DELETE -o /dev/null -w '%{http_code}\n' localhost:8000/v1/projects/1
+```
+
+### Signals & Policy (Phase 3)
+
+Evaluate signals with JSON rules or a YAML string:
+
+```bash
+curl -sS -X POST http://localhost:8000/v1/signals/evaluate \
+  -H 'content-type: application/json' \
+  -d '{"yaml":"- { name: stale48h, kind: stale_pr, older_than_hours: 48 }\n- { name: wip_limit, kind: wip_limit_exceeded, limit: 5 }\n- { name: missing_ticket_link, kind: no_ticket_link, ticket_pattern: [A-Z]+-[0-9]+ }"}' | jq
+```
+
+Evaluate policy stub:
+
+```bash
+curl -sS -X POST http://localhost:8000/v1/policy/evaluate \
+  -H 'content-type: application/json' \
+  -d '{"kind":"stale_pr"}' | jq
 ```
 
 Webhooks (intake stubs)
