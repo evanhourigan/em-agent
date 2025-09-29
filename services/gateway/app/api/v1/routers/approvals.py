@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 router = APIRouter(prefix="/v1/approvals", tags=["approvals"])
 from ....db import get_sessionmaker
 from ....models.approvals import Approval
+from ....models.workflow_jobs import WorkflowJob
 
 
 @router.get("")
@@ -81,5 +82,19 @@ def decide(id: int, payload: Dict[str, Any]) -> Dict[str, Any]:
 
         a.decided_at = datetime.utcnow()
         session.add(a)
+        job_id = None
+        if decision == "approve":
+            job = WorkflowJob(
+                status="queued",
+                rule_kind=a.action,
+                subject=a.subject,
+                payload=a.payload,
+            )
+            session.add(job)
+            session.flush()  # populate job.id
+            job_id = job.id
         session.commit()
-        return {"id": a.id, "status": a.status, "reason": a.reason}
+        resp = {"id": a.id, "status": a.status, "reason": a.reason}
+        if job_id is not None:
+            resp["job_id"] = job_id
+        return resp
