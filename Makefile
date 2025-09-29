@@ -1,9 +1,9 @@
 SHELL := /bin/zsh
 
-.PHONY: up up.migrate eval.on eval.off rules.apply down restart logs ps rebuild clean health metrics dbt.debug dbt.run seed.events seed.reset purge.events
+.PHONY: up up.migrate eval.on eval.off rules.apply down restart logs ps rebuild clean health metrics dbt.debug dbt.run seed.events seed.reset purge.events rag.up rag.health
 
 up:
-	docker-compose up -d --build db gateway
+	docker-compose up -d --build db gateway rag
 
 up.migrate:
 	$(MAKE) up && $(MAKE) mig.up && $(MAKE) health
@@ -25,7 +25,7 @@ restart:
 	$(MAKE) down && $(MAKE) up
 
 logs:
-	docker-compose logs -f --tail=200 gateway db
+	docker-compose logs -f --tail=200 gateway db rag
 
 ps:
 	docker-compose ps
@@ -35,6 +35,13 @@ rebuild:
 
 health:
 	@until curl -sf http://localhost:8000/health >/dev/null; do echo "waiting for gateway..."; sleep 1; done; echo READY && curl -sS http://localhost:8000/health
+	@until curl -sf http://localhost:8001/health >/dev/null; do echo "waiting for rag..."; sleep 1; done; echo READY && curl -sS http://localhost:8001/health
+
+rag.up:
+	docker-compose up -d --build rag && $(MAKE) rag.health
+
+rag.health:
+	@until curl -sf http://localhost:8001/health >/dev/null; do echo "waiting for rag..."; sleep 1; done; echo READY && curl -sS http://localhost:8001/health
 
 metrics:
 	curl -sS http://localhost:8000/metrics | head -50

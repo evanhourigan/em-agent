@@ -209,6 +209,26 @@ curl -sS http://localhost:8000/v1/approvals | jq
 curl -sS http://localhost:8000/v1/approvals/1 | jq
 ```
 
+### RAG Service (Phase 4)
+
+Start and health-check:
+
+```bash
+make rag.up
+```
+
+Index and search:
+
+```bash
+curl -sS -X POST http://localhost:8001/index \
+  -H 'content-type: application/json' \
+  -d '{"id":"doc-1","content":"Design doc: gateway architecture"}' | jq
+
+curl -sS -X POST http://localhost:8001/search \
+  -H 'content-type: application/json' \
+  -d '{"q":"architecture"}' | jq
+```
+
 Webhooks (intake stubs)
 
 ```bash

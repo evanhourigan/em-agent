@@ -118,7 +118,8 @@ An AI-assisted “Chief of Staff” for engineering that plugs into your stack, 
 
 ### Phase 4 — RAG & Knowledge
 
-- Confluence/repo crawlers, embeddings, retrieval with citations.
+- [x] RAG service scaffold (FastAPI, /health, /index, /search)
+- [ ] Confluence/repo crawlers, embeddings, retrieval with citations.
 
 ### Phase 5 — Slack App & ChatOps
 
