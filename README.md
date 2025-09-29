@@ -115,7 +115,7 @@ make rules.apply
 # environment flags (alternative). Add UVICORN_ACCESS_LOG=true to re-enable access logs
 EVALUATOR_ENABLED=true EVALUATOR_INTERVAL_SEC=60 RULES_PATH=/app/app/config/rules.yml \
   docker-compose up -d --build gateway
-  
+
 # policy from YAML
 POLICY_PATH=/app/app/config/policy.yml docker-compose up -d --build gateway
 ```
@@ -173,6 +173,40 @@ Evaluate policy stub:
 curl -sS -X POST http://localhost:8000/v1/policy/evaluate \
   -H 'content-type: application/json' \
   -d '{"kind":"stale_pr"}' | jq
+```
+
+### Workflows & Approvals (Phase 3)
+
+Queue a workflow job (policy-gated; defaults to action from policy):
+
+```bash
+curl -sS -X POST http://localhost:8000/v1/workflows/run \
+  -H 'content-type: application/json' \
+  -d '{"rule_kind":"stale_pr","subject":"pr:123"}' | jq
+```
+
+Trigger an approval (explicit block) then approve and verify job enqueue:
+
+```bash
+# propose blocked action (returns { action_id, status: "awaiting_approval" })
+APPROVAL_ID=$(curl -sS -X POST http://localhost:8000/v1/workflows/run \
+  -H 'content-type: application/json' \
+  -d '{"rule_kind":"stale_pr","subject":"pr:456","action":"block"}' | jq -r '.action_id')
+
+# approve it
+curl -sS -X POST http://localhost:8000/v1/approvals/$APPROVAL_ID/decision \
+  -H 'content-type: application/json' \
+  -d '{"decision":"approve","reason":"ok"}' | jq
+
+# list jobs (processed by background runner)
+curl -sS http://localhost:8000/v1/workflows/jobs | jq
+```
+
+List approvals and get by ID:
+
+```bash
+curl -sS http://localhost:8000/v1/approvals | jq
+curl -sS http://localhost:8000/v1/approvals/1 | jq
 ```
 
 Webhooks (intake stubs)

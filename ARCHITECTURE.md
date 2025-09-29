@@ -25,7 +25,7 @@ An AI-assisted “Chief of Staff” for engineering that plugs into your stack, 
 
 ## Reference Architecture
 
-```
+```text
 +-----------------------------+      +---------------------------+
 |         Slack, Email        |      |     Jira/Confluence      |
 |  GitHub/Bitbucket/GitLab    |      |  GitHub Projects, Linear  |
@@ -111,10 +111,10 @@ An AI-assisted “Chief of Staff” for engineering that plugs into your stack, 
 
 - [x] 3.1 Signals DSL and evaluator (YAML → SQL/filters)
 - [x] 3.2 Policy stubs (OPA or simple allow/deny) and config
-- [x] 3.3 Workflow skeleton (queue/scheduler; Temporal later) — `action_log` model, `/v1/workflows/run`
-- [x] 3.4 Approvals API surface (propose/wait/decision) (stubs wired)
+- [x] 3.3 Workflow skeleton (queue/scheduler; Temporal later) — `action_log`, `/v1/workflows/run`, `workflow_jobs` + background runner
+- [x] 3.4 Approvals API surface (propose/wait/decision) (stubs wired; in-memory store)
 - [x] 3.5 Starter rules: `stale_pr > 48h`, `wip_limit_exceeded`, `pr_without_review`
-- [x] 3.6 Periodic evaluator (startup task), env: `EVALUATOR_ENABLED`, `EVALUATOR_INTERVAL_SEC`
+- [x] 3.6 Periodic evaluator (startup task), env: `EVALUATOR_ENABLED`, `EVALUATOR_INTERVAL_SEC`, `RULES_PATH`
 
 ### Phase 4 — RAG & Knowledge
 
@@ -223,7 +223,7 @@ This section is the single place any agent/human should consult for status and n
 - [x] Phase 0 — Foundations (skeleton gateway, Postgres, logging, metrics)
 - [x] Phase 1 — Ingestion & Normalization (complete)
 - [x] Phase 2 — Metrics & Analytics (complete)
-- [ ] Phase 3 — Signal Engine & Policy
+- [x] Phase 3 — Signal Engine & Policy
 - [ ] Phase 4 — RAG & Knowledge
 - [ ] Phase 5 — Slack App & ChatOps
 - [ ] Phase 6 — Reliability & Safety
