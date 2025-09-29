@@ -8,7 +8,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Compose up db and gateway
-        run: docker-compose up -d --build db gateway
+        run: docker compose up -d --build db gateway
       - name: Wait for gateway health
         run: |
           for i in {1..60}; do
@@ -17,6 +17,6 @@ jobs:
             fi
             sleep 2
           done
-          echo "Gateway not healthy"; docker-compose logs gateway; exit 1
+          echo "Gateway not healthy"; docker compose logs gateway; exit 1
       - name: Curl health
         run: curl -sS http://localhost:8000/health
