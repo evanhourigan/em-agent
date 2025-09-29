@@ -31,6 +31,8 @@ services:
       - "3000:3000"
     depends_on:
       - gateway
+    environment:
+      - GATEWAY_URL=http://gateway:8000
   rag:
     build: ./services/rag
     ports:

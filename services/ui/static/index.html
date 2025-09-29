@@ -1,0 +1,45 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>EM Agent - RAG Search</title>
+    <style>
+      body { font-family: -apple-system, system-ui, sans-serif; margin: 2rem; }
+      .card { max-width: 720px; border: 1px solid #ddd; border-radius: 8px; padding: 16px; }
+      .row { display: flex; gap: 8px; }
+      input[type=text] { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 6px; }
+      button { padding: 10px 14px; border: none; background: #1f6feb; color: #fff; border-radius: 6px; cursor: pointer; }
+      .result { border-top: 1px solid #eee; padding: 10px 0; }
+      .meta { color: #555; font-size: 12px; }
+      .score { color: #1a7f37; font-size: 12px; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h3>RAG Search</h3>
+      <div class="row">
+        <input id="q" type="text" placeholder="Search…" />
+        <button onclick="doSearch()">Search</button>
+      </div>
+      <div id="results"></div>
+    </div>
+    <script>
+      async function doSearch() {
+        const q = document.getElementById('q').value;
+        const resp = await fetch('/search', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ q, top_k: 5 }) });
+        const data = await resp.json();
+        const list = document.getElementById('results');
+        list.innerHTML = '';
+        for (const r of (data.results || [])) {
+          const el = document.createElement('div');
+          el.className = 'result';
+          el.innerHTML = `<div class="meta">parent: ${r.parent_id || r.id} ${r.meta && r.meta.source ? '('+r.meta.source+')' : ''}</div><div>${r.snippet || r.content}</div><div class="score">score: ${r.score ?? ''}</div>`;
+          list.appendChild(el);
+        }
+      }
+    </script>
+  </body>
+  </html>
+
+
