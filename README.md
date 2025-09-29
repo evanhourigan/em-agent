@@ -262,6 +262,31 @@ curl -sS -X POST http://localhost:8000/v1/rag/search \
 # results include id, parent_id, meta, snippet, score for citations
 ```
 
+### Slack Stubs (Phase 5)
+
+Endpoints (no signing yet; for local testing only):
+
+```bash
+# list signals or pending approvals
+curl -sS -X POST http://localhost:8000/v1/slack/commands \
+  -H 'content-type: application/json' \
+  -d '{"text":"signals"}' | jq
+
+curl -sS -X POST http://localhost:8000/v1/slack/commands \
+  -H 'content-type: application/json' \
+  -d '{"text":"approvals"}' | jq
+
+# approve interaction (queues a job)
+curl -sS -X POST http://localhost:8000/v1/slack/interactions \
+  -H 'content-type: application/json' \
+  -d '{"action":"approve-job","job_id":1}' | jq
+```
+
+Next steps:
+- Add Slack signing verification and secrets management.
+- Add interactive message payload schemas and richer responses.
+- Map commands to actual signal queries and approvals UX.
+
 Webhooks (intake stubs)
 
 ```bash
