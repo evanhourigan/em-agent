@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -52,3 +52,35 @@ def run_workflow(
     )
     session.commit()
     return {"status": "queued", "id": log.id, "action": action}
+
+
+@router.get("/jobs")
+def list_jobs(session: Session = Depends(get_db_session)) -> List[Dict[str, Any]]:
+    rows = (
+        session.query(WorkflowJob)
+        .order_by(WorkflowJob.id.desc())
+        .limit(100)
+        .all()
+    )
+    return [
+        {
+            "id": j.id,
+            "status": j.status,
+            "rule_kind": j.rule_kind,
+            "subject": j.subject,
+        }
+        for j in rows
+    ]
+
+
+@router.get("/jobs/{id}")
+def get_job(id: int, session: Session = Depends(get_db_session)) -> Dict[str, Any]:
+    j = session.get(WorkflowJob, id)
+    if not j:
+        raise HTTPException(status_code=404, detail="not found")
+    return {
+        "id": j.id,
+        "status": j.status,
+        "rule_kind": j.rule_kind,
+        "subject": j.subject,
+    }
