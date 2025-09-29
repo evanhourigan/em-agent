@@ -5,8 +5,9 @@ from typing import Any, Dict
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from ....models.action_log import ActionLog
 from ....api.v1.routers.policy import DEFAULT_POLICY
+from ....api.v1.routers.approvals import propose_action
+from ....models.action_log import ActionLog
 from ...deps import get_db_session
 
 router = APIRouter(prefix="/v1/workflows", tags=["workflows"])
@@ -29,7 +30,15 @@ def run_workflow(
             action = policy.get("action", "nudge")
 
     if action == "block":
-        raise HTTPException(status_code=403, detail="blocked by policy")
+        # Instead of hard-failing, propose an approval for human decision
+        proposal = {
+            "subject": subject,
+            "action": rule,
+            "payload": payload,
+            "reason": "blocked by policy",
+        }
+        res = propose_action(proposal)
+        return {"status": "awaiting_approval", **res}
     log = ActionLog(rule_name=rule, subject=subject, action=action, payload=str(payload))
     session.add(log)
     session.commit()
