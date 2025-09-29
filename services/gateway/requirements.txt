@@ -9,4 +9,5 @@ structlog>=24.1.0
 # Migrations
 alembic>=1.13.2
 PyYAML>=6.0.1
+httpx>=0.27.0
 

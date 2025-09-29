@@ -7,6 +7,7 @@ services:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/postgres
       - EVALUATOR_ENABLED=${EVALUATOR_ENABLED:-false}
       - EVALUATOR_INTERVAL_SEC=${EVALUATOR_INTERVAL_SEC:-600}
+      - RAG_URL=${RAG_URL:-http://rag:8000}
     depends_on:
       - db
     healthcheck:
@@ -34,6 +35,8 @@ services:
     build: ./services/rag
     ports:
       - "8001:8000"
+    environment:
+      - EMBEDDINGS_BACKEND=${EMBEDDINGS_BACKEND:-tfidf}
     healthcheck:
       test: ["CMD-SHELL", "curl -fs http://localhost:8000/health || exit 1"]
       interval: 60s

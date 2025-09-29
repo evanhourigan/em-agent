@@ -11,6 +11,7 @@ from .api.v1.routers.policy import router as policy_router
 from .api.v1.routers.projects import router as projects_router
 from .api.v1.routers.signals import router as signals_router
 from .api.v1.routers.webhooks import router as webhooks_router
+from .api.v1.routers.rag import router as rag_router
 from .api.v1.routers.workflows import router as workflows_router
 from .core.config import get_settings
 from .core.logging import configure_structlog, get_logger
@@ -58,6 +59,7 @@ def create_app() -> FastAPI:
     app.include_router(workflows_router)
     app.include_router(approvals_router)
     app.include_router(policy_router)
+    app.include_router(rag_router)
 
     @app.get("/")
     def root() -> dict:

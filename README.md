@@ -240,6 +240,15 @@ EMBEDDINGS_BACKEND=st docker-compose up -d --build rag
 curl -sS http://localhost:8001/health | jq
 ```
 
+Gateway proxy to RAG:
+
+```bash
+# search via gateway
+curl -sS -X POST http://localhost:8000/v1/rag/search \
+  -H 'content-type: application/json' \
+  -d '{"q":"architecture","top_k":3}' | jq
+```
+
 Webhooks (intake stubs)
 
 ```bash

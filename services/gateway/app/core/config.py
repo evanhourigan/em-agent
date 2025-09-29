@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     cors_allow_origins: list[str] = ["*"]
 
     database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/postgres"
+    rag_url: str = "http://rag:8000"
 
 
 @lru_cache(maxsize=1)
