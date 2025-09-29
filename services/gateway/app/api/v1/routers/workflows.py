@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from ....api.v1.routers.approvals import propose_action
-from ....api.v1.routers.policy import DEFAULT_POLICY
+from ....api.v1.routers.policy import _load_policy
 from ....models.action_log import ActionLog
 from ....models.workflow_jobs import WorkflowJob
 from ...deps import get_db_session
@@ -24,7 +24,7 @@ def run_workflow(
     action = payload.get("action")
     if not action:
         kind = payload.get("kind", rule)
-        policy = DEFAULT_POLICY.get(kind)
+        policy = _load_policy().get(kind)
         if not policy:
             action = "nudge"
         else:
@@ -56,12 +56,7 @@ def run_workflow(
 
 @router.get("/jobs")
 def list_jobs(session: Session = Depends(get_db_session)) -> List[Dict[str, Any]]:
-    rows = (
-        session.query(WorkflowJob)
-        .order_by(WorkflowJob.id.desc())
-        .limit(100)
-        .all()
-    )
+    rows = session.query(WorkflowJob).order_by(WorkflowJob.id.desc()).limit(100).all()
     return [
         {
             "id": j.id,

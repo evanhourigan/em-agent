@@ -1,0 +1,11 @@
+stale_pr:
+  action: nudge
+  threshold_hours: 48
+wip_limit_exceeded:
+  action: escalate
+  limit: 5
+no_ticket_link:
+  action: nudge
+pr_without_review:
+  action: nudge
+  older_than_hours: 12

@@ -8,7 +8,7 @@ from typing import Any, Dict, List
 import yaml
 from sqlalchemy.orm import Session
 
-from ..api.v1.routers.policy import DEFAULT_POLICY
+from ..api.v1.routers.policy import _load_policy
 from ..api.v1.routers.signals import _evaluate_rule
 from ..core.logging import get_logger
 from ..models.action_log import ActionLog
@@ -38,15 +38,18 @@ def _load_rules() -> List[Dict[str, Any]]:
 def evaluate_and_log(session: Session, rules: List[Dict[str, Any]] | None = None) -> int:
     rules = rules or _load_rules()
     inserted = 0
+    policy_map = _load_policy()
     for rule in rules:
         name = rule.get("name", rule.get("kind", "rule"))
         results = _evaluate_rule(session, rule)
-        action = DEFAULT_POLICY.get(rule.get("kind"), {}).get("action", "nudge")
+        action = policy_map.get(rule.get("kind"), {}).get("action", "nudge")
         for row in results:
             subject = str(row.get("delivery_id") or row)
             log = ActionLog(rule_name=name, subject=subject, action=action, payload=str(row))
             session.add(log)
-            job = WorkflowJob(status="queued", rule_kind=rule.get("kind", name), subject=subject, payload=str(row))
+            job = WorkflowJob(
+                status="queued", rule_kind=rule.get("kind", name), subject=subject, payload=str(row)
+            )
             session.add(job)
             inserted += 1
     session.commit()
