@@ -249,6 +249,19 @@ curl -sS -X POST http://localhost:8000/v1/rag/search \
   -d '{"q":"architecture","top_k":3}' | jq
 ```
 
+Bulk indexing with chunking and citations:
+
+```bash
+curl -sS -X POST http://localhost:8001/index/bulk \
+  -H 'content-type: application/json' \
+  -d '{"chunk_size":800,"overlap":100,"docs":[{"id":"adr-1","content":"...long text...","meta":{"url":"https://example/adr-1"}}]}' | jq
+
+curl -sS -X POST http://localhost:8000/v1/rag/search \
+  -H 'content-type: application/json' \
+  -d '{"q":"architecture decision record","top_k":3}' | jq
+# results include id, parent_id, meta, snippet, score for citations
+```
+
 Webhooks (intake stubs)
 
 ```bash

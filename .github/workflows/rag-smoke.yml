@@ -28,3 +28,7 @@ jobs:
         run: |
           curl -sS -X POST http://localhost:8001/index -H 'content-type: application/json' -d '{"id":"1","content":"Hello RAG World"}' | jq .
           curl -sS -X POST http://localhost:8001/search -H 'content-type: application/json' -d '{"q":"world"}' | jq .
+      - name: Bulk index with chunking and search
+        run: |
+          curl -sS -X POST http://localhost:8001/index/bulk -H 'content-type: application/json' -d '{"chunk_size":100,"overlap":10,"docs":[{"id":"doc-ci","content":"This document discusses architecture and workflows in detail","meta":{"source":"ci"}}]}' | jq .
+          curl -sS -X POST http://localhost:8001/search -H 'content-type: application/json' -d '{"q":"architecture","top_k":2}' | jq .
