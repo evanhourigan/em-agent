@@ -19,6 +19,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    # Clean up any leftover sequence name from partial runs
+    op.execute("DROP SEQUENCE IF EXISTS workflow_jobs_id_seq CASCADE")
     op.create_table(
         "workflow_jobs",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
