@@ -3,7 +3,6 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from .db import get_sessionmaker
 from .api.v1.routers.approvals import router as approvals_router
 from .api.v1.routers.health import router as health_router
 from .api.v1.routers.identities import router as identities_router
@@ -16,8 +15,9 @@ from .api.v1.routers.workflows import router as workflows_router
 from .core.config import get_settings
 from .core.logging import configure_structlog, get_logger
 from .core.observability import add_prometheus
-from .db import get_engine
+from .db import get_engine, get_sessionmaker
 from .services.signal_runner import maybe_start_evaluator
+from .services.workflow_runner import maybe_start_workflow_runner
 
 
 def create_app() -> FastAPI:
@@ -46,6 +46,7 @@ def create_app() -> FastAPI:
         logger.info("startup.init_db_pool")
         get_engine()
         maybe_start_evaluator(app, lambda: get_sessionmaker()())
+        maybe_start_workflow_runner(app, lambda: get_sessionmaker()())
 
     # Routers
     app.include_router(health_router)

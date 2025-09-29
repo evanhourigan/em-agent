@@ -5,9 +5,10 @@ from typing import Any, Dict
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from ....api.v1.routers.policy import DEFAULT_POLICY
 from ....api.v1.routers.approvals import propose_action
+from ....api.v1.routers.policy import DEFAULT_POLICY
 from ....models.action_log import ActionLog
+from ....models.workflow_jobs import WorkflowJob
 from ...deps import get_db_session
 
 router = APIRouter(prefix="/v1/workflows", tags=["workflows"])
@@ -41,5 +42,13 @@ def run_workflow(
         return {"status": "awaiting_approval", **res}
     log = ActionLog(rule_name=rule, subject=subject, action=action, payload=str(payload))
     session.add(log)
+    session.add(
+        WorkflowJob(
+            status="queued",
+            rule_kind=payload.get("kind", rule),
+            subject=subject,
+            payload=str(payload),
+        )
+    )
     session.commit()
     return {"status": "queued", "id": log.id, "action": action}

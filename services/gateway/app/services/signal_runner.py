@@ -4,15 +4,15 @@ import os
 import threading
 import time
 from typing import Any, Dict, List
-import os
-import yaml
 
+import yaml
 from sqlalchemy.orm import Session
 
 from ..api.v1.routers.policy import DEFAULT_POLICY
 from ..api.v1.routers.signals import _evaluate_rule
 from ..core.logging import get_logger
 from ..models.action_log import ActionLog
+from ..models.workflow_jobs import WorkflowJob
 
 DEFAULT_RULES: List[Dict[str, Any]] = [
     {"name": "stale48h", "kind": "stale_pr", "older_than_hours": 48},
@@ -46,6 +46,8 @@ def evaluate_and_log(session: Session, rules: List[Dict[str, Any]] | None = None
             subject = str(row.get("delivery_id") or row)
             log = ActionLog(rule_name=name, subject=subject, action=action, payload=str(row))
             session.add(log)
+            job = WorkflowJob(status="queued", rule_kind=rule.get("kind", name), subject=subject, payload=str(row))
+            session.add(job)
             inserted += 1
     session.commit()
     return inserted
