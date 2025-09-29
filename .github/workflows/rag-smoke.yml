@@ -5,10 +5,16 @@ on:
 jobs:
   smoke:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        backend: [tfidf, st]
     steps:
       - uses: actions/checkout@v4
       - name: Compose up rag
-        run: docker compose up -d --build rag
+        env:
+          EMBEDDINGS_BACKEND: ${{ matrix.backend }}
+        run: EMBEDDINGS_BACKEND=${{ matrix.backend }} docker compose up -d --build rag
       - name: Wait for rag health
         run: |
           for i in {1..60}; do
@@ -22,4 +28,3 @@ jobs:
         run: |
           curl -sS -X POST http://localhost:8001/index -H 'content-type: application/json' -d '{"id":"1","content":"Hello RAG World"}' | jq .
           curl -sS -X POST http://localhost:8001/search -H 'content-type: application/json' -d '{"q":"world"}' | jq .
-

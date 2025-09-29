@@ -229,6 +229,17 @@ curl -sS -X POST http://localhost:8001/search \
   -d '{"q":"architecture"}' | jq
 ```
 
+Embeddings backend toggle:
+
+```bash
+# default TF-IDF
+docker-compose up -d --build rag
+
+# sentence-transformers (small, CPU-friendly). First start may take longer to warm up
+EMBEDDINGS_BACKEND=st docker-compose up -d --build rag
+curl -sS http://localhost:8001/health | jq
+```
+
 Webhooks (intake stubs)
 
 ```bash
