@@ -1,31 +1,140 @@
 from __future__ import annotations
 
-from typing import Any, Dict
+import hashlib
+import hmac
+import time
+from typing import Any, Dict, List
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Request
 
-from ....models.workflow_jobs import WorkflowJob
+from ....api.v1.routers.approvals import decide as approvals_decide
+from ....api.v1.routers.signals import _evaluate_rule
+from ....core.config import get_settings
 from ....db import get_sessionmaker
-
+from ....models.approvals import Approval
+from ....models.workflow_jobs import WorkflowJob
+from ....api.v1.routers.reports import build_standup
 
 router = APIRouter(prefix="/v1/slack", tags=["slack"])
 
 
+def _verify_slack(request: Request, body: bytes, ts: str | None, sig: str | None) -> None:
+    settings = get_settings()
+    if not settings.slack_signing_required:
+        return
+    if not settings.slack_signing_secret:
+        raise HTTPException(status_code=401, detail="slack signing secret not set")
+    if not ts or not sig:
+        raise HTTPException(status_code=401, detail="missing slack headers")
+    try:
+        ts_int = int(ts)
+    except Exception:
+        raise HTTPException(status_code=401, detail="bad timestamp")
+    if abs(int(time.time()) - ts_int) > 60 * 5:
+        raise HTTPException(status_code=401, detail="timestamp too old")
+    basestring = f"v0:{ts}:{body.decode()}".encode()
+    mac = hmac.new(settings.slack_signing_secret.encode(), basestring, hashlib.sha256)
+    expected = f"v0={mac.hexdigest()}"
+    if not hmac.compare_digest(expected, sig):
+        raise HTTPException(status_code=401, detail="invalid signature")
+
+
 @router.post("/commands")
-def commands(payload: Dict[str, Any]) -> Dict[str, Any]:
-    text = payload.get("text", "").strip()
+async def commands(
+    request: Request,
+    payload: Dict[str, Any],
+    x_slack_request_timestamp: str | None = Header(default=None),
+    x_slack_signature: str | None = Header(default=None),
+) -> Dict[str, Any]:
+    body = await request.body()
+    _verify_slack(request, body, x_slack_request_timestamp, x_slack_signature)
+    text = (payload.get("text") or "").strip()
+    if not text:
+        return {
+            "ok": True,
+            "message": "Usage: signals [kind]|approvals|approve <id>|decline <id>",
+        }
+
     if text.startswith("signals"):
-        return {"ok": True, "message": "Signals: stale_pr, wip_limit_exceeded, pr_without_review"}
+        parts = text.split()
+        kinds: List[str]
+        if len(parts) > 1:
+            kinds = [parts[1]]
+        else:
+            kinds = ["stale_pr", "wip_limit_exceeded", "pr_without_review"]
+
+        SessionLocal = get_sessionmaker()
+        out: List[str] = []
+        with SessionLocal() as session:
+            for kind in kinds:
+                try:
+                    results = _evaluate_rule(session, {"kind": kind})
+                except HTTPException as exc:
+                    out.append(f"{kind}: error {exc.detail}")
+                    continue
+                count = len(results)
+                subjects = []
+                for r in results[:5]:
+                    subj = str(r.get("delivery_id") or r.get("subject") or r)
+                    subjects.append(subj)
+                out.append(f"{kind}: {count} found; top: {', '.join(subjects)}")
+        return {"ok": True, "message": " | ".join(out)}
+
     if text.startswith("approvals"):
         SessionLocal = get_sessionmaker()
         with SessionLocal() as session:
-            pending = session.execute("select count(*) from approvals where status='pending'").scalar()  # noqa: S608
-            return {"ok": True, "message": f"Pending approvals: {pending}"}
-    raise HTTPException(status_code=400, detail="unsupported command")
+            rows = (
+                session.query(Approval)
+                .filter(Approval.status == "pending")
+                .order_by(Approval.id.desc())
+                .limit(10)
+                .all()
+            )
+            if not rows:
+                return {"ok": True, "message": "No pending approvals"}
+            items = [f"#{a.id} {a.action} {a.subject}" for a in rows]
+            return {"ok": True, "message": "; ".join(items)}
+
+    if text.startswith("approve ") or text.startswith("decline "):
+        parts = text.split()
+        if len(parts) != 2 or not parts[1].isdigit():
+            raise HTTPException(status_code=400, detail="usage: approve <id> | decline <id>")
+        approval_id = int(parts[1])
+        decision = "approve" if parts[0] == "approve" else "decline"
+        res = approvals_decide(approval_id, {"decision": decision, "reason": "slack"})
+        msg = f"approval #{approval_id} {res['status']}"
+        if "job_id" in res:
+            msg += f"; job_id={res['job_id']}"
+        return {"ok": True, "message": msg}
+
+    if text.startswith("standup"):
+        parts = text.split()
+        older = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 48
+        SessionLocal = get_sessionmaker()
+        with SessionLocal() as session:
+            r = build_standup(session, older)
+            msg = (
+                f"stale_prs:{r['stale_pr_count']} top:{', '.join(r['stale_pr_top'])} | "
+                f"wip:{r['wip_open_prs']} | pr_no_review:{r['pr_without_review_count']} | "
+                f"deploys_24h:{r['deployments_last_24h']}"
+            )
+            return {"ok": True, "message": msg}
+
+    return {
+        "ok": True,
+        "message": "Usage: signals [kind]|approvals|approve <id>|decline <id>",
+    }
 
 
 @router.post("/interactions")
-def interactions(payload: Dict[str, Any]) -> Dict[str, Any]:
+async def interactions(
+    request: Request,
+    payload: Dict[str, Any],
+    x_slack_request_timestamp: str | None = Header(default=None),
+    x_slack_signature: str | None = Header(default=None),
+) -> Dict[str, Any]:
+    body = await request.body()
+    _verify_slack(request, body, x_slack_request_timestamp, x_slack_signature)
     action = payload.get("action")
     if action == "approve-job":
         job_id = int(payload.get("job_id"))
@@ -38,6 +147,11 @@ def interactions(payload: Dict[str, Any]) -> Dict[str, Any]:
             session.add(job)
             session.commit()
             return {"ok": True, "message": f"Job {job_id} queued"}
+    if action == "approval-decision":
+        approval_id = int(payload.get("id"))
+        decision = payload.get("decision")
+        if decision not in {"approve", "decline", "modify"}:
+            raise HTTPException(status_code=400, detail="invalid decision")
+        res = approvals_decide(approval_id, {"decision": decision, "reason": "slack"})
+        return {"ok": True, "result": res}
     raise HTTPException(status_code=400, detail="unsupported interaction")
-
-

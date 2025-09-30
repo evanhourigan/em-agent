@@ -14,6 +14,7 @@ from .api.v1.routers.signals import router as signals_router
 from .api.v1.routers.slack import router as slack_router
 from .api.v1.routers.webhooks import router as webhooks_router
 from .api.v1.routers.workflows import router as workflows_router
+from .api.v1.routers.reports import router as reports_router
 from .core.config import get_settings
 from .core.logging import configure_structlog, get_logger
 from .core.observability import add_prometheus
@@ -62,6 +63,7 @@ def create_app() -> FastAPI:
     app.include_router(policy_router)
     app.include_router(rag_router)
     app.include_router(slack_router)
+    app.include_router(reports_router)
 
     @app.get("/")
     def root() -> dict:
