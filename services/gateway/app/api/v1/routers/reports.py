@@ -175,9 +175,15 @@ def sprint_health_post(
             "type": "section",
             "fields": [
                 {"type": "mrkdwn", "text": f"*Window:* {r['window_days']} days"},
-                {"type": "mrkdwn", "text": f"*Deploys:* {r['total_deploys']} (avg {r['avg_daily_deploys']:.2f}/day)"},
+                {
+                    "type": "mrkdwn",
+                    "text": f"*Deploys:* {r['total_deploys']} (avg {r['avg_daily_deploys']:.2f}/day)",
+                },
                 {"type": "mrkdwn", "text": f"*CFR:* {r['avg_change_fail_rate']:.2f}"},
-                {"type": "mrkdwn", "text": f"*WIP:* latest {r['latest_wip']} (avg {r['avg_wip']:.2f})"},
+                {
+                    "type": "mrkdwn",
+                    "text": f"*WIP:* latest {r['latest_wip']} (avg {r['avg_wip']:.2f})",
+                },
             ],
         },
     ]

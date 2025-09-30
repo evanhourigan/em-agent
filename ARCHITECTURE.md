@@ -123,7 +123,7 @@ An AI-assisted “Chief of Staff” for engineering that plugs into your stack, 
 
 ### Phase 5 — Slack App & ChatOps
 
-- Slash commands (`/standup`, `/sprint-health`, `/triage`, `/ask`).
+- Slash commands (`/standup`, `/sprint`, `/triage`, `/ask`).
 
 ### Phase 6 — Reliability & Safety
 
@@ -218,6 +218,10 @@ limits:
 ## Execution Tracker (source of truth)
 
 This section is the single place any agent/human should consult for status and next actions.
+- Phase 5 — Work Breakdown
+
+  - [x] 5.1 Standup report JSON + Slack post endpoint; weekday workflow
+  - [x] 5.2 Sprint health report JSON + Slack post; weekday workflow
 
 ### Phase status
 

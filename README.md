@@ -175,6 +175,20 @@ curl -sS -X POST http://localhost:8000/v1/policy/evaluate \
   -d '{"kind":"stale_pr"}' | jq
 ```
 
+### Reports (Phase 5)
+
+Endpoints for daily and sprint summaries. These return JSON and can also post to Slack using Block Kit when Slack env is configured (`SLACK_WEBHOOK_URL` or bot token + `SLACK_DEFAULT_CHANNEL`).
+
+```bash
+# JSON only
+curl -sS -X POST http://localhost:8000/v1/reports/standup -H 'content-type: application/json' -d '{"older_than_hours":48}' | jq
+curl -sS -X POST http://localhost:8000/v1/reports/sprint-health -H 'content-type: application/json' -d '{"days":14}' | jq
+
+# Post to Slack (optional channel override)
+curl -sS -X POST http://localhost:8000/v1/reports/standup/post -H 'content-type: application/json' -d '{"older_than_hours":48, "channel":"#eng"}' | jq
+curl -sS -X POST http://localhost:8000/v1/reports/sprint-health/post -H 'content-type: application/json' -d '{"days":14, "channel":"#eng"}' | jq
+```
+
 ### Workflows & Approvals (Phase 3)
 
 Queue a workflow job (policy-gated; defaults to action from policy):
@@ -262,9 +276,9 @@ curl -sS -X POST http://localhost:8000/v1/rag/search \
 # results include id, parent_id, meta, snippet, score for citations
 ```
 
-### Slack Stubs (Phase 5)
+### Slack Commands (Phase 5)
 
-Endpoints (no signing yet; for local testing only):
+Slack signing verification is supported. Set `SLACK_SIGNING_SECRET` and `SLACK_SIGNING_REQUIRED=true` to enforce signatures. For local JSON testing without Slack, omit signing and set `SLACK_SIGNING_REQUIRED=false`.
 
 ```bash
 # list signals or pending approvals
@@ -280,6 +294,14 @@ curl -sS -X POST http://localhost:8000/v1/slack/commands \
 curl -sS -X POST http://localhost:8000/v1/slack/interactions \
   -H 'content-type: application/json' \
   -d '{"action":"approve-job","job_id":1}' | jq
+
+# standup quick text and post
+curl -sS -X POST http://localhost:8000/v1/slack/commands -H 'content-type: application/json' -d '{"text":"standup 48"}' | jq
+curl -sS -X POST http://localhost:8000/v1/slack/commands -H 'content-type: application/json' -d '{"text":"standup post #eng 48"}' | jq
+
+# sprint health quick text and post
+curl -sS -X POST http://localhost:8000/v1/slack/commands -H 'content-type: application/json' -d '{"text":"sprint 14"}' | jq
+curl -sS -X POST http://localhost:8000/v1/slack/commands -H 'content-type: application/json' -d '{"text":"sprint post #eng 14"}' | jq
 ```
 
 Next steps:
