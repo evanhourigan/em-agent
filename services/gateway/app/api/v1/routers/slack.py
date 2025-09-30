@@ -2,18 +2,20 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import json
 import time
 from typing import Any, Dict, List
+from urllib.parse import parse_qs
 
 from fastapi import APIRouter, Header, HTTPException, Request
 
 from ....api.v1.routers.approvals import decide as approvals_decide
+from ....api.v1.routers.reports import build_standup
 from ....api.v1.routers.signals import _evaluate_rule
 from ....core.config import get_settings
 from ....db import get_sessionmaker
 from ....models.approvals import Approval
 from ....models.workflow_jobs import WorkflowJob
-from ....api.v1.routers.reports import build_standup
 
 router = APIRouter(prefix="/v1/slack", tags=["slack"])
 
@@ -42,12 +44,21 @@ def _verify_slack(request: Request, body: bytes, ts: str | None, sig: str | None
 @router.post("/commands")
 async def commands(
     request: Request,
-    payload: Dict[str, Any],
     x_slack_request_timestamp: str | None = Header(default=None),
     x_slack_signature: str | None = Header(default=None),
 ) -> Dict[str, Any]:
-    body = await request.body()
-    _verify_slack(request, body, x_slack_request_timestamp, x_slack_signature)
+    raw = await request.body()
+    _verify_slack(request, raw, x_slack_request_timestamp, x_slack_signature)
+    content_type = request.headers.get("content-type", "")
+    payload: Dict[str, Any]
+    if "application/json" in content_type:
+        try:
+            payload = json.loads(raw.decode() or "{}")
+        except json.JSONDecodeError:
+            payload = {}
+    else:
+        form = parse_qs(raw.decode())
+        payload = {k: v[0] for k, v in form.items()}
     text = (payload.get("text") or "").strip()
     if not text:
         return {
@@ -129,12 +140,27 @@ async def commands(
 @router.post("/interactions")
 async def interactions(
     request: Request,
-    payload: Dict[str, Any],
     x_slack_request_timestamp: str | None = Header(default=None),
     x_slack_signature: str | None = Header(default=None),
 ) -> Dict[str, Any]:
-    body = await request.body()
-    _verify_slack(request, body, x_slack_request_timestamp, x_slack_signature)
+    raw = await request.body()
+    _verify_slack(request, raw, x_slack_request_timestamp, x_slack_signature)
+    content_type = request.headers.get("content-type", "")
+    payload: Dict[str, Any]
+    if "application/json" in content_type:
+        try:
+            payload = json.loads(raw.decode() or "{}")
+        except json.JSONDecodeError:
+            payload = {}
+    else:
+        form = parse_qs(raw.decode())
+        if "payload" in form:
+            try:
+                payload = json.loads(form["payload"][0])
+            except Exception:
+                payload = {}
+        else:
+            payload = {k: v[0] for k, v in form.items()}
     action = payload.get("action")
     if action == "approve-job":
         job_id = int(payload.get("job_id"))
