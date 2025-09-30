@@ -18,10 +18,10 @@ def main() -> None:
             deleted = cur.rowcount
         conn.commit()
 
-    print(f"Deleted {deleted} rows older than {days} days (cutoff {cutoff.isoformat()})")
+    print(
+        f"Deleted {deleted} rows older than {days} days (cutoff {cutoff.isoformat()})"
+    )
 
 
 if __name__ == "__main__":
     main()
-
-

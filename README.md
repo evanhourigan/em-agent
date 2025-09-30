@@ -283,6 +283,7 @@ curl -sS -X POST http://localhost:8000/v1/slack/interactions \
 ```
 
 Next steps:
+
 - Add Slack signing verification and secrets management.
 - Add interactive message payload schemas and richer responses.
 - Map commands to actual signal queries and approvals UX.

@@ -50,6 +50,26 @@
           "format": "table"
         }
       ]
+    },
+    {
+      "type": "timeseries",
+      "title": "WIP",
+      "targets": [
+        {
+          "rawSql": "select day as time, wip as value from public.wip order by day",
+          "format": "time_series"
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Aging WIP (days)",
+      "targets": [
+        {
+          "rawSql": "select delivery_id, age_days from public.aging_wip order by age_days desc",
+          "format": "table"
+        }
+      ]
     }
   ],
   "version": 1

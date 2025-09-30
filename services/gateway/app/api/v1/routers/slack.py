@@ -131,6 +131,56 @@ async def commands(
             )
             return {"ok": True, "message": msg}
 
+    if text.startswith("standup post"):
+        parts = text.split()
+        channel = parts[2] if len(parts) > 2 else None
+        older = int(parts[3]) if len(parts) > 3 and parts[3].isdigit() else 48
+        from ....api.v1.routers.reports import build_standup
+        from ....services.slack_client import SlackClient
+
+        SessionLocal = get_sessionmaker()
+        with SessionLocal() as session:
+            r = build_standup(session, older)
+            msg = (
+                f"Standup: stale_prs:{r['stale_pr_count']} top:{', '.join(r['stale_pr_top'])} | "
+                f"wip:{r['wip_open_prs']} | pr_no_review:{r['pr_without_review_count']} | "
+                f"deploys_24h:{r['deployments_last_24h']}"
+            )
+            res = SlackClient().post_text(msg, channel=channel)
+            return {"ok": True, "posted": res}
+
+    if text.startswith("sprint post"):
+        parts = text.split()
+        channel = parts[2] if len(parts) > 2 else None
+        days = int(parts[3]) if len(parts) > 3 and parts[3].isdigit() else 14
+        from ....api.v1.routers.reports import build_sprint_health
+        from ....services.slack_client import SlackClient
+
+        SessionLocal = get_sessionmaker()
+        with SessionLocal() as session:
+            r = build_sprint_health(session, days)
+            msg = (
+                f"Sprint Health: window {r['window_days']}d | "
+                f"deploys:{r['total_deploys']} avg/day:{r['avg_daily_deploys']:.2f} | "
+                f"CFR:{r['avg_change_fail_rate']:.2f} | WIP latest:{r['latest_wip']} avg:{r['avg_wip']:.2f}"
+            )
+            res = SlackClient().post_text(msg, channel=channel)
+            return {"ok": True, "posted": res}
+
+    if text.startswith("sprint"):
+        parts = text.split()
+        days = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 14
+        from ....api.v1.routers.reports import build_sprint_health
+
+        SessionLocal = get_sessionmaker()
+        with SessionLocal() as session:
+            r = build_sprint_health(session, days)
+            msg = (
+                f"sprint[{r['window_days']}d] deploys:{r['total_deploys']} avg/day:{r['avg_daily_deploys']:.2f} | "
+                f"CFR:{r['avg_change_fail_rate']:.2f} | WIP latest:{r['latest_wip']} avg:{r['avg_wip']:.2f}"
+            )
+            return {"ok": True, "message": msg}
+
     return {
         "ok": True,
         "message": "Usage: signals [kind]|approvals|approve <id>|decline <id>",
@@ -159,6 +209,18 @@ async def interactions(
                 payload = json.loads(form["payload"][0])
             except Exception:
                 payload = {}
+            # button actions payload: route approve/decline
+            actions = payload.get("actions") or []
+            if actions and isinstance(actions, list):
+                val = actions[0].get("value")
+                if isinstance(val, str) and ":" in val:
+                    verb, ident = val.split(":", 1)
+                    if verb in {"approve", "decline"} and ident.isdigit():
+                        payload = {
+                            "action": "approval-decision",
+                            "id": int(ident),
+                            "decision": "approve" if verb == "approve" else "decline",
+                        }
         else:
             payload = {k: v[0] for k, v in form.items()}
     action = payload.get("action")

@@ -59,3 +59,21 @@ models:
         tests: []
       - name: mttr_hours
         tests: []
+  - name: wip
+    description: Daily count of work-in-progress items
+    columns:
+      - name: day
+        tests: []
+      - name: wip
+        tests: []
+  - name: aging_wip
+    description: Open items with age in days
+    columns:
+      - name: delivery_id
+        tests: []
+      - name: opened_at
+        tests: []
+      - name: end_at
+        tests: []
+      - name: age_days
+        tests: []

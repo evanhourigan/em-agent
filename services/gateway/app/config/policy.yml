@@ -9,3 +9,4 @@ no_ticket_link:
 pr_without_review:
   action: nudge
   older_than_hours: 12
+

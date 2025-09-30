@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from typing import Any, Dict
-import os
-import yaml
 
+import yaml
 from fastapi import APIRouter, HTTPException
 
 router = APIRouter(prefix="/v1/policy", tags=["policy"])
@@ -47,4 +47,3 @@ def evaluate_policy(payload: Dict[str, Any]) -> Dict[str, Any]:
         return {"allow": True, "reason": "no policy; allow by default"}
     action = policy.get("action", "nudge")
     return {"allow": action != "block", "action": action, "policy": policy}
-

@@ -7,9 +7,8 @@ Create Date: 2025-09-29
 
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "0007_workflow_jobs"
@@ -36,5 +35,3 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_table("workflow_jobs")
-
-

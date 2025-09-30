@@ -9,6 +9,7 @@ router = APIRouter(prefix="/v1/approvals", tags=["approvals"])
 from ....db import get_sessionmaker
 from ....models.approvals import Approval
 from ....models.workflow_jobs import WorkflowJob
+from ....services.slack_client import SlackClient
 
 
 @router.get("")
@@ -98,3 +99,36 @@ def decide(id: int, payload: Dict[str, Any]) -> Dict[str, Any]:
         if job_id is not None:
             resp["job_id"] = job_id
         return resp
+
+
+@router.post("/{id}/notify")
+def notify(id: int, payload: Dict[str, Any] | None = None) -> Dict[str, Any]:
+    channel = (payload or {}).get("channel")
+    SessionLocal = get_sessionmaker()
+    with SessionLocal() as session:
+        a = session.get(Approval, id)
+        if not a:
+            raise HTTPException(status_code=404, detail="not found")
+        text = f"Approval needed: {a.action} {a.subject}"
+        blocks = [
+            {"type": "section", "text": {"type": "mrkdwn", "text": text}},
+            {
+                "type": "actions",
+                "elements": [
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "Approve"},
+                        "style": "primary",
+                        "value": f"approve:{a.id}",
+                    },
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "Decline"},
+                        "style": "danger",
+                        "value": f"decline:{a.id}",
+                    },
+                ],
+            },
+        ]
+        res = SlackClient().post_blocks(text=text, blocks=blocks, channel=channel)
+        return {"ok": bool(res.get("ok")) or bool(res.get("dry_run")), "posted": res}

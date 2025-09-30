@@ -15,5 +15,7 @@ class ActionLog(Base):
     subject: Mapped[str] = mapped_column(String(255), nullable=False)
     action: Mapped[str] = mapped_column(String(32), nullable=False)  # nudge|escalate|block
     payload: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=datetime.utcnow
+    )
 

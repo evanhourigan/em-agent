@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import threading
 import time
+
 from sqlalchemy.orm import Session
 
 from ..core.logging import get_logger
@@ -56,5 +57,3 @@ def maybe_start_workflow_runner(app, session_factory) -> WorkflowRunner | None:
     app.state.workflow_runner_thread = t
     get_logger(__name__).info("workflow_runner.started", interval_sec=interval)
     return t
-
-

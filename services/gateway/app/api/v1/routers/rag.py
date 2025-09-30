@@ -7,7 +7,6 @@ from fastapi import APIRouter, HTTPException
 
 from ....core.config import get_settings
 
-
 router = APIRouter(prefix="/v1/rag", tags=["rag"])
 
 
@@ -21,5 +20,3 @@ def proxy_search(payload: Dict[str, Any]) -> Dict[str, Any]:
             return resp.json()
     except httpx.HTTPError as exc:
         raise HTTPException(status_code=502, detail=f"rag proxy error: {exc}")
-
-

@@ -1,0 +1,31 @@
+name: sprint-health-post
+
+on:
+  schedule:
+    - cron: "0 14 * * 1-5" # 14:00 UTC on weekdays
+  workflow_dispatch: {}
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compose up db and gateway
+        run: docker compose up -d --build db gateway
+      - name: Wait for gateway health
+        run: |
+          for i in {1..60}; do
+            if curl -sf http://localhost:8000/health > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Gateway not healthy"; docker compose logs gateway; exit 1
+      - name: Post sprint health to Slack
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_DEFAULT_CHANNEL: ${{ secrets.SLACK_DEFAULT_CHANNEL }}
+        run: |
+          docker compose exec -T gateway env SLACK_WEBHOOK_URL="$SLACK_WEBHOOK_URL" SLACK_BOT_TOKEN="$SLACK_BOT_TOKEN" SLACK_DEFAULT_CHANNEL="$SLACK_DEFAULT_CHANNEL" curl -sS -X POST http://localhost:8000/v1/reports/sprint-health/post -H 'content-type: application/json' -d '{"days":14}' | jq .
+

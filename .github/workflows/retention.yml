@@ -26,3 +26,4 @@ jobs:
             echo "DATABASE_URL not set, skipping purge"; exit 0; fi
           python services/metrics/scripts/purge_old_events.py
 
+

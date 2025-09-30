@@ -13,6 +13,11 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/postgres"
     rag_url: str = "http://rag:8000"
+    slack_signing_secret: str | None = None
+    slack_signing_required: bool = False
+    slack_webhook_url: str | None = None
+    slack_bot_token: str | None = None
+    slack_default_channel: str | None = None
 
 
 @lru_cache(maxsize=1)

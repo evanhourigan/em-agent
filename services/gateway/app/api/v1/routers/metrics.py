@@ -30,21 +30,28 @@ def dora_lead_time(session: Session = Depends(get_db_session)) -> List[dict[str,
 
 
 @router.get("/v1/metrics/dora/deployment-frequency")
-def deployment_frequency(session: Session = Depends(get_db_session)) -> List[dict[str, Any]]:
+def deployment_frequency(
+    session: Session = Depends(get_db_session),
+) -> List[dict[str, Any]]:
     return _query_list(
-        session, "select day, deployments from public.deployment_frequency order by day desc limit 60"
+        session,
+        "select day, deployments from public.deployment_frequency order by day desc limit 60",
     )
 
 
 @router.get("/v1/metrics/dora/change-fail-rate")
-def change_fail_rate(session: Session = Depends(get_db_session)) -> List[dict[str, Any]]:
+def change_fail_rate(
+    session: Session = Depends(get_db_session),
+) -> List[dict[str, Any]]:
     return _query_list(
-        session, "select day, change_fail_rate from public.change_fail_rate order by day desc limit 60"
+        session,
+        "select day, change_fail_rate from public.change_fail_rate order by day desc limit 60",
     )
 
 
 @router.get("/v1/metrics/dora/mttr")
 def mttr(session: Session = Depends(get_db_session)) -> List[dict[str, Any]]:
     return _query_list(
-        session, "select delivery_id, mttr_hours from public.mttr order by mttr_hours desc limit 200"
+        session,
+        "select delivery_id, mttr_hours from public.mttr order by mttr_hours desc limit 200",
     )

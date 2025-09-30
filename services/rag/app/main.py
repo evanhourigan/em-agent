@@ -63,10 +63,16 @@ def create_app() -> FastAPI:
         texts = [d["content"] for d in app.state.docs]
         if app.state.backend == "st":
             if not _HAS_ST:
-                raise HTTPException(status_code=500, detail="sentence-transformers not available")
+                raise HTTPException(
+                    status_code=500, detail="sentence-transformers not available"
+                )
             if app.state.st_model is None:
-                app.state.st_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
-            app.state.st_doc_vectors = app.state.st_model.encode(texts, normalize_embeddings=True)
+                app.state.st_model = SentenceTransformer(
+                    "sentence-transformers/all-MiniLM-L6-v2"
+                )
+            app.state.st_doc_vectors = app.state.st_model.encode(
+                texts, normalize_embeddings=True
+            )
             return
         if app.state.vectorizer is None:
             app.state.vectorizer = TfidfVectorizer(stop_words="english")
@@ -90,7 +96,9 @@ def create_app() -> FastAPI:
         meta = payload.get("meta")
         if not doc_id or not content:
             raise HTTPException(status_code=400, detail="id and content required")
-        app.state.docs.append({"id": doc_id, "content": content, "parent_id": doc_id, "meta": meta})
+        app.state.docs.append(
+            {"id": doc_id, "content": content, "parent_id": doc_id, "meta": meta}
+        )
         _rebuild_embeddings()
         return {"indexed": doc_id}
 
@@ -110,22 +118,26 @@ def create_app() -> FastAPI:
                 continue
             chunks = _chunk_text(content, chunk_size, overlap)
             if len(chunks) == 1:
-                app.state.docs.append({
-                    "id": doc_id,
-                    "content": chunks[0],
-                    "parent_id": doc_id,
-                    "meta": meta,
-                })
+                app.state.docs.append(
+                    {
+                        "id": doc_id,
+                        "content": chunks[0],
+                        "parent_id": doc_id,
+                        "meta": meta,
+                    }
+                )
                 added += 1
             else:
                 for idx, ch in enumerate(chunks):
                     chunk_id = f"{doc_id}#c{idx}"
-                    app.state.docs.append({
-                        "id": chunk_id,
-                        "content": ch,
-                        "parent_id": doc_id,
-                        "meta": meta,
-                    })
+                    app.state.docs.append(
+                        {
+                            "id": chunk_id,
+                            "content": ch,
+                            "parent_id": doc_id,
+                            "meta": meta,
+                        }
+                    )
                     added += 1
         _rebuild_embeddings()
         return {"indexed": added}

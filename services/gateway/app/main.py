@@ -10,11 +10,11 @@ from .api.v1.routers.metrics import router as metrics_router
 from .api.v1.routers.policy import router as policy_router
 from .api.v1.routers.projects import router as projects_router
 from .api.v1.routers.rag import router as rag_router
+from .api.v1.routers.reports import router as reports_router
 from .api.v1.routers.signals import router as signals_router
 from .api.v1.routers.slack import router as slack_router
 from .api.v1.routers.webhooks import router as webhooks_router
 from .api.v1.routers.workflows import router as workflows_router
-from .api.v1.routers.reports import router as reports_router
 from .core.config import get_settings
 from .core.logging import configure_structlog, get_logger
 from .core.observability import add_prometheus

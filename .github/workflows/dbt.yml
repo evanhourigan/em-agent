@@ -2,7 +2,7 @@ name: dbt
 
 on:
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   dbt:
@@ -12,7 +12,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
       - name: Install dbt-postgres
         run: |
           python -m pip install --upgrade pip
@@ -33,4 +33,3 @@ jobs:
           DBT_PROFILES_DIR: ${{ github.workspace }}/services/metrics
         run: |
           dbt compile
-
