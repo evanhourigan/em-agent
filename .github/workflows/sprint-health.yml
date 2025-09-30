@@ -28,4 +28,3 @@ jobs:
           SLACK_DEFAULT_CHANNEL: ${{ secrets.SLACK_DEFAULT_CHANNEL }}
         run: |
           docker compose exec -T gateway env SLACK_WEBHOOK_URL="$SLACK_WEBHOOK_URL" SLACK_BOT_TOKEN="$SLACK_BOT_TOKEN" SLACK_DEFAULT_CHANNEL="$SLACK_DEFAULT_CHANNEL" curl -sS -X POST http://localhost:8000/v1/reports/sprint-health/post -H 'content-type: application/json' -d '{"days":14}' | jq .
-

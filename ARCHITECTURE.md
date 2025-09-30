@@ -218,6 +218,7 @@ limits:
 ## Execution Tracker (source of truth)
 
 This section is the single place any agent/human should consult for status and next actions.
+
 - Phase 5 — Work Breakdown
 
   - [x] 5.1 Standup report JSON + Slack post endpoint; weekday workflow

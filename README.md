@@ -302,6 +302,10 @@ curl -sS -X POST http://localhost:8000/v1/slack/commands -H 'content-type: appli
 # sprint health quick text and post
 curl -sS -X POST http://localhost:8000/v1/slack/commands -H 'content-type: application/json' -d '{"text":"sprint 14"}' | jq
 curl -sS -X POST http://localhost:8000/v1/slack/commands -H 'content-type: application/json' -d '{"text":"sprint post #eng 14"}' | jq
+
+# approvals list and post with buttons
+curl -sS -X POST http://localhost:8000/v1/slack/commands -H 'content-type: application/json' -d '{"text":"approvals"}' | jq
+curl -sS -X POST http://localhost:8000/v1/slack/commands -H 'content-type: application/json' -d '{"text":"approvals post #eng"}' | jq
 ```
 
 Next steps:

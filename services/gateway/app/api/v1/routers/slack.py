@@ -92,19 +92,74 @@ async def commands(
         return {"ok": True, "message": " | ".join(out)}
 
     if text.startswith("approvals"):
-        SessionLocal = get_sessionmaker()
-        with SessionLocal() as session:
-            rows = (
-                session.query(Approval)
-                .filter(Approval.status == "pending")
-                .order_by(Approval.id.desc())
-                .limit(10)
-                .all()
-            )
-            if not rows:
-                return {"ok": True, "message": "No pending approvals"}
-            items = [f"#{a.id} {a.action} {a.subject}" for a in rows]
-            return {"ok": True, "message": "; ".join(items)}
+        # "approvals post [channel]" or just "approvals"
+        if text.startswith("approvals post"):
+            from ....services.slack_client import SlackClient
+            parts = text.split()
+            channel = parts[2] if len(parts) > 2 else None
+            SessionLocal = get_sessionmaker()
+            with SessionLocal() as session:
+                rows = (
+                    session.query(Approval)
+                    .filter(Approval.status == "pending")
+                    .order_by(Approval.id.desc())
+                    .limit(10)
+                    .all()
+                )
+                if not rows:
+                    return {"ok": True, "message": "No pending approvals"}
+                blocks = [
+                    {
+                        "type": "header",
+                        "text": {"type": "plain_text", "text": "Pending Approvals"},
+                    }
+                ]
+                for a in rows:
+                    blocks.extend(
+                        [
+                            {
+                                "type": "section",
+                                "text": {
+                                    "type": "mrkdwn",
+                                    "text": f"*#{a.id}* {a.action} — {a.subject}",
+                                },
+                            },
+                            {
+                                "type": "actions",
+                                "elements": [
+                                    {
+                                        "type": "button",
+                                        "text": {"type": "plain_text", "text": "Approve"},
+                                        "style": "primary",
+                                        "value": f"approve:{a.id}",
+                                    },
+                                    {
+                                        "type": "button",
+                                        "text": {"type": "plain_text", "text": "Decline"},
+                                        "style": "danger",
+                                        "value": f"decline:{a.id}",
+                                    },
+                                ],
+                            },
+                            {"type": "divider"},
+                        ]
+                    )
+                res = SlackClient().post_blocks(text="Pending Approvals", blocks=blocks, channel=channel)
+                return {"ok": True, "posted": res}
+        else:
+            SessionLocal = get_sessionmaker()
+            with SessionLocal() as session:
+                rows = (
+                    session.query(Approval)
+                    .filter(Approval.status == "pending")
+                    .order_by(Approval.id.desc())
+                    .limit(10)
+                    .all()
+                )
+                if not rows:
+                    return {"ok": True, "message": "No pending approvals"}
+                items = [f"#{a.id} {a.action} {a.subject}" for a in rows]
+                return {"ok": True, "message": "; ".join(items)}
 
     if text.startswith("approve ") or text.startswith("decline "):
         parts = text.split()
