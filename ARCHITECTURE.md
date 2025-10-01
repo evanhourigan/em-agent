@@ -124,10 +124,12 @@ An AI-assisted “Chief of Staff” for engineering that plugs into your stack, 
 ### Phase 5 — Slack App & ChatOps
 
 - Slash commands (`/standup`, `/sprint`, `/triage`, `/ask`).
+- Posted reports with approvals UX (buttons), signed requests enforced.
 
 ### Phase 6 — Reliability & Safety
 
-- Observability, redaction, evals, cost controls.
+- Readiness endpoints, resilient client calls, backpressure.
+- Observability (OTel traces, Prometheus metrics), redaction, evals, cost controls.
 
 ### Phase 7 — Extras
 
@@ -223,6 +225,8 @@ This section is the single place any agent/human should consult for status and n
 
   - [x] 5.1 Standup report JSON + Slack post endpoint; weekday workflow
   - [x] 5.2 Sprint health report JSON + Slack post; weekday workflow
+  - [x] 5.3 Slack commands: approvals list/post with buttons, triage text/post
+  - [x] 5.4 Ask (RAG) command text/post
 
 ### Phase status
 
@@ -237,8 +241,18 @@ This section is the single place any agent/human should consult for status and n
 
   - [x] 6.1 Add readiness endpoint `/ready` (DB roundtrip)
   - [x] 6.2 RAG proxy transient retry (3x)
+  - [x] 6.3 Compose healthcheck uses `/ready`
+  - [x] 6.4 Slack client retries with simple backoff
+  - [ ] 6.5 OTel tracing across gateway, runners, RAG
+  - [ ] 6.6 Custom Prom metrics: approval_latency_ms, override rate, slack_post_errors
+  - [ ] 6.7 Rate limits, payload size limits, graceful shutdown
+  - [ ] 6.8 Secrets hardening guidance (Vault/SOPS roadmap)
 
 - [ ] Phase 7 — Extras
+
+  - [ ] Incident co-pilot starter (intake + timeline + standups)
+  - [ ] Onboarding autopilot (new hire doc kit + task list)
+  - [ ] OKR mapping prototype (issues ↔ objectives)
 
 ### Done (Phase 0)
 
