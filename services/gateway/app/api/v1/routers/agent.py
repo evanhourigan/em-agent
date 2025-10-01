@@ -87,10 +87,7 @@ def run_agent(payload: Dict[str, Any]) -> Dict[str, Any]:
                 resp.raise_for_status()
                 data = resp.json()
                 summary = (
-                    (data.get("choices") or [{}])[0]
-                    .get("message", {})
-                    .get("content", "")
-                    .strip()
+                    (data.get("choices") or [{}])[0].get("message", {}).get("content", "").strip()
                 )
                 out["summary"] = summary
         except Exception as exc:  # noqa: BLE001

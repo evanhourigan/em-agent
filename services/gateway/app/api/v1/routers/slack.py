@@ -311,10 +311,12 @@ async def commands(
         except Exception as exc:  # noqa: BLE001
             raise HTTPException(status_code=502, detail=str(exc))
         steps = r.get("steps") or []
-        return {
-            "ok": True,
-            "message": f"agent steps:{len(steps)} proposed:{'proposed_approval' in r}",
-        }
+        summary = (r.get("summary") or "").strip()
+        msg = f"agent steps:{len(steps)} proposed:{'proposed_approval' in r}"
+        if summary:
+            short = summary[:300] + ("…" if len(summary) > 300 else "")
+            msg += f" | {short}"
+        return {"ok": True, "message": msg}
 
     # ask: query RAG and summarize top results
     if text.startswith("ask post") or text.startswith("ask "):

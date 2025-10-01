@@ -292,7 +292,7 @@ curl -sS -X POST http://localhost:8000/v1/rag/search \
 
 Slack signing verification is supported. Set `SLACK_SIGNING_SECRET` and `SLACK_SIGNING_REQUIRED=true` to enforce signatures. For local JSON testing without Slack, omit signing and set `SLACK_SIGNING_REQUIRED=false`.
 
-```bash
+````bash
 # list signals or pending approvals
 curl -sS -X POST http://localhost:8000/v1/slack/commands \
   -H 'content-type: application/json' \
@@ -343,8 +343,9 @@ docker compose up -d --build gateway
 curl -sS -X POST http://localhost:8000/v1/agent/run \
   -H 'content-type: application/json' \
   -d '{"query":"sprint health and stale PRs"}' | jq
-```
-```
+````
+
+````
 
 Next steps:
 
@@ -367,7 +368,7 @@ curl -sS -X POST http://localhost:8000/webhooks/jira \
   -H 'X-Atlassian-Webhook-Identifier: demo-1' \
   -H 'content-type: application/json' \
   -d '{"event":"issue_updated"}'
-```
+````
 
 ### MCP Tools (Phase 4)
 
