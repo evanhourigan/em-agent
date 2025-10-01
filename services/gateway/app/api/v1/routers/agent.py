@@ -55,5 +55,3 @@ def run_agent(payload: Dict[str, Any]) -> Dict[str, Any]:
         out["proposed_approval"] = a
 
     return out
-
-

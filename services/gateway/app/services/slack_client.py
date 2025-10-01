@@ -6,7 +6,7 @@ import httpx
 
 from ..core.config import get_settings
 from ..core.logging import get_logger
-from ..main import app as fastapi_app  # type: ignore
+from ..core.metrics import metrics as global_metrics
 
 
 class SlackClient:
@@ -64,12 +64,18 @@ class SlackClient:
                 )
                 data = resp.json()
                 ok = bool(data.get("ok"))
-                try:
-                    metrics = fastapi_app.state.metrics  # type: ignore[attr-defined]
-                    if metrics:
-                        metrics["slack_posts_total"].labels(kind="text", ok=str(ok).lower()).inc()
-                except Exception:
-                    pass
+                    m = global_metrics
+                    if m:
+                        try:
+                            m["slack_posts_total"].labels(kind="text", ok=str(ok).lower()).inc()
+                        except Exception:
+                            pass
+                m = global_metrics
+                if m:
+                    try:
+                        m["slack_posts_total"].labels(kind="text", ok=str(ok).lower()).inc()
+                    except Exception:
+                        pass
                 return {"ok": ok, "response": data}
 
         return self._with_retry(_call_api)
@@ -109,12 +115,18 @@ class SlackClient:
                 )
                 data = resp.json()
                 ok = bool(data.get("ok"))
-                try:
-                    metrics = fastapi_app.state.metrics  # type: ignore[attr-defined]
-                    if metrics:
-                        metrics["slack_posts_total"].labels(kind="blocks", ok=str(ok).lower()).inc()
-                except Exception:
-                    pass
+                    m = global_metrics
+                    if m:
+                        try:
+                            m["slack_posts_total"].labels(kind="blocks", ok=str(ok).lower()).inc()
+                        except Exception:
+                            pass
+                m = global_metrics
+                if m:
+                    try:
+                        m["slack_posts_total"].labels(kind="blocks", ok=str(ok).lower()).inc()
+                    except Exception:
+                        pass
                 return {"ok": ok, "response": data}
 
         return self._with_retry(_call_api)

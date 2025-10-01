@@ -31,8 +31,9 @@ def add_prometheus(app, app_name: str = "gateway") -> None:
     # Custom metrics registry shortcuts (attach to app.state)
     try:
         from prometheus_client import Counter, Histogram  # type: ignore
+        from .metrics import metrics as global_metrics
 
-        app.state.metrics = {
+        reg = {
             "approvals_decisions_total": Counter(
                 "approvals_decisions_total",
                 "Count of approval decisions by status",
@@ -49,6 +50,8 @@ def add_prometheus(app, app_name: str = "gateway") -> None:
                 ["kind", "ok"],
             ),
         }
+        app.state.metrics = reg
+        global_metrics.update(reg)
     except Exception:
         app.state.metrics = {}
 

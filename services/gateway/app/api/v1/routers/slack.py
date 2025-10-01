@@ -305,15 +305,16 @@ async def commands(
             import httpx
 
             with httpx.Client(timeout=30) as client:
-                resp = client.post(
-                    "http://localhost:8000/v1/agent/run", json={"query": query}
-                )
+                resp = client.post("http://localhost:8000/v1/agent/run", json={"query": query})
                 resp.raise_for_status()
                 r = resp.json()
         except Exception as exc:  # noqa: BLE001
             raise HTTPException(status_code=502, detail=str(exc))
         steps = r.get("steps") or []
-        return {"ok": True, "message": f"agent steps:{len(steps)} proposed:{'proposed_approval' in r}"}
+        return {
+            "ok": True,
+            "message": f"agent steps:{len(steps)} proposed:{'proposed_approval' in r}",
+        }
 
     # ask: query RAG and summarize top results
     if text.startswith("ask post") or text.startswith("ask "):
