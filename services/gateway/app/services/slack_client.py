@@ -20,15 +20,20 @@ class SlackClient:
     def _with_retry(self, func):
         try:
             return func()
-        except httpx.HTTPError as exc1:  # noqa: BLE001
+        except httpx.HTTPError:
             try:
                 return func()
-            except httpx.HTTPError as exc2:  # noqa: BLE001
-                try:
-                    return func()
-                except httpx.HTTPError as exc3:  # noqa: BLE001
-                    self._logger.warning("slack.post.failed", error=str(exc3))
-                    raise
+            except httpx.HTTPError:
+                return func()
+
+    def _inc_metric(self, kind: str, ok: bool) -> None:
+        m = global_metrics
+        if not m:
+            return
+        try:
+            m["slack_posts_total"].labels(kind=kind, ok=str(ok).lower()).inc()
+        except Exception:
+            pass
 
     def post_text(self, text: str, channel: Optional[str] = None) -> Dict[str, Any]:
         if not self._webhook_url and not self._bot_token:
@@ -41,14 +46,7 @@ class SlackClient:
                 with httpx.Client(timeout=10) as client:
                     resp = client.post(self._webhook_url, json={"text": text})
                     ok = resp.status_code < 300
-                    try:
-                        metrics = fastapi_app.state.metrics  # type: ignore[attr-defined]
-                        if metrics:
-                            metrics["slack_posts_total"].labels(
-                                kind="text", ok=str(ok).lower()
-                            ).inc()
-                    except Exception:
-                        pass
+                    self._inc_metric("text", ok)
                     return {"ok": ok}
 
             return self._with_retry(_call)
@@ -64,18 +62,7 @@ class SlackClient:
                 )
                 data = resp.json()
                 ok = bool(data.get("ok"))
-                    m = global_metrics
-                    if m:
-                        try:
-                            m["slack_posts_total"].labels(kind="text", ok=str(ok).lower()).inc()
-                        except Exception:
-                            pass
-                m = global_metrics
-                if m:
-                    try:
-                        m["slack_posts_total"].labels(kind="text", ok=str(ok).lower()).inc()
-                    except Exception:
-                        pass
+                self._inc_metric("text", ok)
                 return {"ok": ok, "response": data}
 
         return self._with_retry(_call_api)
@@ -93,14 +80,7 @@ class SlackClient:
                 with httpx.Client(timeout=10) as client:
                     resp = client.post(self._webhook_url, json={"text": text, "blocks": blocks})
                     ok = resp.status_code < 300
-                    try:
-                        metrics = fastapi_app.state.metrics  # type: ignore[attr-defined]
-                        if metrics:
-                            metrics["slack_posts_total"].labels(
-                                kind="blocks", ok=str(ok).lower()
-                            ).inc()
-                    except Exception:
-                        pass
+                    self._inc_metric("blocks", ok)
                     return {"ok": ok}
 
             return self._with_retry(_call)
@@ -115,18 +95,7 @@ class SlackClient:
                 )
                 data = resp.json()
                 ok = bool(data.get("ok"))
-                    m = global_metrics
-                    if m:
-                        try:
-                            m["slack_posts_total"].labels(kind="blocks", ok=str(ok).lower()).inc()
-                        except Exception:
-                            pass
-                m = global_metrics
-                if m:
-                    try:
-                        m["slack_posts_total"].labels(kind="blocks", ok=str(ok).lower()).inc()
-                    except Exception:
-                        pass
+                self._inc_metric("blocks", ok)
                 return {"ok": ok, "response": data}
 
         return self._with_retry(_call_api)

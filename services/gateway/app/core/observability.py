@@ -31,6 +31,7 @@ def add_prometheus(app, app_name: str = "gateway") -> None:
     # Custom metrics registry shortcuts (attach to app.state)
     try:
         from prometheus_client import Counter, Histogram  # type: ignore
+
         from .metrics import metrics as global_metrics
 
         reg = {

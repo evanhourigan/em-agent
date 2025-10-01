@@ -6,9 +6,9 @@ from fastapi import APIRouter, HTTPException
 from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/v1/approvals", tags=["approvals"])
-from ....core.metrics import metrics as global_metrics
 from ....core.config import get_settings
 from ....core.logging import get_logger
+from ....core.metrics import metrics as global_metrics
 from ....core.observability import add_prometheus
 from ....db import get_sessionmaker
 from ....models.approvals import Approval
