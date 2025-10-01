@@ -6,6 +6,7 @@ import httpx
 
 from ..core.config import get_settings
 from ..core.logging import get_logger
+from ..main import app as fastapi_app  # type: ignore
 
 
 class SlackClient:
@@ -39,7 +40,16 @@ class SlackClient:
             def _call():
                 with httpx.Client(timeout=10) as client:
                     resp = client.post(self._webhook_url, json={"text": text})
-                    return {"ok": resp.status_code < 300}
+                    ok = resp.status_code < 300
+                    try:
+                        metrics = fastapi_app.state.metrics  # type: ignore[attr-defined]
+                        if metrics:
+                            metrics["slack_posts_total"].labels(
+                                kind="text", ok=str(ok).lower()
+                            ).inc()
+                    except Exception:
+                        pass
+                    return {"ok": ok}
 
             return self._with_retry(_call)
 
@@ -53,7 +63,14 @@ class SlackClient:
                     "https://slack.com/api/chat.postMessage", headers=headers, json=payload
                 )
                 data = resp.json()
-                return {"ok": bool(data.get("ok")), "response": data}
+                ok = bool(data.get("ok"))
+                try:
+                    metrics = fastapi_app.state.metrics  # type: ignore[attr-defined]
+                    if metrics:
+                        metrics["slack_posts_total"].labels(kind="text", ok=str(ok).lower()).inc()
+                except Exception:
+                    pass
+                return {"ok": ok, "response": data}
 
         return self._with_retry(_call_api)
 
@@ -69,7 +86,16 @@ class SlackClient:
             def _call():
                 with httpx.Client(timeout=10) as client:
                     resp = client.post(self._webhook_url, json={"text": text, "blocks": blocks})
-                    return {"ok": resp.status_code < 300}
+                    ok = resp.status_code < 300
+                    try:
+                        metrics = fastapi_app.state.metrics  # type: ignore[attr-defined]
+                        if metrics:
+                            metrics["slack_posts_total"].labels(
+                                kind="blocks", ok=str(ok).lower()
+                            ).inc()
+                    except Exception:
+                        pass
+                    return {"ok": ok}
 
             return self._with_retry(_call)
 
@@ -82,6 +108,13 @@ class SlackClient:
                     "https://slack.com/api/chat.postMessage", headers=headers, json=payload
                 )
                 data = resp.json()
-                return {"ok": bool(data.get("ok")), "response": data}
+                ok = bool(data.get("ok"))
+                try:
+                    metrics = fastapi_app.state.metrics  # type: ignore[attr-defined]
+                    if metrics:
+                        metrics["slack_posts_total"].labels(kind="blocks", ok=str(ok).lower()).inc()
+                except Exception:
+                    pass
+                return {"ok": ok, "response": data}
 
         return self._with_retry(_call_api)

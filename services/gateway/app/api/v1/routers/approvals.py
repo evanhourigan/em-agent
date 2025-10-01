@@ -6,10 +6,16 @@ from fastapi import APIRouter, HTTPException
 from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/v1/approvals", tags=["approvals"])
+from ....app import main as app_module  # type: ignore
+from ....core.config import get_settings
+from ....core.logging import get_logger
+from ....core.observability import add_prometheus
 from ....db import get_sessionmaker
 from ....models.approvals import Approval
 from ....models.workflow_jobs import WorkflowJob
 from ....services.slack_client import SlackClient
+
+logger = get_logger(__name__)
 
 
 @router.get("")
@@ -95,6 +101,16 @@ def decide(id: int, payload: Dict[str, Any]) -> Dict[str, Any]:
             session.flush()  # populate job.id
             job_id = job.id
         session.commit()
+        # Metrics: decision counter and latency (if available)
+        try:
+            metrics = app_module.app.state.metrics  # type: ignore[attr-defined]
+            if metrics:
+                metrics["approvals_decisions_total"].labels(status=decision).inc()
+                if a.created_at and a.decided_at:
+                    latency = (a.decided_at - a.created_at).total_seconds()
+                    metrics["approvals_latency_seconds"].observe(latency)
+        except Exception:
+            pass
         resp = {"id": a.id, "status": a.status, "reason": a.reason}
         if job_id is not None:
             resp["job_id"] = job_id
@@ -131,4 +147,11 @@ def notify(id: int, payload: Dict[str, Any] | None = None) -> Dict[str, Any]:
             },
         ]
         res = SlackClient().post_blocks(text=text, blocks=blocks, channel=channel)
+        try:
+            metrics = app_module.app.state.metrics  # type: ignore[attr-defined]
+            if metrics:
+                ok = bool(res.get("ok")) or bool(res.get("dry_run"))
+                metrics["slack_posts_total"].labels(kind="approval", ok=str(ok).lower()).inc()
+        except Exception:
+            pass
         return {"ok": bool(res.get("ok")) or bool(res.get("dry_run")), "posted": res}

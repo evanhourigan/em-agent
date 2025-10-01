@@ -44,7 +44,7 @@ make down
 
 Health check
 
-```bash
+````bash
 make health
 # or
 curl -sS http://localhost:8000/health
@@ -58,8 +58,9 @@ OTEL_ENABLED=true OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 docker compo
 
 # verify spans (if no endpoint set, console exporter logs spans)
 docker compose logs -f gateway | grep -i span || true
-```
-```
+````
+
+````
 
 Prometheus metrics
 
@@ -67,7 +68,7 @@ Prometheus metrics
 make metrics
 # or
 curl -sS http://localhost:8000/metrics | head -50
-```
+````
 
 ## Database & Migrations
 

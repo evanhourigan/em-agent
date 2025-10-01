@@ -7,11 +7,20 @@ from fastapi import FastAPI, HTTPException
 
 try:
     from opentelemetry import trace  # type: ignore
-    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter  # type: ignore
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
+        OTLPSpanExporter,
+    )  # type: ignore
+    from opentelemetry.instrumentation.fastapi import (
+        FastAPIInstrumentor,
+    )  # type: ignore
     from opentelemetry.sdk.resources import Resource  # type: ignore
     from opentelemetry.sdk.trace import TracerProvider  # type: ignore
-    from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter, SimpleSpanProcessor  # type: ignore
-    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor  # type: ignore
+    from opentelemetry.sdk.trace.export import (  # type: ignore
+        BatchSpanProcessor,
+        ConsoleSpanExporter,
+        SimpleSpanProcessor,
+    )
+
     _HAS_OTEL = True
 except Exception:  # pragma: no cover - optional
     _HAS_OTEL = False
@@ -35,7 +44,9 @@ def create_app() -> FastAPI:
         resource = Resource.create({"service.name": "rag"})
         provider = TracerProvider(resource=resource)
         if endpoint:
-            provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=endpoint)))
+            provider.add_span_processor(
+                BatchSpanProcessor(OTLPSpanExporter(endpoint=endpoint))
+            )
         else:
             provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
         trace.set_tracer_provider(provider)
