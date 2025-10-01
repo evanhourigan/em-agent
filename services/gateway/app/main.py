@@ -4,6 +4,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from .api.v1.routers.approvals import router as approvals_router
+from .api.v1.routers.agent import router as agent_router
 from .api.v1.routers.health import router as health_router
 from .api.v1.routers.identities import router as identities_router
 from .api.v1.routers.metrics import router as metrics_router
@@ -68,6 +69,7 @@ def create_app() -> FastAPI:
     app.include_router(rag_router)
     app.include_router(slack_router)
     app.include_router(reports_router)
+    app.include_router(agent_router)
 
     @app.get("/")
     def root() -> dict:

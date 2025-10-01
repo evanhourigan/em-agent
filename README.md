@@ -326,6 +326,9 @@ curl -sS -X POST http://localhost:8000/v1/slack/commands -H 'content-type: appli
 # triage summary and post
 curl -sS -X POST http://localhost:8000/v1/slack/commands -H 'content-type: application/json' -d '{"text":"triage"}' | jq
 curl -sS -X POST http://localhost:8000/v1/slack/commands -H 'content-type: application/json' -d '{"text":"triage post #eng"}' | jq
+
+# agent planner (experimental)
+curl -sS -X POST http://localhost:8000/v1/agent/run -H 'content-type: application/json' -d '{"query":"sprint health and stale PRs"}' | jq
 ```
 
 Next steps:
