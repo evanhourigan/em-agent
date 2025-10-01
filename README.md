@@ -329,6 +329,21 @@ curl -sS -X POST http://localhost:8000/v1/slack/commands -H 'content-type: appli
 
 # agent planner (experimental)
 curl -sS -X POST http://localhost:8000/v1/agent/run -H 'content-type: application/json' -d '{"query":"sprint health and stale PRs"}' | jq
+
+Enable LLM summary (optional):
+
+```bash
+export AGENT_LLM_ENABLED=true
+export OPENAI_API_KEY=sk-...            # or compatible key
+export OPENAI_BASE_URL=https://api.openai.com/v1   # optional
+export OPENAI_MODEL=gpt-4o-mini         # default
+
+docker compose up -d --build gateway
+
+curl -sS -X POST http://localhost:8000/v1/agent/run \
+  -H 'content-type: application/json' \
+  -d '{"query":"sprint health and stale PRs"}' | jq
+```
 ```
 
 Next steps:

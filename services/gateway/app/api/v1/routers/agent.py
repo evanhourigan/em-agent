@@ -54,4 +54,46 @@ def run_agent(payload: Dict[str, Any]) -> Dict[str, Any]:
         )
         out["proposed_approval"] = a
 
+    # Optional LLM summary
+    settings = get_settings()
+    if settings.agent_llm_enabled and settings.openai_api_key:
+        try:
+            base = settings.openai_base_url or "https://api.openai.com/v1"
+            model = settings.openai_model
+            # Build a compact summary prompt from steps
+            context_lines: list[str] = []
+            for s in out.get("steps", [])[:5]:
+                tool = s.get("tool")
+                res = s.get("result")
+                context_lines.append(f"{tool}: {str(res)[:800]}")
+            prompt = (
+                "You are an engineering manager assistant. Summarize the key metrics and risks, "
+                "and suggest a next action in one short paragraph.\n" + "\n".join(context_lines)
+            )
+            headers = {"Authorization": f"Bearer {settings.openai_api_key}"}
+            with httpx.Client(timeout=30) as client:
+                resp = client.post(
+                    f"{base}/chat/completions",
+                    headers=headers,
+                    json={
+                        "model": model,
+                        "messages": [
+                            {"role": "system", "content": "You are concise and practical."},
+                            {"role": "user", "content": prompt},
+                        ],
+                        "temperature": 0.2,
+                    },
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                summary = (
+                    (data.get("choices") or [{}])[0]
+                    .get("message", {})
+                    .get("content", "")
+                    .strip()
+                )
+                out["summary"] = summary
+        except Exception as exc:  # noqa: BLE001
+            out["summary_error"] = str(exc)
+
     return out

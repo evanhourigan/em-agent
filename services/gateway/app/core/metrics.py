@@ -4,5 +4,3 @@ from typing import Any, Dict
 
 # Global metrics registry populated during app startup in observability.add_prometheus
 metrics: Dict[str, Any] = {}
-
-

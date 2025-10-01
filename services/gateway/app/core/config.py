@@ -23,6 +23,12 @@ class Settings(BaseSettings):
     otel_enabled: bool = False
     otel_exporter_otlp_endpoint: str | None = None
 
+    # Agent LLM (optional)
+    agent_llm_enabled: bool = False
+    openai_api_key: str | None = None
+    openai_base_url: str | None = None
+    openai_model: str = "gpt-4o-mini"
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
