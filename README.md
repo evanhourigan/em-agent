@@ -358,6 +358,10 @@ An HTTP MCP tools service is scaffolded at `services/mcp` exposing minimal tools
 - `POST /tools/signals.evaluate` → forwards to `/v1/signals/evaluate`
 - `POST /tools/reports.standup` → forwards to `/v1/reports/standup`
 - `POST /tools/rag.search` → forwards to `/v1/rag/search`
+- `POST /tools/reports.sprint_health` → forwards to `/v1/reports/sprint-health`
+- `POST /tools/approvals.propose` → forwards to `/v1/approvals/propose`
+- `POST /tools/approvals.decide` → forwards to `/v1/approvals/{id}/decision`
+- `POST /tools/slack.post_text` and `/tools/slack.post_blocks` (env Slack creds)
 
 Run it:
 
