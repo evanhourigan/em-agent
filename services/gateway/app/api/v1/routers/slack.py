@@ -95,6 +95,7 @@ async def commands(
         # "approvals post [channel]" or just "approvals"
         if text.startswith("approvals post"):
             from ....services.slack_client import SlackClient
+
             parts = text.split()
             channel = parts[2] if len(parts) > 2 else None
             SessionLocal = get_sessionmaker()
@@ -144,7 +145,9 @@ async def commands(
                             {"type": "divider"},
                         ]
                     )
-                res = SlackClient().post_blocks(text="Pending Approvals", blocks=blocks, channel=channel)
+                res = SlackClient().post_blocks(
+                    text="Pending Approvals", blocks=blocks, channel=channel
+                )
                 return {"ok": True, "posted": res}
         else:
             SessionLocal = get_sessionmaker()
@@ -235,6 +238,80 @@ async def commands(
                 f"CFR:{r['avg_change_fail_rate']:.2f} | WIP latest:{r['latest_wip']} avg:{r['avg_wip']:.2f}"
             )
             return {"ok": True, "message": msg}
+
+    # ask: query RAG and summarize top results
+    if text.startswith("ask post") or text.startswith("ask "):
+        parts = text.split()
+        channel = None
+        query = ""
+        if text.startswith("ask post"):
+            # format: ask post [channel] <query...>
+            if len(parts) >= 3 and parts[2].startswith("#"):
+                channel = parts[2]
+                query = " ".join(parts[3:])
+            else:
+                query = " ".join(parts[2:])
+        else:
+            query = " ".join(parts[1:])
+        query = query.strip()
+        if not query:
+            raise HTTPException(status_code=400, detail="usage: ask <query> | ask post [channel] <query>")
+
+        # call RAG through gateway proxy
+        try:
+            import httpx
+            from ....core.config import get_settings
+
+            gateway_base = ""  # same service
+            with httpx.Client(timeout=15) as client:
+                resp = client.post(f"http://localhost:8000/v1/rag/search", json={"q": query, "top_k": 3})
+                # When running inside container, localhost resolves; if behind proxy, router handles it
+                if resp.status_code >= 400:
+                    # fallback to internal include
+                    from ....api.v1.routers.rag import proxy_search  # type: ignore
+
+                    data = proxy_search({"q": query, "top_k": 3})
+                else:
+                    data = resp.json()
+        except Exception:
+            # final fallback
+            from ....api.v1.routers.rag import proxy_search  # type: ignore
+
+            data = proxy_search({"q": query, "top_k": 3})
+
+        results = data.get("results") or []
+        if not results:
+            return {"ok": True, "message": "No results"}
+        lines = []
+        for r in results[:3]:
+            title = r.get("id") or r.get("parent_id") or "doc"
+            snippet = (r.get("snippet") or "").strip().replace("\n", " ")
+            score = r.get("score")
+            lines.append(f"• {title} (score {score:.3f}): {snippet[:180]}")
+        msg = f"Results for: {query}\n" + "\n".join(lines)
+        if text.startswith("ask post"):
+            from ....services.slack_client import SlackClient
+
+            blocks = [
+                {"type": "header", "text": {"type": "plain_text", "text": "Ask"}},
+                {"type": "section", "text": {"type": "mrkdwn", "text": f"*Query:* {query}"}},
+            ]
+            for r in results[:3]:
+                title = r.get("id") or r.get("parent_id") or "doc"
+                snippet = (r.get("snippet") or "").strip()
+                blocks.append(
+                    {
+                        "type": "section",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": f"*{title}*\n{snippet[:300]}",
+                        },
+                    }
+                )
+                blocks.append({"type": "divider"})
+            res = SlackClient().post_blocks(text="Ask", blocks=blocks, channel=channel)
+            return {"ok": True, "posted": res}
+        return {"ok": True, "message": msg}
 
     return {
         "ok": True,

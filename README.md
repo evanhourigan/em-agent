@@ -306,6 +306,10 @@ curl -sS -X POST http://localhost:8000/v1/slack/commands -H 'content-type: appli
 # approvals list and post with buttons
 curl -sS -X POST http://localhost:8000/v1/slack/commands -H 'content-type: application/json' -d '{"text":"approvals"}' | jq
 curl -sS -X POST http://localhost:8000/v1/slack/commands -H 'content-type: application/json' -d '{"text":"approvals post #eng"}' | jq
+
+# ask RAG and optionally post
+curl -sS -X POST http://localhost:8000/v1/slack/commands -H 'content-type: application/json' -d '{"text":"ask how do I run migrations?"}' | jq
+curl -sS -X POST http://localhost:8000/v1/slack/commands -H 'content-type: application/json' -d '{"text":"ask post #eng how do I run migrations?"}' | jq
 ```
 
 Next steps:
