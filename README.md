@@ -310,6 +310,10 @@ curl -sS -X POST http://localhost:8000/v1/slack/commands -H 'content-type: appli
 # ask RAG and optionally post
 curl -sS -X POST http://localhost:8000/v1/slack/commands -H 'content-type: application/json' -d '{"text":"ask how do I run migrations?"}' | jq
 curl -sS -X POST http://localhost:8000/v1/slack/commands -H 'content-type: application/json' -d '{"text":"ask post #eng how do I run migrations?"}' | jq
+
+# triage summary and post
+curl -sS -X POST http://localhost:8000/v1/slack/commands -H 'content-type: application/json' -d '{"text":"triage"}' | jq
+curl -sS -X POST http://localhost:8000/v1/slack/commands -H 'content-type: application/json' -d '{"text":"triage post #eng"}' | jq
 ```
 
 Next steps:

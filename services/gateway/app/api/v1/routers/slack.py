@@ -189,6 +189,53 @@ async def commands(
             )
             return {"ok": True, "message": msg}
 
+    if text.startswith("triage post") or text.startswith("triage"):
+        # Summarize triage items using existing signal evaluation helpers
+        parts = text.split()
+        channel = None
+        if text.startswith("triage post"):
+            channel = parts[2] if len(parts) > 2 else None
+        SessionLocal = get_sessionmaker()
+        with SessionLocal() as session:
+            try:
+                stale = _evaluate_rule(session, {"kind": "stale_pr", "older_than_hours": 48})
+                no_review = _evaluate_rule(session, {"kind": "pr_without_review", "older_than_hours": 12})
+            except HTTPException as exc:
+                return {"ok": False, "message": f"error: {exc.detail}"}
+            top_stale = [str(x.get("delivery_id") or x) for x in stale[:5]]
+            top_no_review = [str(x.get("delivery_id") or x) for x in no_review[:5]]
+            msg = (
+                f"triage: stale_prs:{len(stale)} top:{', '.join(top_stale)} | "
+                f"no_review:{len(no_review)} top:{', '.join(top_no_review)}"
+            )
+            if text.startswith("triage post"):
+                from ....services.slack_client import SlackClient
+
+                blocks = [
+                    {"type": "header", "text": {"type": "plain_text", "text": "Triage"}},
+                    {
+                        "type": "section",
+                        "fields": [
+                            {"type": "mrkdwn", "text": f"*Stale PRs:* {len(stale)}"},
+                            {"type": "mrkdwn", "text": f"*No Review:* {len(no_review)}"},
+                        ],
+                    },
+                ]
+                if top_stale:
+                    blocks.append(
+                        {"type": "section", "text": {"type": "mrkdwn", "text": "*Top Stale:* " + ", ".join(top_stale)}}
+                    )
+                if top_no_review:
+                    blocks.append(
+                        {
+                            "type": "section",
+                            "text": {"type": "mrkdwn", "text": "*Needs Review:* " + ", ".join(top_no_review)},
+                        }
+                    )
+                res = SlackClient().post_blocks(text="Triage", blocks=blocks, channel=channel)
+                return {"ok": True, "posted": res}
+            return {"ok": True, "message": msg}
+
     if text.startswith("standup post"):
         parts = text.split()
         channel = parts[2] if len(parts) > 2 else None
@@ -255,16 +302,21 @@ async def commands(
             query = " ".join(parts[1:])
         query = query.strip()
         if not query:
-            raise HTTPException(status_code=400, detail="usage: ask <query> | ask post [channel] <query>")
+            raise HTTPException(
+                status_code=400, detail="usage: ask <query> | ask post [channel] <query>"
+            )
 
         # call RAG through gateway proxy
         try:
             import httpx
+
             from ....core.config import get_settings
 
             gateway_base = ""  # same service
             with httpx.Client(timeout=15) as client:
-                resp = client.post(f"http://localhost:8000/v1/rag/search", json={"q": query, "top_k": 3})
+                resp = client.post(
+                    f"http://localhost:8000/v1/rag/search", json={"q": query, "top_k": 3}
+                )
                 # When running inside container, localhost resolves; if behind proxy, router handles it
                 if resp.status_code >= 400:
                     # fallback to internal include
