@@ -199,7 +199,9 @@ async def commands(
         with SessionLocal() as session:
             try:
                 stale = _evaluate_rule(session, {"kind": "stale_pr", "older_than_hours": 48})
-                no_review = _evaluate_rule(session, {"kind": "pr_without_review", "older_than_hours": 12})
+                no_review = _evaluate_rule(
+                    session, {"kind": "pr_without_review", "older_than_hours": 12}
+                )
             except HTTPException as exc:
                 return {"ok": False, "message": f"error: {exc.detail}"}
             top_stale = [str(x.get("delivery_id") or x) for x in stale[:5]]
@@ -223,13 +225,22 @@ async def commands(
                 ]
                 if top_stale:
                     blocks.append(
-                        {"type": "section", "text": {"type": "mrkdwn", "text": "*Top Stale:* " + ", ".join(top_stale)}}
+                        {
+                            "type": "section",
+                            "text": {
+                                "type": "mrkdwn",
+                                "text": "*Top Stale:* " + ", ".join(top_stale),
+                            },
+                        }
                     )
                 if top_no_review:
                     blocks.append(
                         {
                             "type": "section",
-                            "text": {"type": "mrkdwn", "text": "*Needs Review:* " + ", ".join(top_no_review)},
+                            "text": {
+                                "type": "mrkdwn",
+                                "text": "*Needs Review:* " + ", ".join(top_no_review),
+                            },
                         }
                     )
                 res = SlackClient().post_blocks(text="Triage", blocks=blocks, channel=channel)

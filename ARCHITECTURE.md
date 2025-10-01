@@ -237,6 +237,7 @@ This section is the single place any agent/human should consult for status and n
 
   - [x] 6.1 Add readiness endpoint `/ready` (DB roundtrip)
   - [x] 6.2 RAG proxy transient retry (3x)
+
 - [ ] Phase 7 — Extras
 
 ### Done (Phase 0)
