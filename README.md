@@ -351,6 +351,22 @@ curl -sS -X POST http://localhost:8000/webhooks/jira \
   -d '{"event":"issue_updated"}'
 ```
 
+### MCP Tools (Phase 4)
+
+An HTTP MCP tools service is scaffolded at `services/mcp` exposing minimal tools that proxy to the gateway:
+
+- `POST /tools/signals.evaluate` → forwards to `/v1/signals/evaluate`
+- `POST /tools/reports.standup` → forwards to `/v1/reports/standup`
+- `POST /tools/rag.search` → forwards to `/v1/rag/search`
+
+Run it:
+
+```bash
+docker compose up -d --build mcp
+curl -sS http://localhost:8002/ | jq
+curl -sS -X POST http://localhost:8002/tools/reports.standup -H 'content-type: application/json' -d '{}' | jq
+```
+
 ## Development Notes
 
 - Service: `services/gateway` (FastAPI + SQLAlchemy + Alembic)

@@ -48,6 +48,14 @@ services:
       - EMBEDDINGS_BACKEND=${EMBEDDINGS_BACKEND:-tfidf}
       - OTEL_ENABLED=${OTEL_ENABLED:-false}
       - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+  mcp:
+    build: ./services/mcp
+    environment:
+      - GATEWAY_URL=http://gateway:8000
+    ports:
+      - "8002:8000"
+    depends_on:
+      - gateway
     healthcheck:
       test: ["CMD-SHELL", "curl -fs http://localhost:8000/health || exit 1"]
       interval: 60s
