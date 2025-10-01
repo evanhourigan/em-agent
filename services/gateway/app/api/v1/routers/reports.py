@@ -96,7 +96,7 @@ def build_sprint_health(session: Session, days: int = 14) -> Dict[str, Any]:
             """
             select coalesce(sum(deployments), 0)
             from public.deployment_frequency
-            where day >= current_date - :days::int
+            where day >= (current_date - (:days || ' days')::interval)::date
             """
         ),
         {"days": days},
@@ -107,7 +107,7 @@ def build_sprint_health(session: Session, days: int = 14) -> Dict[str, Any]:
             """
             select coalesce(avg(deployments), 0)
             from public.deployment_frequency
-            where day >= current_date - :days::int
+            where day >= (current_date - (:days || ' days')::interval)::date
             """
         ),
         {"days": days},
@@ -119,7 +119,7 @@ def build_sprint_health(session: Session, days: int = 14) -> Dict[str, Any]:
             """
             select coalesce(avg(change_fail_rate), 0)
             from public.change_fail_rate
-            where day >= current_date - :days::int
+            where day >= (current_date - (:days || ' days')::interval)::date
             """
         ),
         {"days": days},
@@ -137,7 +137,7 @@ def build_sprint_health(session: Session, days: int = 14) -> Dict[str, Any]:
             """
             select coalesce(avg(wip), 0)
             from public.wip
-            where day >= current_date - :days::int
+            where day >= (current_date - (:days || ' days')::interval)::date
             """
         ),
         {"days": days},
