@@ -48,6 +48,7 @@ Health check
 make health
 # or
 curl -sS http://localhost:8000/health
+curl -sS http://localhost:8000/ready
 ```
 
 Prometheus metrics

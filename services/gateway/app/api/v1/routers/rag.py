@@ -13,10 +13,13 @@ router = APIRouter(prefix="/v1/rag", tags=["rag"])
 @router.post("/search")
 def proxy_search(payload: Dict[str, Any]) -> Dict[str, Any]:
     rag_url = get_settings().rag_url.rstrip("/")
-    try:
-        with httpx.Client(timeout=15) as client:
-            resp = client.post(f"{rag_url}/search", json=payload)
-            resp.raise_for_status()
-            return resp.json()
-    except httpx.HTTPError as exc:
-        raise HTTPException(status_code=502, detail=f"rag proxy error: {exc}")
+    last_exc: Exception | None = None
+    for _ in range(3):
+        try:
+            with httpx.Client(timeout=15) as client:
+                resp = client.post(f"{rag_url}/search", json=payload)
+                resp.raise_for_status()
+                return resp.json()
+        except httpx.HTTPError as exc:  # noqa: BLE001
+            last_exc = exc
+    raise HTTPException(status_code=502, detail=f"rag proxy error: {last_exc}")

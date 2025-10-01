@@ -33,3 +33,12 @@ def health(_: Request, session: Session = Depends(get_db_session)) -> JSONRespon
         },
         status_code=status_code,
     )
+
+
+@router.get("/ready")
+def ready(_: Request, session: Session = Depends(get_db_session)) -> JSONResponse:
+    try:
+        session.execute(text("SELECT 1"))
+        return JSONResponse({"ready": True}, status_code=200)
+    except Exception:
+        return JSONResponse({"ready": False}, status_code=503)

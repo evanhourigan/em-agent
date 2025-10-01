@@ -233,6 +233,10 @@ This section is the single place any agent/human should consult for status and n
 - [ ] Phase 4 — RAG & Knowledge
 - [ ] Phase 5 — Slack App & ChatOps
 - [ ] Phase 6 — Reliability & Safety
+- Phase 6 — Work Breakdown
+
+  - [x] 6.1 Add readiness endpoint `/ready` (DB roundtrip)
+  - [x] 6.2 RAG proxy transient retry (3x)
 - [ ] Phase 7 — Extras
 
 ### Done (Phase 0)
