@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     slack_bot_token: str | None = None
     slack_default_channel: str | None = None
 
+    # Tracing
+    otel_enabled: bool = False
+    otel_exporter_otlp_endpoint: str | None = None
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

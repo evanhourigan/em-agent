@@ -35,6 +35,7 @@ class SlackClient:
             return {"ok": False, "dry_run": True, "text": text}
 
         if self._webhook_url:
+
             def _call():
                 with httpx.Client(timeout=10) as client:
                     resp = client.post(self._webhook_url, json={"text": text})
@@ -45,6 +46,7 @@ class SlackClient:
         # Bot token path (chat.postMessage)
         headers = {"Authorization": f"Bearer {self._bot_token}"}
         payload = {"channel": channel or self._default_channel, "text": text}
+
         def _call_api():
             with httpx.Client(timeout=10) as client:
                 resp = client.post(
@@ -63,6 +65,7 @@ class SlackClient:
             return {"ok": False, "dry_run": True, "blocks": blocks}
 
         if self._webhook_url:
+
             def _call():
                 with httpx.Client(timeout=10) as client:
                     resp = client.post(self._webhook_url, json={"text": text, "blocks": blocks})
@@ -72,6 +75,7 @@ class SlackClient:
 
         headers = {"Authorization": f"Bearer {self._bot_token}"}
         payload = {"channel": channel or self._default_channel, "text": text, "blocks": blocks}
+
         def _call_api():
             with httpx.Client(timeout=10) as client:
                 resp = client.post(

@@ -17,7 +17,7 @@ from .api.v1.routers.webhooks import router as webhooks_router
 from .api.v1.routers.workflows import router as workflows_router
 from .core.config import get_settings
 from .core.logging import configure_structlog, get_logger
-from .core.observability import add_prometheus
+from .core.observability import add_prometheus, add_tracing
 from .db import get_engine, get_sessionmaker
 from .services.signal_runner import maybe_start_evaluator
 from .services.workflow_runner import maybe_start_workflow_runner
@@ -42,6 +42,10 @@ def create_app() -> FastAPI:
 
     # Metrics
     add_prometheus(app, app_name="gateway")
+
+    # Tracing (optional)
+    if settings.otel_enabled:
+        add_tracing(app, app_name="gateway", endpoint=settings.otel_exporter_otlp_endpoint)
 
     @app.on_event("startup")
     def on_startup() -> None:  # noqa: D401

@@ -49,6 +49,16 @@ make health
 # or
 curl -sS http://localhost:8000/health
 curl -sS http://localhost:8000/ready
+
+Tracing (optional)
+
+```bash
+# enable OTLP exporter (e.g., Tempo/Jaeger OTLP endpoint)
+OTEL_ENABLED=true OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 docker compose up -d --build gateway rag
+
+# verify spans (if no endpoint set, console exporter logs spans)
+docker compose logs -f gateway | grep -i span || true
+```
 ```
 
 Prometheus metrics

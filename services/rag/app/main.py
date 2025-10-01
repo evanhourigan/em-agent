@@ -4,6 +4,17 @@ import os
 from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import FastAPI, HTTPException
+
+try:
+    from opentelemetry import trace  # type: ignore
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter  # type: ignore
+    from opentelemetry.sdk.resources import Resource  # type: ignore
+    from opentelemetry.sdk.trace import TracerProvider  # type: ignore
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter, SimpleSpanProcessor  # type: ignore
+    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor  # type: ignore
+    _HAS_OTEL = True
+except Exception:  # pragma: no cover - optional
+    _HAS_OTEL = False
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -17,6 +28,18 @@ except Exception:  # pragma: no cover - optional dependency
 
 def create_app() -> FastAPI:
     app = FastAPI(title="rag", version="0.3.0")
+
+    # Optional tracing
+    if _HAS_OTEL and os.getenv("OTEL_ENABLED", "false").lower() == "true":
+        endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+        resource = Resource.create({"service.name": "rag"})
+        provider = TracerProvider(resource=resource)
+        if endpoint:
+            provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=endpoint)))
+        else:
+            provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
+        trace.set_tracer_provider(provider)
+        FastAPIInstrumentor.instrument_app(app)
 
     # Backend selection: tfidf (default) or st (Sentence-Transformers)
     app.state.backend: str = os.getenv("EMBEDDINGS_BACKEND", "tfidf").lower()
