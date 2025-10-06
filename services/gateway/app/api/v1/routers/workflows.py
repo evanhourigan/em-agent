@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from ....api.v1.routers.approvals import propose_action
 from ....api.v1.routers.policy import _load_policy
 from ....core.config import get_settings
-import httpx
 from ....models.action_log import ActionLog
 from ....models.workflow_jobs import WorkflowJob
 from ...deps import get_db_session

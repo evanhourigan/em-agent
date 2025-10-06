@@ -4,9 +4,10 @@ import os
 from dataclasses import dataclass
 from typing import Any, Dict
 
-import yaml
 import httpx
+import yaml
 from fastapi import APIRouter, HTTPException
+
 from ....core.config import get_settings
 
 router = APIRouter(prefix="/v1/policy", tags=["policy"])

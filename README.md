@@ -400,7 +400,10 @@ curl -sS -X POST http://localhost:8002/tools/reports.standup -H 'content-type: a
 OPA policy (optional)
 
 ```bash
-# point gateway at a running OPA (Rego package em_agent with rule data.em_agent.decision)
+# run a local OPA with the example policy
+docker run -d --name opa -p 8181:8181 -v $(pwd)/services/opa/policies:/policies openpolicyagent/opa:latest run --server --addr=0.0.0.0:8181 -b /policies
+
+# point gateway at OPA (Rego package em_agent with rule data.em_agent.decision)
 OPA_URL=http://localhost:8181 docker compose up -d --build gateway
 
 # evaluate via gateway (falls back to YAML policy if OPA unreachable)
@@ -408,6 +411,7 @@ curl -sS -X POST http://localhost:8000/v1/policy/evaluate \
   -H 'content-type: application/json' \
   -d '{"kind":"stale_pr"}' | jq
 ```
+
 ## Development Notes
 
 - Service: `services/gateway` (FastAPI + SQLAlchemy + Alembic)
