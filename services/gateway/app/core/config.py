@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     openai_base_url: str | None = None
     openai_model: str = "gpt-4o-mini"
 
+    # Safety limits
+    rate_limit_per_min: int = 120
+    max_payload_bytes: int = 1024 * 1024
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

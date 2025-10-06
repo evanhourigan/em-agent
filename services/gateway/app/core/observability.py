@@ -1,5 +1,8 @@
 from typing import Optional
 
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 from starlette_exporter import PrometheusMiddleware, handle_metrics
 
 try:
@@ -55,6 +58,34 @@ def add_prometheus(app, app_name: str = "gateway") -> None:
         global_metrics.update(reg)
     except Exception:
         app.state.metrics = {}
+
+    # Rate limiting and payload size guard (simple, per-process)
+    import time
+    from collections import deque
+
+    from ..core.config import get_settings
+
+    settings = get_settings()
+    window_s = 60
+    max_requests = max(1, int(settings.rate_limit_per_min))
+    timestamps: deque[float] = deque()
+
+    class _LimitsMiddleware(BaseHTTPMiddleware):
+        async def dispatch(self, request: Request, call_next):  # type: ignore[override]
+            # payload size
+            body = await request.body()
+            if len(body) > settings.max_payload_bytes:
+                return JSONResponse({"detail": "payload too large"}, status_code=413)
+            # rate limit (simple sliding window)
+            now = time.time()
+            while timestamps and now - timestamps[0] > window_s:
+                timestamps.popleft()
+            if len(timestamps) >= max_requests:
+                return JSONResponse({"detail": "rate limit exceeded"}, status_code=429)
+            timestamps.append(now)
+            return await call_next(request)
+
+    app.add_middleware(_LimitsMiddleware)
 
 
 def add_tracing(app, app_name: str, endpoint: Optional[str]) -> None:

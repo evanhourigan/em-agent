@@ -70,6 +70,13 @@ make metrics
 curl -sS http://localhost:8000/metrics | head -50
 ````
 
+Safety limits (optional)
+
+```bash
+# Requests per minute per-process and max payload size
+RATE_LIMIT_PER_MIN=120 MAX_PAYLOAD_BYTES=$((1024*1024)) docker compose up -d --build gateway
+```
+
 ## Database & Migrations
 
 Alembic migrations are bundled into the gateway image.
