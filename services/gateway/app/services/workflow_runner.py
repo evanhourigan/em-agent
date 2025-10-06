@@ -40,8 +40,23 @@ class WorkflowRunner(threading.Thread):
         )
         processed = 0
         for job in jobs:
+            # Start a span per job if tracing enabled
+            try:
+                from opentelemetry import trace  # type: ignore
+
+                span = trace.get_tracer(__name__).start_span("workflow.process")
+                span.set_attribute("workflow.job_id", job.id)
+                span.set_attribute("workflow.rule_kind", job.rule_kind or "")
+            except Exception:
+                span = None
+
             job.status = "done"
             processed += 1
+            if span:
+                try:
+                    span.end()
+                except Exception:
+                    pass
         if processed:
             session.commit()
             self._logger.info("workflow_runner.processed", count=processed)

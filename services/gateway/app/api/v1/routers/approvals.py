@@ -39,6 +39,14 @@ def list_approvals() -> List[Dict[str, Any]]:
 
 @router.post("/propose")
 def propose_action(payload: Dict[str, Any]) -> Dict[str, Any]:
+    # Start span if OTel is enabled
+    try:
+        from opentelemetry import trace  # type: ignore
+
+        span = trace.get_tracer(__name__).start_span("approvals.propose")
+        span.set_attribute("action", payload.get("action", ""))
+    except Exception:
+        span = None
     if "action" not in payload:
         raise HTTPException(status_code=400, detail="missing action")
     SessionLocal = get_sessionmaker()
@@ -52,7 +60,13 @@ def propose_action(payload: Dict[str, Any]) -> Dict[str, Any]:
         )
         session.add(a)
         session.commit()
-        return {"action_id": a.id, "proposed": payload}
+        result = {"action_id": a.id, "proposed": payload}
+        if span:
+            try:
+                span.end()
+            except Exception:
+                pass
+        return result
 
 
 @router.get("/{id}")
@@ -75,6 +89,14 @@ def get_approval(id: int) -> Dict[str, Any]:
 
 @router.post("/{id}/decision")
 def decide(id: int, payload: Dict[str, Any]) -> Dict[str, Any]:
+    try:
+        from opentelemetry import trace  # type: ignore
+
+        span = trace.get_tracer(__name__).start_span("approvals.decide")
+        span.set_attribute("approval.id", id)
+        span.set_attribute("decision", payload.get("decision", ""))
+    except Exception:
+        span = None
     decision = payload.get("decision")
     if decision not in {"approve", "decline", "modify"}:
         raise HTTPException(status_code=400, detail="invalid decision")
@@ -114,6 +136,11 @@ def decide(id: int, payload: Dict[str, Any]) -> Dict[str, Any]:
         resp = {"id": a.id, "status": a.status, "reason": a.reason}
         if job_id is not None:
             resp["job_id"] = job_id
+        if span:
+            try:
+                span.end()
+            except Exception:
+                pass
         return resp
 
 
