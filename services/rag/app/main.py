@@ -3,8 +3,8 @@ from __future__ import annotations
 import os
 from typing import Any, Dict, List, Optional, Tuple
 
-from fastapi import FastAPI, HTTPException
 import psycopg
+from fastapi import FastAPI, HTTPException
 
 try:
     from opentelemetry import trace  # type: ignore
@@ -64,7 +64,12 @@ def create_app() -> FastAPI:
         "RAG_PG_DSN",
         "postgresql+psycopg://postgres:postgres@db:5432/postgres",
     )
-    app.state.pg_enabled = os.getenv("RAG_PG_ENABLED", "false").lower() in {"1", "true", "yes"}
+    app.state.pg_enabled = os.getenv("RAG_PG_ENABLED", "false").lower() in {
+        "1",
+        "true",
+        "yes",
+    }
+    app.state.use_vector = os.getenv("RAG_USE_VECTOR", "false").lower() in {"1", "true", "yes"}
 
     # TF-IDF state
     app.state.vectorizer: Optional[TfidfVectorizer] = None
@@ -157,11 +162,30 @@ def create_app() -> FastAPI:
                             )
                             """
                         )
-                        # Simple TF-IDF has no embedding; store null for now
-                        cur.execute(
-                            "insert into rag_docs(id,parent_id,content,meta) values (%s,%s,%s,%s) on conflict (id) do nothing",
-                            (doc_id, doc_id, content, psycopg.adapters.Json(meta) if meta else None),
-                        )
+                        if app.state.backend == "st" and app.state.use_vector and app.state.st_model is not None:
+                            emb = app.state.st_model.encode([content], normalize_embeddings=True)[0]
+                            vec = "[" + ",".join(f"{float(x):.6f}" for x in emb) + "]"
+                            cur.execute(
+                                "insert into rag_docs(id,parent_id,content,meta,embedding) values (%s,%s,%s,%s,%s::vector) on conflict (id) do update set content=excluded.content, meta=excluded.meta, embedding=excluded.embedding",
+                                (
+                                    doc_id,
+                                    doc_id,
+                                    content,
+                                    psycopg.adapters.Json(meta) if meta else None,
+                                    vec,
+                                ),
+                            )
+                        else:
+                            # Simple TF-IDF has no embedding; store null for now
+                            cur.execute(
+                                "insert into rag_docs(id,parent_id,content,meta) values (%s,%s,%s,%s) on conflict (id) do update set content=excluded.content, meta=excluded.meta",
+                                (
+                                    doc_id,
+                                    doc_id,
+                                    content,
+                                    psycopg.adapters.Json(meta) if meta else None,
+                                ),
+                            )
                         conn.commit()
             except Exception:
                 pass
@@ -221,15 +245,37 @@ def create_app() -> FastAPI:
                             """
                         )
                         for d in app.state.docs[-added:]:
-                            cur.execute(
-                                "insert into rag_docs(id,parent_id,content,meta) values (%s,%s,%s,%s) on conflict (id) do nothing",
-                                (
-                                    d["id"],
-                                    d.get("parent_id"),
-                                    d["content"],
-                                    psycopg.adapters.Json(d.get("meta")) if d.get("meta") else None,
-                                ),
-                            )
+                            if app.state.backend == "st" and app.state.use_vector and app.state.st_model is not None:
+                                emb = app.state.st_model.encode([d["content"]], normalize_embeddings=True)[0]
+                                vec = "[" + ",".join(f"{float(x):.6f}" for x in emb) + "]"
+                                cur.execute(
+                                    "insert into rag_docs(id,parent_id,content,meta,embedding) values (%s,%s,%s,%s,%s::vector) on conflict (id) do update set content=excluded.content, meta=excluded.meta, embedding=excluded.embedding",
+                                    (
+                                        d["id"],
+                                        d.get("parent_id"),
+                                        d["content"],
+                                        (
+                                            psycopg.adapters.Json(d.get("meta"))
+                                            if d.get("meta")
+                                            else None
+                                        ),
+                                        vec,
+                                    ),
+                                )
+                            else:
+                                cur.execute(
+                                    "insert into rag_docs(id,parent_id,content,meta) values (%s,%s,%s,%s) on conflict (id) do update set content=excluded.content, meta=excluded.meta",
+                                    (
+                                        d["id"],
+                                        d.get("parent_id"),
+                                        d["content"],
+                                        (
+                                            psycopg.adapters.Json(d.get("meta"))
+                                            if d.get("meta")
+                                            else None
+                                        ),
+                                    ),
+                                )
                         conn.commit()
             except Exception:
                 pass
@@ -243,6 +289,39 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=400, detail="q required")
         if not app.state.docs:
             return {"results": []}
+        # Vector path (pgvector cosine) if enabled and embeddings exist
+        if app.state.pg_enabled and app.state.use_vector and app.state.backend == "st" and app.state.st_model is not None:
+            try:
+                q_vec = app.state.st_model.encode([query], normalize_embeddings=True)[0]
+                vec = "[" + ",".join(f"{float(x):.6f}" for x in q_vec) + "]"
+                with psycopg.connect(app.state.pg_dsn.replace("+psycopg", "")) as conn:
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            """
+                            select id, parent_id, content, meta, (1.0 - (embedding <=> %s::vector)) as score
+                            from rag_docs
+                            where embedding is not null
+                            order by embedding <=> %s::vector asc
+                            limit %s
+                            """,
+                            (vec, vec, top_k),
+                        )
+                        rows = cur.fetchall()
+                        out = []
+                        for rid, parent_id, content, meta, score in rows:
+                            out.append(
+                                {
+                                    "id": rid,
+                                    "parent_id": parent_id,
+                                    "score": float(score),
+                                    "snippet": content[:200],
+                                    "meta": meta,
+                                }
+                            )
+                        return {"results": out}
+            except Exception:
+                # fall through to in-memory methods
+                pass
         # Sentence-Transformers path
         if app.state.backend == "st":
             if app.state.st_model is None or app.state.st_doc_vectors is None:
