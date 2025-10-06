@@ -48,13 +48,25 @@
     </style>
   </head>
   <body>
-    <div class="card">
+    <div class="card" style="margin-bottom:16px;">
       <h3>RAG Search</h3>
       <div class="row">
         <input id="q" type="text" placeholder="Search…" />
         <button onclick="doSearch()">Search</button>
       </div>
       <div id="results"></div>
+    </div>
+    <div class="card">
+      <h3>Admin — Approvals & Jobs</h3>
+      <div class="row" style="margin-bottom:8px;">
+        <button onclick="loadApprovals()">Load Approvals</button>
+        <button onclick="loadJobs()">Load Jobs</button>
+      </div>
+      <div class="row" style="margin-bottom:8px;">
+        <input id="agent_q" type="text" placeholder="Agent query (e.g., sprint health)" />
+        <button onclick="runAgent()">Run Agent</button>
+      </div>
+      <div id="admin_results"></div>
     </div>
     <script>
       async function doSearch() {
@@ -77,6 +89,32 @@
           }</div><div class="score">score: ${r.score ?? ""}</div>`;
           list.appendChild(el);
         }
+      }
+
+      async function loadApprovals() {
+        const resp = await fetch("http://localhost:8000/v1/approvals");
+        const data = await resp.json();
+        const t = document.getElementById("admin_results");
+        t.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+      }
+
+      async function loadJobs() {
+        const resp = await fetch("http://localhost:8000/v1/workflows/jobs");
+        const data = await resp.json();
+        const t = document.getElementById("admin_results");
+        t.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+      }
+
+      async function runAgent() {
+        const q = document.getElementById("agent_q").value;
+        const resp = await fetch("http://localhost:8000/v1/agent/run", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ query: q }),
+        });
+        const data = await resp.json();
+        const t = document.getElementById("admin_results");
+        t.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
       }
     </script>
   </body>
