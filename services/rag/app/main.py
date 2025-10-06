@@ -4,6 +4,7 @@ import os
 from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import FastAPI, HTTPException
+import psycopg
 
 try:
     from opentelemetry import trace  # type: ignore
@@ -36,7 +37,7 @@ except Exception:  # pragma: no cover - optional dependency
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="rag", version="0.3.0")
+    app = FastAPI(title="rag", version="0.4.0")
 
     # Optional tracing
     if _HAS_OTEL and os.getenv("OTEL_ENABLED", "false").lower() == "true":
@@ -57,6 +58,13 @@ def create_app() -> FastAPI:
 
     # In-memory index of chunks: each doc is { id, content, parent_id, meta }
     app.state.docs: List[Dict[str, Any]] = []
+
+    # Optional pgvector persistence
+    app.state.pg_dsn = os.getenv(
+        "RAG_PG_DSN",
+        "postgresql+psycopg://postgres:postgres@db:5432/postgres",
+    )
+    app.state.pg_enabled = os.getenv("RAG_PG_ENABLED", "false").lower() in {"1", "true", "yes"}
 
     # TF-IDF state
     app.state.vectorizer: Optional[TfidfVectorizer] = None
@@ -134,6 +142,29 @@ def create_app() -> FastAPI:
             {"id": doc_id, "content": content, "parent_id": doc_id, "meta": meta}
         )
         _rebuild_embeddings()
+        if app.state.pg_enabled:
+            try:
+                with psycopg.connect(app.state.pg_dsn.replace("+psycopg", "")) as conn:
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            """
+                            create table if not exists rag_docs (
+                                id text primary key,
+                                parent_id text,
+                                content text,
+                                meta jsonb,
+                                embedding vector(384)
+                            )
+                            """
+                        )
+                        # Simple TF-IDF has no embedding; store null for now
+                        cur.execute(
+                            "insert into rag_docs(id,parent_id,content,meta) values (%s,%s,%s,%s) on conflict (id) do nothing",
+                            (doc_id, doc_id, content, psycopg.adapters.Json(meta) if meta else None),
+                        )
+                        conn.commit()
+            except Exception:
+                pass
         return {"indexed": doc_id}
 
     @app.post("/index/bulk")
@@ -174,6 +205,34 @@ def create_app() -> FastAPI:
                     )
                     added += 1
         _rebuild_embeddings()
+        if app.state.pg_enabled:
+            try:
+                with psycopg.connect(app.state.pg_dsn.replace("+psycopg", "")) as conn:
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            """
+                            create table if not exists rag_docs (
+                                id text primary key,
+                                parent_id text,
+                                content text,
+                                meta jsonb,
+                                embedding vector(384)
+                            )
+                            """
+                        )
+                        for d in app.state.docs[-added:]:
+                            cur.execute(
+                                "insert into rag_docs(id,parent_id,content,meta) values (%s,%s,%s,%s) on conflict (id) do nothing",
+                                (
+                                    d["id"],
+                                    d.get("parent_id"),
+                                    d["content"],
+                                    psycopg.adapters.Json(d.get("meta")) if d.get("meta") else None,
+                                ),
+                            )
+                        conn.commit()
+            except Exception:
+                pass
         return {"indexed": added}
 
     @app.post("/search")
