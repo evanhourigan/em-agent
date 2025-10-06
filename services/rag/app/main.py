@@ -69,7 +69,11 @@ def create_app() -> FastAPI:
         "true",
         "yes",
     }
-    app.state.use_vector = os.getenv("RAG_USE_VECTOR", "false").lower() in {"1", "true", "yes"}
+    app.state.use_vector = os.getenv("RAG_USE_VECTOR", "false").lower() in {
+        "1",
+        "true",
+        "yes",
+    }
 
     # TF-IDF state
     app.state.vectorizer: Optional[TfidfVectorizer] = None
@@ -162,8 +166,14 @@ def create_app() -> FastAPI:
                             )
                             """
                         )
-                        if app.state.backend == "st" and app.state.use_vector and app.state.st_model is not None:
-                            emb = app.state.st_model.encode([content], normalize_embeddings=True)[0]
+                        if (
+                            app.state.backend == "st"
+                            and app.state.use_vector
+                            and app.state.st_model is not None
+                        ):
+                            emb = app.state.st_model.encode(
+                                [content], normalize_embeddings=True
+                            )[0]
                             vec = "[" + ",".join(f"{float(x):.6f}" for x in emb) + "]"
                             cur.execute(
                                 "insert into rag_docs(id,parent_id,content,meta,embedding) values (%s,%s,%s,%s,%s::vector) on conflict (id) do update set content=excluded.content, meta=excluded.meta, embedding=excluded.embedding",
@@ -245,9 +255,17 @@ def create_app() -> FastAPI:
                             """
                         )
                         for d in app.state.docs[-added:]:
-                            if app.state.backend == "st" and app.state.use_vector and app.state.st_model is not None:
-                                emb = app.state.st_model.encode([d["content"]], normalize_embeddings=True)[0]
-                                vec = "[" + ",".join(f"{float(x):.6f}" for x in emb) + "]"
+                            if (
+                                app.state.backend == "st"
+                                and app.state.use_vector
+                                and app.state.st_model is not None
+                            ):
+                                emb = app.state.st_model.encode(
+                                    [d["content"]], normalize_embeddings=True
+                                )[0]
+                                vec = (
+                                    "[" + ",".join(f"{float(x):.6f}" for x in emb) + "]"
+                                )
                                 cur.execute(
                                     "insert into rag_docs(id,parent_id,content,meta,embedding) values (%s,%s,%s,%s,%s::vector) on conflict (id) do update set content=excluded.content, meta=excluded.meta, embedding=excluded.embedding",
                                     (
@@ -290,7 +308,12 @@ def create_app() -> FastAPI:
         if not app.state.docs:
             return {"results": []}
         # Vector path (pgvector cosine) if enabled and embeddings exist
-        if app.state.pg_enabled and app.state.use_vector and app.state.backend == "st" and app.state.st_model is not None:
+        if (
+            app.state.pg_enabled
+            and app.state.use_vector
+            and app.state.backend == "st"
+            and app.state.st_model is not None
+        ):
             try:
                 q_vec = app.state.st_model.encode([query], normalize_embeddings=True)[0]
                 vec = "[" + ",".join(f"{float(x):.6f}" for x in q_vec) + "]"

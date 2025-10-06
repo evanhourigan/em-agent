@@ -7,6 +7,8 @@ from sqlalchemy.orm import Session
 
 from ....api.v1.routers.approvals import propose_action
 from ....api.v1.routers.policy import _load_policy
+from ....core.config import get_settings
+import httpx
 from ....models.action_log import ActionLog
 from ....models.workflow_jobs import WorkflowJob
 from ...deps import get_db_session
@@ -24,11 +26,23 @@ def run_workflow(
     action = payload.get("action")
     if not action:
         kind = payload.get("kind", rule)
-        policy = _load_policy().get(kind)
-        if not policy:
-            action = "nudge"
-        else:
-            action = policy.get("action", "nudge")
+        settings = get_settings()
+        # prefer OPA if configured
+        if settings.opa_url:
+            try:
+                with httpx.Client(timeout=5) as client:
+                    resp = client.post(
+                        settings.opa_url.rstrip("/") + "/v1/data/em_agent/decision",
+                        json={"input": {"kind": kind, **payload}},
+                    )
+                    resp.raise_for_status()
+                    data = resp.json().get("result") or {}
+                    action = data.get("action") or ("allow" if data.get("allow", True) else "block")
+            except httpx.HTTPError:
+                action = None
+        if not action:
+            policy = _load_policy().get(kind)
+            action = (policy or {}).get("action", "nudge")
 
     if action == "block":
         # Instead of hard-failing, propose an approval for human decision

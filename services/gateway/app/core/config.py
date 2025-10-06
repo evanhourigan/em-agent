@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     rate_limit_per_min: int = 120
     max_payload_bytes: int = 1024 * 1024
 
+    # OPA
+    opa_url: str | None = None
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

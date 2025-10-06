@@ -397,6 +397,17 @@ curl -sS http://localhost:8002/ | jq
 curl -sS -X POST http://localhost:8002/tools/reports.standup -H 'content-type: application/json' -d '{}' | jq
 ```
 
+OPA policy (optional)
+
+```bash
+# point gateway at a running OPA (Rego package em_agent with rule data.em_agent.decision)
+OPA_URL=http://localhost:8181 docker compose up -d --build gateway
+
+# evaluate via gateway (falls back to YAML policy if OPA unreachable)
+curl -sS -X POST http://localhost:8000/v1/policy/evaluate \
+  -H 'content-type: application/json' \
+  -d '{"kind":"stale_pr"}' | jq
+```
 ## Development Notes
 
 - Service: `services/gateway` (FastAPI + SQLAlchemy + Alembic)

@@ -5,7 +5,9 @@ from dataclasses import dataclass
 from typing import Any, Dict
 
 import yaml
+import httpx
 from fastapi import APIRouter, HTTPException
+from ....core.config import get_settings
 
 router = APIRouter(prefix="/v1/policy", tags=["policy"])
 
@@ -41,6 +43,28 @@ def evaluate_policy(payload: Dict[str, Any]) -> Dict[str, Any]:
     rule_kind = payload.get("kind")
     if not rule_kind:
         raise HTTPException(status_code=400, detail="missing kind")
+    # Prefer OPA if configured
+    settings = get_settings()
+    if settings.opa_url:
+        try:
+            with httpx.Client(timeout=5) as client:
+                # Example: POST /v1/data/em_agent/allow with input
+                resp = client.post(
+                    settings.opa_url.rstrip("/") + "/v1/data/em_agent/decision",
+                    json={"input": payload},
+                )
+                resp.raise_for_status()
+                data = resp.json().get("result") or {}
+                # Expect { allow: bool, action: string, reason?: string }
+                return {
+                    "allow": bool(data.get("allow", True)),
+                    "action": data.get("action", "nudge"),
+                    "reason": data.get("reason", "opa"),
+                    "opa": True,
+                }
+        except httpx.HTTPError as exc:
+            # fall back to YAML policy
+            pass
     policy_map = _load_policy()
     policy = policy_map.get(rule_kind)
     if not policy:
