@@ -68,6 +68,7 @@ services:
 
   opa:
     image: openpolicyagent/opa:latest
+    platform: linux/amd64
     command: ["run", "--server", "--addr=0.0.0.0:8181", "-b", "/policies"]
     ports:
       - "8181:8181"
