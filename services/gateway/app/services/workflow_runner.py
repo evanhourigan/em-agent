@@ -72,3 +72,11 @@ def maybe_start_workflow_runner(app, session_factory) -> WorkflowRunner | None:
     app.state.workflow_runner_thread = t
     get_logger(__name__).info("workflow_runner.started", interval_sec=interval)
     return t
+
+def maybe_stop_workflow_runner(app) -> None:
+    t = getattr(app.state, "workflow_runner_thread", None)
+    if t is not None:
+        try:
+            t.stop()
+        except Exception:
+            pass

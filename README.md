@@ -417,19 +417,16 @@ curl -sS -X POST http://localhost:8000/v1/policy/evaluate \
   -d '{"kind":"stale_pr"}' | jq
 ```
 
+## Secrets hardening (Phase 6)
+
+- Prefer runtime-injected secrets over .env files in production.
+- Options: HashiCorp Vault, AWS Secrets Manager, GCP Secret Manager.
+- For Git-managed configs, use SOPS (age/GPG) to encrypt files and decrypt at deploy.
+- Minimum local hygiene:
+  - Never commit real secrets.
+  - Use `.env.example` for structure.
+  - In CI, set secrets in the provider and pass as env vars.
+
 ## Development Notes
 
-- Service: `services/gateway` (FastAPI + SQLAlchemy + Alembic)
-- DB: Postgres (compose `db` service)
-- Logging: `structlog` (JSON)
-- Metrics: `starlette-exporter` Prometheus endpoint
-
-## Contributing
-
-- Issues: use the enhanced issue template (acceptance criteria, validation, risk)
-- PRs: use the PR template; prefer squash merges for linear history
-- Project board: `gh project view 1 --owner evanhourigan --web`
-
-## License
-
-See `LICENSE`.
+- Service: `services/gateway`

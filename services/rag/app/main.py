@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import psycopg
 from fastapi import FastAPI, HTTPException
+from starlette_exporter import PrometheusMiddleware, handle_metrics
 
 try:
     from opentelemetry import trace  # type: ignore
@@ -38,6 +39,13 @@ except Exception:  # pragma: no cover - optional dependency
 
 def create_app() -> FastAPI:
     app = FastAPI(title="rag", version="0.4.0")
+
+    # Prometheus metrics
+    try:
+        app.add_middleware(PrometheusMiddleware, app_name="rag", prefix="rag", group_paths=True)
+        app.add_route("/metrics", handle_metrics)
+    except Exception:
+        pass
 
     # Optional tracing
     if _HAS_OTEL and os.getenv("OTEL_ENABLED", "false").lower() == "true":

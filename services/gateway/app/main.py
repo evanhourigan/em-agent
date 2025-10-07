@@ -21,7 +21,7 @@ from .core.logging import configure_structlog, get_logger
 from .core.observability import add_prometheus, add_tracing
 from .db import get_engine, get_sessionmaker
 from .services.signal_runner import maybe_start_evaluator
-from .services.workflow_runner import maybe_start_workflow_runner
+from .services.workflow_runner import maybe_start_workflow_runner, maybe_stop_workflow_runner
 
 
 def create_app() -> FastAPI:
@@ -55,6 +55,10 @@ def create_app() -> FastAPI:
         get_engine()
         maybe_start_evaluator(app, lambda: get_sessionmaker()())
         maybe_start_workflow_runner(app, lambda: get_sessionmaker()())
+
+    @app.on_event("shutdown")
+    def on_shutdown() -> None:  # noqa: D401
+        maybe_stop_workflow_runner(app)
 
     # Routers
     app.include_router(health_router)

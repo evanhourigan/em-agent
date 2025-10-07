@@ -246,9 +246,9 @@ This section is the single place any agent/human should consult for status and n
   - [x] 6.2 RAG proxy transient retry (3x)
   - [x] 6.3 Compose healthcheck uses `/ready`
   - [x] 6.4 Slack client retries with simple backoff
-  - [ ] 6.5 OTel tracing across gateway, runners, RAG
-  - [ ] 6.6 Custom Prom metrics: approval_latency_ms, override rate, slack_post_errors
-  - [ ] 6.7 Rate limits, payload size limits, graceful shutdown
+  - [x] 6.5 OTel tracing across gateway, runners, RAG (expanded spans)
+  - [x] 6.6 Custom Prom metrics: approval_latency_ms, override rate, slack_post_errors
+  - [x] 6.7 Rate limits, payload size limits, graceful shutdown
   - [ ] 6.8 Secrets hardening guidance (Vault/SOPS roadmap)
 
 - [ ] Phase 7 — Extras

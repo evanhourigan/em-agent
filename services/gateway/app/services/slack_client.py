@@ -32,13 +32,29 @@ class SlackClient:
             return
         try:
             m["slack_posts_total"].labels(kind=kind, ok=str(ok).lower()).inc()
+            if not ok:
+                m.get("slack_post_errors_total", None) and m["slack_post_errors_total"].labels(kind=kind).inc()
         except Exception:
             pass
 
     def post_text(self, text: str, channel: Optional[str] = None) -> Dict[str, Any]:
+        # Trace span if OTel enabled
+        try:
+            from opentelemetry import trace  # type: ignore
+
+            span = trace.get_tracer(__name__).start_span("slack.post_text")
+            span.set_attribute("channel", channel or self._default_channel or "")
+        except Exception:
+            span = None
         if not self._webhook_url and not self._bot_token:
             self._logger.info("slack.post.dry_run", text=text)
-            return {"ok": False, "dry_run": True, "text": text}
+            out = {"ok": False, "dry_run": True, "text": text}
+            if span:
+                try:
+                    span.end()
+                except Exception:
+                    pass
+            return out
 
         if self._webhook_url:
 
@@ -49,7 +65,13 @@ class SlackClient:
                     self._inc_metric("text", ok)
                     return {"ok": ok}
 
-            return self._with_retry(_call)
+            res = self._with_retry(_call)
+            if span:
+                try:
+                    span.end()
+                except Exception:
+                    pass
+            return res
 
         # Bot token path (chat.postMessage)
         headers = {"Authorization": f"Bearer {self._bot_token}"}
@@ -65,14 +87,34 @@ class SlackClient:
                 self._inc_metric("text", ok)
                 return {"ok": ok, "response": data}
 
-        return self._with_retry(_call_api)
+        res = self._with_retry(_call_api)
+        if span:
+            try:
+                span.end()
+            except Exception:
+                pass
+        return res
 
     def post_blocks(
         self, *, text: str, blocks: list[dict[str, Any]], channel: Optional[str] = None
     ) -> Dict[str, Any]:
+        try:
+            from opentelemetry import trace  # type: ignore
+
+            span = trace.get_tracer(__name__).start_span("slack.post_blocks")
+            span.set_attribute("channel", channel or self._default_channel or "")
+            span.set_attribute("blocks.count", len(blocks))
+        except Exception:
+            span = None
         if not self._webhook_url and not self._bot_token:
             self._logger.info("slack.post.dry_run", blocks=len(blocks))
-            return {"ok": False, "dry_run": True, "blocks": blocks}
+            out = {"ok": False, "dry_run": True, "blocks": blocks}
+            if span:
+                try:
+                    span.end()
+                except Exception:
+                    pass
+            return out
 
         if self._webhook_url:
 
@@ -83,7 +125,13 @@ class SlackClient:
                     self._inc_metric("blocks", ok)
                     return {"ok": ok}
 
-            return self._with_retry(_call)
+            res = self._with_retry(_call)
+            if span:
+                try:
+                    span.end()
+                except Exception:
+                    pass
+            return res
 
         headers = {"Authorization": f"Bearer {self._bot_token}"}
         payload = {"channel": channel or self._default_channel, "text": text, "blocks": blocks}
@@ -98,4 +146,10 @@ class SlackClient:
                 self._inc_metric("blocks", ok)
                 return {"ok": ok, "response": data}
 
-        return self._with_retry(_call_api)
+        res = self._with_retry(_call_api)
+        if span:
+            try:
+                span.end()
+            except Exception:
+                pass
+        return res

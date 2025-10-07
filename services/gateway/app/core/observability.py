@@ -53,6 +53,11 @@ def add_prometheus(app, app_name: str = "gateway") -> None:
                 "Count of Slack posts",
                 ["kind", "ok"],
             ),
+            "slack_post_errors_total": Counter(
+                "slack_post_errors_total",
+                "Count of Slack post errors",
+                ["kind"],
+            ),
         }
         app.state.metrics = reg
         global_metrics.update(reg)
