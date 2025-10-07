@@ -33,7 +33,9 @@ class SlackClient:
         try:
             m["slack_posts_total"].labels(kind=kind, ok=str(ok).lower()).inc()
             if not ok:
-                m.get("slack_post_errors_total", None) and m["slack_post_errors_total"].labels(kind=kind).inc()
+                m.get("slack_post_errors_total", None) and m["slack_post_errors_total"].labels(
+                    kind=kind
+                ).inc()
         except Exception:
             pass
 

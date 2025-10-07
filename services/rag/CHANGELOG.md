@@ -7,6 +7,7 @@ All notable changes to the rag service will be documented in this file.
 - Expose Prometheus metrics endpoint via starlette-exporter
 - Optional OpenTelemetry tracing; spans around request handling
 - Pgvector persistence path for Sentence-Transformers embeddings
+- Add citations/provenance fields to search results and index metadata
 
 ## [0.4.0] - 2025-10-07
 

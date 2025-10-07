@@ -42,7 +42,9 @@ def create_app() -> FastAPI:
 
     # Prometheus metrics
     try:
-        app.add_middleware(PrometheusMiddleware, app_name="rag", prefix="rag", group_paths=True)
+        app.add_middleware(
+            PrometheusMiddleware, app_name="rag", prefix="rag", group_paths=True
+        )
         app.add_route("/metrics", handle_metrics)
     except Exception:
         pass
@@ -155,9 +157,16 @@ def create_app() -> FastAPI:
         meta = payload.get("meta")
         if not doc_id or not content:
             raise HTTPException(status_code=400, detail="id and content required")
-        app.state.docs.append(
-            {"id": doc_id, "content": content, "parent_id": doc_id, "meta": meta}
-        )
+        # Ensure meta has provenance fields
+        if isinstance(meta, dict):
+            meta.setdefault("source", meta.get("source"))
+            meta.setdefault("url", meta.get("url"))
+        app.state.docs.append({
+            "id": doc_id,
+            "content": content,
+            "parent_id": doc_id,
+            "meta": meta,
+        })
         _rebuild_embeddings()
         if app.state.pg_enabled:
             try:
@@ -311,6 +320,7 @@ def create_app() -> FastAPI:
     def search(payload: Dict[str, Any]) -> Dict[str, Any]:
         query = payload.get("q", "").lower()
         top_k = int(payload.get("top_k", 5))
+        include_meta = bool(payload.get("include_meta", True))
         if not query:
             raise HTTPException(status_code=400, detail="q required")
         if not app.state.docs:
@@ -340,15 +350,19 @@ def create_app() -> FastAPI:
                         rows = cur.fetchall()
                         out = []
                         for rid, parent_id, content, meta, score in rows:
-                            out.append(
-                                {
-                                    "id": rid,
-                                    "parent_id": parent_id,
-                                    "score": float(score),
-                                    "snippet": content[:200],
-                                    "meta": meta,
+                            item = {
+                                "id": rid,
+                                "parent_id": parent_id,
+                                "score": float(score),
+                                "snippet": content[:200],
+                            }
+                            if include_meta:
+                                item["meta"] = meta
+                            item["provenance"] = {
+                                    "source": (meta or {}).get("source") if isinstance(meta, dict) else None,
+                                    "url": (meta or {}).get("url") if isinstance(meta, dict) else None,
                                 }
-                            )
+                            out.append(item)
                         return {"results": out}
             except Exception:
                 # fall through to in-memory methods
@@ -377,16 +391,19 @@ def create_app() -> FastAPI:
             ranked: List[Tuple[Dict[str, Any], float]] = sorted(
                 zip(app.state.docs, sims.tolist()), key=lambda x: x[1], reverse=True
             )
-            out = [
-                {
+            out = []
+            for doc, score in ranked[:top_k]:
+                m = doc.get("meta") if isinstance(doc.get("meta"), dict) else {}
+                item = {
                     "id": doc["id"],
                     "parent_id": doc.get("parent_id"),
                     "score": float(score),
                     "snippet": doc["content"][:200],
-                    "meta": doc.get("meta"),
                 }
-                for doc, score in ranked[:top_k]
-            ]
+                if include_meta:
+                    item["meta"] = doc.get("meta")
+                item["provenance"] = {"source": m.get("source"), "url": m.get("url")}
+                out.append(item)
             return {"results": out}
 
         # TF-IDF path (default)
@@ -406,16 +423,19 @@ def create_app() -> FastAPI:
         q_vec = app.state.vectorizer.transform([query])
         sims = cosine_similarity(q_vec, app.state.doc_vectors)[0]
         ranked = sorted(zip(app.state.docs, sims), key=lambda x: x[1], reverse=True)
-        out = [
-            {
+        out = []
+        for doc, score in ranked[:top_k]:
+            m = doc.get("meta") if isinstance(doc.get("meta"), dict) else {}
+            item = {
                 "id": doc["id"],
                 "parent_id": doc.get("parent_id"),
                 "score": float(score),
                 "snippet": doc["content"][:200],
-                "meta": doc.get("meta"),
             }
-            for doc, score in ranked[:top_k]
-        ]
+            if include_meta:
+                item["meta"] = doc.get("meta")
+            item["provenance"] = {"source": m.get("source"), "url": m.get("url")}
+            out.append(item)
         return {"results": out}
 
     return app

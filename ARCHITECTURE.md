@@ -122,6 +122,7 @@ An AI-assisted “Chief of Staff” for engineering that plugs into your stack, 
 - [x] Gateway proxy with transient retry to RAG (`/v1/rag/search`)
 - [x] Optional pgvector persistence + Sentence-Transformers embeddings (env gated)
 - [x] UI search + simple file uploader (indexes docs to RAG)
+- [x] Add citations/provenance in results (source, url)
 - [ ] Confluence/repo crawlers, retrieval with citations & provenance
 
 ### Phase 5 — Slack App & ChatOps
@@ -237,7 +238,7 @@ This section is the single place any agent/human should consult for status and n
 - [x] Phase 1 — Ingestion & Normalization (complete)
 - [x] Phase 2 — Metrics & Analytics (complete)
 - [x] Phase 3 — Signal Engine & Policy
-- [ ] Phase 4 — RAG & Knowledge (partially complete; crawlers/citations pending)
+- [ ] Phase 4 — RAG & Knowledge (partially complete; crawlers pending)
 - [x] Phase 5 — Slack App & ChatOps
 - [ ] Phase 6 — Reliability & Safety
 - Phase 6 — Work Breakdown
