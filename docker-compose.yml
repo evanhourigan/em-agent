@@ -15,8 +15,10 @@ services:
       - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
       - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN:-}
       - SLACK_DEFAULT_CHANNEL=${SLACK_DEFAULT_CHANNEL:-}
+      - OPA_URL=${OPA_URL:-http://opa:8181}
     depends_on:
       - db
+      - opa
     healthcheck:
       test: ["CMD-SHELL", "curl -fs http://localhost:8000/ready || exit 1"]
       interval: 60s
@@ -62,3 +64,11 @@ services:
       timeout: 3s
       retries: 5
       start_period: 10s
+
+  opa:
+    image: openpolicyagent/opa:latest
+    command: ["run", "--server", "--addr=0.0.0.0:8181", "-b", "/policies"]
+    ports:
+      - "8181:8181"
+    volumes:
+      - ./services/opa/policies:/policies:ro
