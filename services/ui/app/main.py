@@ -12,6 +12,7 @@ def create_app() -> FastAPI:
     app = FastAPI(title="ui", version="0.1.0")
 
     gateway_url = os.getenv("GATEWAY_URL", "http://gateway:8000").rstrip("/")
+    rag_url = os.getenv("RAG_URL", "http://rag:8000").rstrip("/")
 
     @app.get("/")
     def index() -> HTMLResponse:
@@ -23,6 +24,26 @@ def create_app() -> FastAPI:
         try:
             with httpx.Client(timeout=10) as client:
                 resp = client.post(f"{gateway_url}/v1/rag/search", json=payload)
+                resp.raise_for_status()
+                return resp.json()
+        except httpx.HTTPError as exc:
+            raise HTTPException(status_code=502, detail=str(exc))
+
+    @app.post("/index")
+    def index_doc(payload: Dict[str, Any]) -> Dict[str, Any]:
+        try:
+            with httpx.Client(timeout=20) as client:
+                resp = client.post(f"{rag_url}/index", json=payload)
+                resp.raise_for_status()
+                return resp.json()
+        except httpx.HTTPError as exc:
+            raise HTTPException(status_code=502, detail=str(exc))
+
+    @app.post("/index/bulk")
+    def index_bulk(payload: Dict[str, Any]) -> Dict[str, Any]:
+        try:
+            with httpx.Client(timeout=30) as client:
+                resp = client.post(f"{rag_url}/index/bulk", json=payload)
                 resp.raise_for_status()
                 return resp.json()
         except httpx.HTTPError as exc:

@@ -42,6 +42,7 @@ services:
       - gateway
     environment:
       - GATEWAY_URL=http://gateway:8000
+      - RAG_URL=http://rag:8000
   rag:
     build: ./services/rag
     ports:

@@ -92,6 +92,32 @@
       <div id="approvals"></div>
       <div id="jobs" style="margin-top: 12px"></div>
     </div>
+    <div class="card" style="margin-top: 16px">
+      <h3>Triage</h3>
+      <div class="row" style="margin-bottom: 8px">
+        <input id="stale_hours" type="text" placeholder="stale_pr hours (48)" />
+        <input id="noreview_hours" type="text" placeholder="no_review hours (12)" />
+        <button onclick="loadTriage()">Load Triage</button>
+      </div>
+      <div class="row" style="margin-bottom: 8px">
+        <input id="triage_interval" type="text" placeholder="auto-refresh seconds (empty=off)" />
+        <button onclick="startTriage()">Start Auto-Refresh</button>
+        <button onclick="stopTriage()" style="background:#9a6700">Stop</button>
+      </div>
+      <div id="triage_stale"></div>
+      <div id="triage_noreview" style="margin-top: 8px"></div>
+    </div>
+    <div class="card" style="margin-top: 16px">
+      <h3>RAG — File Uploader</h3>
+      <div class="row" style="margin-bottom: 8px">
+        <input id="doc_id" type="text" placeholder="doc id (defaults to filename)" />
+      </div>
+      <input id="rag_file" type="file" accept=".txt,.md,.log,.json,.yaml,.yml" />
+      <div style="margin-top:8px">
+        <button onclick="indexFile()">Index File</button>
+      </div>
+      <div id="upload_result" style="margin-top: 8px"></div>
+    </div>
     <script>
       async function doSearch() {
         const q = document.getElementById("q").value;
@@ -199,6 +225,69 @@
         });
         await loadApprovals();
         await loadJobs();
+      }
+
+      let triageTimer = null;
+      async function loadTriage() {
+        const staleH = parseInt(document.getElementById("stale_hours").value || "48", 10);
+        const noRevH = parseInt(document.getElementById("noreview_hours").value || "12", 10);
+        const resp = await fetch("http://localhost:8000/v1/signals/evaluate", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            rules: [
+              { name: "stale", kind: "stale_pr", older_than_hours: staleH },
+              { name: "no_review", kind: "pr_without_review", older_than_hours: noRevH },
+            ],
+          }),
+        });
+        const data = await resp.json();
+        const stale = (data.results && data.results.stale) || [];
+        const noReview = (data.results && data.results.no_review) || [];
+        const staleBody = stale
+          .map((r) => `<tr><td>${r.delivery_id || ""}</td><td>${r.opened_at || ""}</td></tr>`)
+          .join("");
+        const noRevBody = noReview
+          .map((r) => `<tr><td>${r.delivery_id || ""}</td><td>${r.opened_at || ""}</td></tr>`)
+          .join("");
+        document.getElementById("triage_stale").innerHTML = `
+          <h4>Stale PRs (${stale.length})</h4>
+          <table><thead><tr><th>PR</th><th>Opened</th></tr></thead><tbody>${staleBody}</tbody></table>`;
+        document.getElementById("triage_noreview").innerHTML = `
+          <h4>PRs Without Review (${noReview.length})</h4>
+          <table><thead><tr><th>PR</th><th>Opened</th></tr></thead><tbody>${noRevBody}</tbody></table>`;
+      }
+
+      function startTriage() {
+        const sec = parseInt(document.getElementById("triage_interval").value || "0", 10);
+        if (!sec || sec <= 0) return;
+        if (triageTimer) clearInterval(triageTimer);
+        triageTimer = setInterval(loadTriage, sec * 1000);
+        loadTriage();
+      }
+
+      function stopTriage() {
+        if (triageTimer) clearInterval(triageTimer);
+        triageTimer = null;
+      }
+
+      async function indexFile() {
+        const fileInput = document.getElementById("rag_file");
+        const file = fileInput.files && fileInput.files[0];
+        if (!file) { document.getElementById("upload_result").innerText = "No file selected"; return; }
+        const reader = new FileReader();
+        reader.onload = async () => {
+          const content = reader.result;
+          const id = document.getElementById("doc_id").value || file.name;
+          const resp = await fetch("/index", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ id, content, meta: { source: file.name } }),
+          });
+          const data = await resp.json();
+          document.getElementById("upload_result").innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+        };
+        reader.readAsText(file);
       }
     </script>
   </body>
