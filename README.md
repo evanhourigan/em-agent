@@ -4,6 +4,11 @@ An AI-assisted “Chief of Staff” for engineering. Plugs into your stack, surf
 
 See `ARCHITECTURE.md` for the vision, reference architecture, phases, and execution tracker.
 
+## Releases
+
+- See `docs/releases/README.md` for the index of releases.
+- Latest: `docs/releases/v1.md` — Engineering Manager Agent v1 release notes and diagrams.
+
 ## Status
 
 - Phase 0 complete (gateway, Postgres, logging/metrics)
