@@ -342,6 +342,32 @@ async def commands(
             "message": f"proposed approval #{action_id} for label needs-ticket; candidates:{candidates}",
         }
 
+    if text.startswith("agent assign-reviewers"):
+        # syntax: agent assign-reviewers <reviewer> [older_than_hours]
+        parts = text.split()
+        reviewer = parts[2] if len(parts) > 2 else None
+        older = int(parts[3]) if len(parts) > 3 and parts[3].isdigit() else 12
+        if not reviewer:
+            return {"ok": False, "message": "usage: agent assign-reviewers <reviewer> [older_than_hours]"}
+        rules = [{"kind": "pr_without_review", "older_than_hours": older}]
+        SessionLocal = get_sessionmaker()
+        with SessionLocal() as session:
+            try:
+                no_review = _evaluate_rule(session, rules[0])
+            except HTTPException as exc:
+                return {"ok": False, "message": f"error: {exc.detail}"}
+        targets = [str(r.get("delivery_id") or r) for r in no_review[:20]]
+        approval = {
+            "subject": "pr:assign_reviewer",
+            "action": "assign_reviewer",
+            "reason": "Slack command to assign reviewers",
+            "payload": {"reviewer": reviewer, "targets": targets},
+        }
+        from ....api.v1.routers.approvals import propose_action as approvals_propose
+
+        res = approvals_propose(approval)
+        return {"ok": True, "proposed": res, "candidates": len(targets)}
+
     if text.startswith("agent triage post"):
         parts = text.split()
         channel = parts[3] if len(parts) > 3 and parts[2] == "post" and parts[3].startswith("#") else None
@@ -474,7 +500,12 @@ async def commands(
                                 "type": "button",
                                 "text": {"type": "plain_text", "text": "Propose Nudge"},
                                 "value": f"propose:nudge:{target}",
-                            }
+                            },
+                            {
+                                "type": "button",
+                                "text": {"type": "plain_text", "text": "Open"},
+                                "url": target if isinstance(target, str) and target.startswith("http") else None,
+                            },
                         ],
                     },
                 ]

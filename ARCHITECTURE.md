@@ -239,6 +239,8 @@ This section is the single place any agent/human should consult for status and n
   - [x] 5.10 Worker: assign GitHub requested reviewers
   - [x] 5.11 Agent PR summary comment proposal (approval-gated)
   - [x] 5.12 Worker: post PR summary comment to GitHub
+  - [x] 5.13 Slack: `agent assign-reviewers <reviewer> [older_h]` command → approval
+  - [x] 5.14 Agent ask blocks include Open buttons to sources
 
 ### Phase status
 
