@@ -70,6 +70,20 @@
           "format": "table"
         }
       ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Approvals Overrides",
+      "targets": [
+        { "expr": "sum(rate(approvals_override_total[5m])) by (from,to)", "legendFormat": "{{from}}→{{to}}" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Auto vs HITL",
+      "targets": [
+        { "expr": "sum(rate(workflows_auto_vs_hitl_total[5m])) by (mode)", "legendFormat": "{{mode}}" }
+      ]
     }
   ],
   "version": 1

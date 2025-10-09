@@ -14,6 +14,8 @@ from ....db import get_sessionmaker
 from ....models.approvals import Approval
 from ....models.workflow_jobs import WorkflowJob
 from ....services.slack_client import SlackClient
+from ....core.logging import get_logger
+from ....services.temporal_client import get_temporal
 
 logger = get_logger(__name__)
 
@@ -56,7 +58,7 @@ def propose_action(payload: Dict[str, Any]) -> Dict[str, Any]:
             action=payload["action"],
             status="pending",
             reason=payload.get("reason"),
-            payload=str(payload.get("payload")),
+            payload=__import__("json").dumps(payload.get("payload")),
         )
         session.add(a)
         session.commit()
@@ -112,6 +114,8 @@ def decide(id: int, payload: Dict[str, Any]) -> Dict[str, Any]:
         a.decided_at = datetime.utcnow()
         session.add(a)
         job_id = None
+        # Determine prior policy suggested action (for override detection)
+        suggested = None
         if decision == "approve":
             job = WorkflowJob(
                 status="queued",
@@ -122,6 +126,32 @@ def decide(id: int, payload: Dict[str, Any]) -> Dict[str, Any]:
             session.add(job)
             session.flush()  # populate job.id
             job_id = job.id
+            # enqueue celery
+            try:
+                import redis
+
+                r = redis.from_url(os.getenv("REDIS_URL", "redis://redis:6379/0"))
+                # naive enqueue via Celery's default redis queues
+                r.lpush("celery", '{"id": "process_workflow_job", "args": [' + str(job_id) + '], "kwargs": {}, "retries": 0}')
+            except Exception:
+                pass
+            # start Temporal workflow if available (best-effort)
+            try:
+                import asyncio
+                from temporalio.client import Workflow
+
+                async def _start():
+                    client = await get_temporal().ensure()
+                    if client:
+                        await client.start_workflow(
+                            "app.workers_temporal.app.worker.ProcessJobWorkflow",
+                            job_id,
+                            id=f"wf-job-{job_id}",
+                            task_queue="workflow-jobs",
+                        )
+                asyncio.create_task(_start())
+            except Exception:
+                pass
         session.commit()
         # Metrics: decision counter and latency (if available)
         m = global_metrics
@@ -131,6 +161,12 @@ def decide(id: int, payload: Dict[str, Any]) -> Dict[str, Any]:
                 if a.created_at and a.decided_at:
                     latency = (a.decided_at - a.created_at).total_seconds()
                     m["approvals_latency_seconds"].observe(latency)
+                # Override detection: if policy would not auto-approve and user approved, or vice versa
+                # simple heuristic: if decision != "approve" then it's override of auto; if approve after block
+                if decision != "approve":
+                    m["approvals_override_total"].labels(**{"from": "auto", "to": decision}).inc()
+                else:
+                    m["approvals_override_total"].labels(**{"from": "block", "to": "approve"}).inc()
             except Exception:
                 pass
         resp = {"id": a.id, "status": a.status, "reason": a.reason}

@@ -58,6 +58,17 @@ def add_prometheus(app, app_name: str = "gateway") -> None:
                 "Count of Slack post errors",
                 ["kind"],
             ),
+            # Additional custom metrics
+            "approvals_override_total": Counter(
+                "approvals_override_total",
+                "Count of approvals where decision differs from initial policy action",
+                ["from", "to"],
+            ),
+            "workflows_auto_vs_hitl_total": Counter(
+                "workflows_auto_vs_hitl_total",
+                "Count of workflow runs by mode (auto vs hitl)",
+                ["mode"],
+            ),
         }
         app.state.metrics = reg
         global_metrics.update(reg)

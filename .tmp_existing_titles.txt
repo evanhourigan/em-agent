@@ -1,0 +1,18 @@
+[Phase 2] Backfill jobs and retention policy
+[Phase 2] dbt models for DORA & sprint metrics
+[Phase 2] Grafana dashboards + JSON exports
+Admin UI: approvals/jobs/signals/RAG search
+Agent loop (LLM planner + MCP tools + approvals)
+Crawlers: Confluence and Repos (delta sync)
+dbt: DuckDB/BigQuery targets (optional)
+E2E tests: Slack signatures, approvals, RAG
+MCP server exposing core tools
+More flow metrics + Grafana panels
+OPA policies replace YAML
+OTel tracing across gateway/runners/RAG
+Prom metrics: approval latency/override/slack errors
+RAG: pgvector persistence + hybrid search
+Rate limits, payload size limits, graceful shutdown
+Secrets hardening guidance (Vault/SOPS roadmap)
+Slack app OAuth install + token rotation
+Slack UX: modals, pagination, ephemeral

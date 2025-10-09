@@ -161,12 +161,14 @@ def create_app() -> FastAPI:
         if isinstance(meta, dict):
             meta.setdefault("source", meta.get("source"))
             meta.setdefault("url", meta.get("url"))
-        app.state.docs.append({
-            "id": doc_id,
-            "content": content,
-            "parent_id": doc_id,
-            "meta": meta,
-        })
+        app.state.docs.append(
+            {
+                "id": doc_id,
+                "content": content,
+                "parent_id": doc_id,
+                "meta": meta,
+            }
+        )
         _rebuild_embeddings()
         if app.state.pg_enabled:
             try:
@@ -359,9 +361,17 @@ def create_app() -> FastAPI:
                             if include_meta:
                                 item["meta"] = meta
                             item["provenance"] = {
-                                    "source": (meta or {}).get("source") if isinstance(meta, dict) else None,
-                                    "url": (meta or {}).get("url") if isinstance(meta, dict) else None,
-                                }
+                                "source": (
+                                    (meta or {}).get("source")
+                                    if isinstance(meta, dict)
+                                    else None
+                                ),
+                                "url": (
+                                    (meta or {}).get("url")
+                                    if isinstance(meta, dict)
+                                    else None
+                                ),
+                            }
                             out.append(item)
                         return {"results": out}
             except Exception:

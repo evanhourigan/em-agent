@@ -1,0 +1,31 @@
+{
+  "title": "Approvals & HITL",
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Approvals Overrides (from→to)",
+      "targets": [
+        {
+          "expr": "sum(rate(approvals_override_total[5m])) by (from,to)",
+          "legendFormat": "{{from}}→{{to}}"
+        }
+      ],
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 0 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Workflows Auto vs HITL",
+      "targets": [
+        {
+          "expr": "sum(rate(workflows_auto_vs_hitl_total[5m])) by (mode)",
+          "legendFormat": "{{mode}}"
+        }
+      ],
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 0 }
+    }
+  ]
+}
+

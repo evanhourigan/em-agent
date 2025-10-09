@@ -51,6 +51,17 @@ services:
       - EMBEDDINGS_BACKEND=${EMBEDDINGS_BACKEND:-tfidf}
       - OTEL_ENABLED=${OTEL_ENABLED:-false}
       - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      - RAG_PG_ENABLED=${RAG_PG_ENABLED:-false}
+      - RAG_USE_VECTOR=${RAG_USE_VECTOR:-false}
+      - RAG_PG_DSN=${RAG_PG_DSN:-postgresql+psycopg://postgres:postgres@db:5432/postgres}
+  connectors:
+    build: ./services/connectors
+    environment:
+      - GATEWAY_URL=http://gateway:8000
+    ports:
+      - "8003:8000"
+    depends_on:
+      - gateway
   mcp:
     build: ./services/mcp
     environment:
@@ -74,3 +85,40 @@ services:
       - "8181:8181"
     volumes:
       - ./services/opa/policies:/policies:ro
+
+  nats:
+    image: nats:2.10
+    command: ["-js"]
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+
+  redis:
+    image: redis:7.2
+    ports:
+      - "6379:6379"
+
+  workers:
+    build: ./services/workers
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/postgres
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+
+  temporal:
+    image: temporalio/auto:1.23.0
+    ports:
+      - "7233:7233"   # gRPC
+      - "8233:8233"   # Web UI
+
+  workers_temporal:
+    build: ./services/workers_temporal
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/postgres
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_NAMESPACE=default
+    depends_on:
+      - db
+      - temporal

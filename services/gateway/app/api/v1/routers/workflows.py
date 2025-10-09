@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from ....api.v1.routers.approvals import propose_action
 from ....api.v1.routers.policy import _load_policy
+from ....core.metrics import metrics as global_metrics
 from ....core.config import get_settings
 from ....models.action_log import ActionLog
 from ....models.workflow_jobs import WorkflowJob
@@ -53,6 +54,13 @@ def run_workflow(
             "reason": "blocked by policy",
         }
         res = propose_action(proposal)
+        # Count HITL path
+        m = global_metrics
+        if m:
+            try:
+                m["workflows_auto_vs_hitl_total"].labels(mode="hitl").inc()
+            except Exception:
+                pass
         return {"status": "awaiting_approval", **res}
     log = ActionLog(rule_name=rule, subject=subject, action=action, payload=str(payload))
     session.add(log)
@@ -65,6 +73,13 @@ def run_workflow(
         )
     )
     session.commit()
+    # Count AUTO path
+    m = global_metrics
+    if m:
+        try:
+            m["workflows_auto_vs_hitl_total"].labels(mode="auto").inc()
+        except Exception:
+            pass
     return {"status": "queued", "id": log.id, "action": action}
 
 

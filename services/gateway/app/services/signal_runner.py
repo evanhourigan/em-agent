@@ -13,6 +13,7 @@ from ..api.v1.routers.signals import _evaluate_rule
 from ..core.logging import get_logger
 from ..models.action_log import ActionLog
 from ..models.workflow_jobs import WorkflowJob
+from ..services.event_bus import get_event_bus
 
 DEFAULT_RULES: List[Dict[str, Any]] = [
     {"name": "stale48h", "kind": "stale_pr", "older_than_hours": 48},
@@ -53,6 +54,18 @@ def evaluate_and_log(session: Session, rules: List[Dict[str, Any]] | None = None
             session.add(job)
             inserted += 1
     session.commit()
+    # publish summary
+    try:
+        import asyncio
+
+        asyncio.create_task(
+            get_event_bus().publish_json(
+                subject="signals.evaluated",
+                payload={"rules": [r.get("kind") for r in (rules or [])], "inserted": inserted},
+            )
+        )
+    except Exception:
+        pass
     return inserted
 
 

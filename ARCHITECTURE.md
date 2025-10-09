@@ -359,3 +359,9 @@ Each ADR can be promoted to a standalone document if it grows in scope.
 This repository remains the canonical source; if external task tools are used, sync summaries back here.
 
 ---
+
+## Issue References (open planning)
+
+- #31: Crawlers: Confluence/Repos (delta sync)
+- #32: Event bus (NATS/Kafka) for ingestion/eval
+- #33: Workers (Celery) + Temporal workflows

@@ -10,6 +10,7 @@ from urllib.parse import parse_qs
 from fastapi import APIRouter, Header, HTTPException, Request
 
 from ....api.v1.routers.approvals import decide as approvals_decide
+from ....api.v1.routers.approvals import propose_action as approvals_propose
 from ....api.v1.routers.reports import build_standup
 from ....api.v1.routers.signals import _evaluate_rule
 from ....core.config import get_settings
@@ -310,13 +311,176 @@ async def commands(
                 r = resp.json()
         except Exception as exc:  # noqa: BLE001
             raise HTTPException(status_code=502, detail=str(exc))
-        steps = r.get("steps") or []
-        summary = (r.get("summary") or "").strip()
-        msg = f"agent steps:{len(steps)} proposed:{'proposed_approval' in r}"
-        if summary:
-            short = summary[:300] + ("…" if len(summary) > 300 else "")
-            msg += f" | {short}"
+        plan = r.get("plan") or []
+        result = r.get("result") or {}
+        msg = f"agent plan:{[p.get('tool') for p in plan]}"
+        if "results" in result:
+            msg += f" | results:{len(result['results'])}"
         return {"ok": True, "message": msg}
+
+    if text.strip().startswith("agent label-missing-ticket"):
+        # Trigger agent flow to propose labeling PRs without ticket links
+        try:
+            import httpx
+
+            with httpx.Client(timeout=30) as client:
+                resp = client.post(
+                    "http://localhost:8000/v1/agent/run",
+                    json={"query": "label missing ticket PRs"},
+                )
+                resp.raise_for_status()
+                r = resp.json()
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=502, detail=str(exc))
+        prop = r.get("proposed") or {}
+        action_id = prop.get("action_id")
+        candidates = r.get("candidates")
+        if not action_id:
+            return {"ok": False, "message": "agent proposal failed"}
+        return {
+            "ok": True,
+            "message": f"proposed approval #{action_id} for label needs-ticket; candidates:{candidates}",
+        }
+
+    if text.startswith("agent triage post"):
+        parts = text.split()
+        channel = parts[3] if len(parts) > 3 and parts[2] == "post" and parts[3].startswith("#") else None
+        SessionLocal = get_sessionmaker()
+        with SessionLocal() as session:
+            try:
+                stale = _evaluate_rule(session, {"kind": "stale_pr", "older_than_hours": 48})
+                no_review = _evaluate_rule(
+                    session, {"kind": "pr_without_review", "older_than_hours": 12}
+                )
+            except HTTPException as exc:
+                return {"ok": False, "message": f"error: {exc.detail}"}
+        from ....services.slack_client import SlackClient
+
+        blocks: List[Dict[str, Any]] = [
+            {"type": "header", "text": {"type": "plain_text", "text": "Agent Triage"}},
+        ]
+        if stale:
+            blocks.append(
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"*Stale PRs (>48h):* {len(stale)}",
+                    },
+                }
+            )
+            for r in stale[:5]:
+                subj = str(r.get("delivery_id") or r)
+                blocks.extend(
+                    [
+                        {
+                            "type": "section",
+                            "text": {"type": "mrkdwn", "text": subj},
+                        },
+                        {
+                            "type": "actions",
+                            "elements": [
+                                {
+                                    "type": "button",
+                                    "text": {"type": "plain_text", "text": "Propose Nudge"},
+                                    "value": f"propose:nudge:{subj}",
+                                }
+                            ],
+                        },
+                    ]
+                )
+        if no_review:
+            blocks.append(
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"*PRs Without Review (>12h):* {len(no_review)}",
+                    },
+                }
+            )
+            for r in no_review[:5]:
+                subj = str(r.get("delivery_id") or r)
+                blocks.extend(
+                    [
+                        {
+                            "type": "section",
+                            "text": {"type": "mrkdwn", "text": subj},
+                        },
+                        {
+                            "type": "actions",
+                            "elements": [
+                                {
+                                    "type": "button",
+                                    "text": {"type": "plain_text", "text": "Propose Nudge"},
+                                    "value": f"propose:nudge:{subj}",
+                                }
+                            ],
+                        },
+                    ]
+                )
+        res = SlackClient().post_blocks(text="Agent Triage", blocks=blocks, channel=channel)
+        return {"ok": True, "posted": res}
+
+    if text.startswith("agent ask ") or text.startswith("agent ask post"):
+        parts = text.split()
+        channel = None
+        if text.startswith("agent ask post"):
+            if len(parts) >= 4 and parts[3].startswith("#"):
+                channel = parts[3]
+                query = " ".join(parts[4:])
+            else:
+                query = " ".join(parts[3:])
+        else:
+            query = " ".join(parts[2:])
+        query = query.strip()
+        if not query:
+            return {"ok": False, "message": "usage: agent ask <query> | agent ask post [channel] <query>"}
+        # Use existing ask pathway to get results
+        try:
+            import httpx
+
+            with httpx.Client(timeout=15) as client:
+                resp = client.post(
+                    f"http://localhost:8000/v1/rag/search", json={"q": query, "top_k": 3}
+                )
+                resp.raise_for_status()
+                data = resp.json()
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=502, detail=str(exc))
+        results = data.get("results") or []
+        if not results:
+            return {"ok": True, "message": "No results"}
+        from ....services.slack_client import SlackClient
+
+        blocks: List[Dict[str, Any]] = [
+            {"type": "header", "text": {"type": "plain_text", "text": "Agent Ask"}},
+            {"type": "section", "text": {"type": "mrkdwn", "text": f"*Query:* {query}"}},
+        ]
+        for r in results[:3]:
+            title = r.get("id") or r.get("parent_id") or "doc"
+            snippet = (r.get("snippet") or "").strip()
+            target = r.get("meta", {}).get("url") or title
+            blocks.extend(
+                [
+                    {
+                        "type": "section",
+                        "text": {"type": "mrkdwn", "text": f"*{title}*\n{snippet[:300]}"},
+                    },
+                    {
+                        "type": "actions",
+                        "elements": [
+                            {
+                                "type": "button",
+                                "text": {"type": "plain_text", "text": "Propose Nudge"},
+                                "value": f"propose:nudge:{target}",
+                            }
+                        ],
+                    },
+                ]
+            )
+        res = SlackClient().post_blocks(text="Agent Ask", blocks=blocks, channel=channel)
+        return {"ok": True, "posted": res}
 
     # ask: query RAG and summarize top results
     if text.startswith("ask post") or text.startswith("ask "):
@@ -437,6 +601,14 @@ async def interactions(
                             "id": int(ident),
                             "decision": "approve" if verb == "approve" else "decline",
                         }
+                    elif verb == "propose" and ":" in ident:
+                        # propose:<kind>:<target>
+                        kind, target = ident.split(":", 1)
+                        payload = {
+                            "action": "approval-propose",
+                            "kind": kind,
+                            "target": target,
+                        }
         else:
             payload = {k: v[0] for k, v in form.items()}
     action = payload.get("action")
@@ -458,4 +630,21 @@ async def interactions(
             raise HTTPException(status_code=400, detail="invalid decision")
         res = approvals_decide(approval_id, {"decision": decision, "reason": "slack"})
         return {"ok": True, "result": res}
+    if action == "approval-propose":
+        kind = payload.get("kind") or "nudge"
+        target = payload.get("target") or "n/a"
+        if kind not in {"nudge", "label"}:
+            raise HTTPException(status_code=400, detail="unsupported propose kind")
+        # create approval
+        data = {
+            "subject": f"slack:{kind}",
+            "action": kind,
+            "reason": "Slack propose",
+            "payload": {"targets": [target]},
+        }
+        try:
+            res = approvals_propose(data)
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=502, detail=str(exc))
+        return {"ok": True, "proposed": res}
     raise HTTPException(status_code=400, detail="unsupported interaction")

@@ -75,6 +75,19 @@ make metrics
 curl -sS http://localhost:8000/metrics | head -50
 ````
 
+### Custom Metrics (PromQL examples)
+
+Prometheus series exposed by the gateway:
+
+- approvals decisions total by status
+  - prom: `approvals_decisions_total{status="approve"}`
+- approvals latency (seconds)
+  - prom P95: `histogram_quantile(0.95, sum(rate(approvals_latency_seconds_bucket[5m])) by (le))`
+- approvals overrides
+  - prom: `sum(rate(approvals_override_total[5m])) by (from,to)`
+- workflows auto vs HITL
+  - prom: `sum(rate(workflows_auto_vs_hitl_total[5m])) by (mode)`
+
 Safety limits (optional)
 
 ```bash
@@ -258,13 +271,18 @@ make rag.up
 Index and search:
 
 ```bash
+# enable pgvector persistence and vector search (requires sentence-transformers backend)
+RAG_PG_ENABLED=true RAG_USE_VECTOR=true EMBEDDINGS_BACKEND=st \
+  docker compose up -d --build rag db
+
+# index and search (vector path)
 curl -sS -X POST http://localhost:8001/index \
   -H 'content-type: application/json' \
-  -d '{"id":"doc-1","content":"Design doc: gateway architecture"}' | jq
+  -d '{"id":"vec-1","content":"Engineering design for gateway"}' | jq
 
 curl -sS -X POST http://localhost:8001/search \
   -H 'content-type: application/json' \
-  -d '{"q":"architecture"}' | jq
+  -d '{"q":"gateway design","top_k":3}' | jq
 ```
 
 Embeddings backend toggle:
@@ -359,6 +377,35 @@ curl -sS -X POST http://localhost:8000/v1/agent/run \
 
 ````
 
+### Connectors (ingest docs to RAG)
+
+```bash
+# bring up connectors
+make up
+# or specifically
+# docker compose up -d --build connectors
+
+# single doc
+curl -sS -X POST http://localhost:8003/ingest/doc \
+  -H 'content-type: application/json' \
+  -d '{"id":"doc-1","content":"Design doc: pipelines","meta":{"source":"confluence"}}' | jq
+
+# bulk docs with chunking
+curl -sS -X POST http://localhost:8003/ingest/docs \
+  -H 'content-type: application/json' \
+  -d '{"chunk_size":800,"overlap":100,"docs":[{"id":"adr-1","content":"...long text...","meta":{"url":"https://example/adr-1"}}]}' | jq
+
+# crawl Confluence (set CONFLUENCE_EMAIL/CONFLUENCE_TOKEN env)
+curl -sS -X POST http://localhost:8003/crawl/confluence \
+  -H 'content-type: application/json' \
+  -d '{"base_url":"https://your-domain.atlassian.net","page_ids":["12345","67890"],"chunk_size":800,"overlap":100}' | jq
+
+# crawl GitHub repo (optionally export GH_TOKEN)
+curl -sS -X POST http://localhost:8003/crawl/github \
+  -H 'content-type: application/json' \
+  -d '{"owner":"your-org","repo":"your-repo","ref":"main","include_paths":["docs/","README.md"],"exts":[".md",".txt"],"chunk_size":800,"overlap":100}' | jq
+```
+
 Next steps:
 
 - Add Slack signing verification and secrets management.
@@ -415,6 +462,73 @@ OPA_URL=http://localhost:8181 docker compose up -d --build gateway
 curl -sS -X POST http://localhost:8000/v1/policy/evaluate \
   -H 'content-type: application/json' \
   -d '{"kind":"stale_pr"}' | jq
+```
+
+### OPA Bundles
+
+- Compose already mounts `services/opa/policies` into the OPA container with `-b /policies` so policy files are loaded on startup.
+- Point the gateway at OPA with `OPA_URL=http://opa:8181` (compose default). The gateway will prefer OPA for policy decisions and fall back to YAML when OPA is unavailable.
+- To update policies, edit files under `services/opa/policies` and restart OPA (or enable OPA bundle endpoints if you host bundles remotely).
+
+### Event Bus (NATS)
+
+```bash
+# bring up NATS (already in compose)
+docker compose up -d nats
+
+# verify (management)
+curl -sS http://localhost:8222/varz | jq '.server_id,.version'
+
+# example subscriber (python, optional)
+python - <<'PY'
+import asyncio, json, os
+from nats.aio.client import Client as NATS
+async def main():
+  nc = NATS()
+  await nc.connect(servers=[os.getenv('NATS_URL','nats://127.0.0.1:4222')])
+  async def handler(msg):
+    print(msg.subject, json.loads(msg.data.decode()))
+  await nc.subscribe('events.github', cb=handler)
+  await nc.subscribe('events.jira', cb=handler)
+  await nc.subscribe('signals.evaluated', cb=handler)
+  print('listening...'); await asyncio.Future()
+asyncio.run(main())
+PY
+```
+
+### Workers (Celery)
+
+```bash
+# bring up redis and workers
+docker compose up -d --build redis workers
+
+# approve an action to enqueue a job
+curl -sS -X POST http://localhost:8000/v1/approvals/propose \
+  -H 'content-type: application/json' \
+  -d '{"subject":"deploy:service-x","action":"deploy"}' | jq
+
+# approve decision
+curl -sS -X POST http://localhost:8000/v1/approvals/1/decision \
+  -H 'content-type: application/json' -d '{"decision":"approve"}' | jq
+
+# check jobs
+curl -sS http://localhost:8000/v1/workflows/jobs | jq
+```
+
+### Temporal Workflows (optional)
+
+```bash
+# bring up temporal and worker
+docker compose up -d --build temporal workers_temporal
+
+# approve to start a workflow (in addition to Celery)
+curl -sS -X POST http://localhost:8000/v1/approvals/propose \
+  -H 'content-type: application/json' -d '{"subject":"deploy:service-y","action":"deploy"}' | jq
+curl -sS -X POST http://localhost:8000/v1/approvals/1/decision \
+  -H 'content-type: application/json' -d '{"decision":"approve"}' | jq
+
+# open Temporal UI
+open http://localhost:8233
 ```
 
 ## Secrets hardening (Phase 6)

@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ....models.events import EventRaw
+from ....services.event_bus import get_event_bus
 from ...deps import get_db_session
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
@@ -55,6 +56,22 @@ async def github_webhook(
     )
     session.add(evt)
     session.commit()
+    # publish
+    try:
+        import asyncio
+
+        asyncio.create_task(
+            get_event_bus().publish_json(
+                subject="events.github",
+                payload={
+                    "id": evt.id,
+                    "event_type": evt.event_type,
+                    "delivery_id": evt.delivery_id,
+                },
+            )
+        )
+    except Exception:
+        pass
     return {"status": "ok", "id": evt.id}
 
 
@@ -85,4 +102,19 @@ async def jira_webhook(
     )
     session.add(evt)
     session.commit()
+    try:
+        import asyncio
+
+        asyncio.create_task(
+            get_event_bus().publish_json(
+                subject="events.jira",
+                payload={
+                    "id": evt.id,
+                    "event_type": evt.event_type,
+                    "delivery_id": evt.delivery_id,
+                },
+            )
+        )
+    except Exception:
+        pass
     return {"status": "ok", "id": evt.id}

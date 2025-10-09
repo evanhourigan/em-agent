@@ -23,3 +23,27 @@ def proxy_search(payload: Dict[str, Any]) -> Dict[str, Any]:
         except httpx.HTTPError as exc:  # noqa: BLE001
             last_exc = exc
     raise HTTPException(status_code=502, detail=f"rag proxy error: {last_exc}")
+
+
+@router.post("/index")
+def proxy_index(payload: Dict[str, Any]) -> Dict[str, Any]:
+    rag_url = get_settings().rag_url.rstrip("/")
+    try:
+        with httpx.Client(timeout=15) as client:
+            resp = client.post(f"{rag_url}/index", json=payload)
+            resp.raise_for_status()
+            return resp.json()
+    except httpx.HTTPError as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"rag index error: {exc}")
+
+
+@router.post("/index/bulk")
+def proxy_index_bulk(payload: Dict[str, Any]) -> Dict[str, Any]:
+    rag_url = get_settings().rag_url.rstrip("/")
+    try:
+        with httpx.Client(timeout=30) as client:
+            resp = client.post(f"{rag_url}/index/bulk", json=payload)
+            resp.raise_for_status()
+            return resp.json()
+    except httpx.HTTPError as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"rag index bulk error: {exc}")

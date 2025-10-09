@@ -149,9 +149,13 @@
           const el = document.createElement("div");
           el.className = "result";
           const prov = r.provenance || {};
-          const link = prov.url ? `<a href="${prov.url}" target="_blank">${prov.url}</a>` : "";
+          const link = prov.url
+            ? `<a href="${prov.url}" target="_blank">${prov.url}</a>`
+            : "";
           const source = prov.source ? `(${prov.source})` : "";
-          el.innerHTML = `<div class="meta">parent: ${r.parent_id || r.id} ${source} ${link}</div><div>${
+          el.innerHTML = `<div class="meta">parent: ${
+            r.parent_id || r.id
+          } ${source} ${link}</div><div>${
             r.snippet || r.content
           }</div><div class="score">score: ${r.score ?? ""}</div>`;
           list.appendChild(el);
