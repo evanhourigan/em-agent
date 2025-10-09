@@ -79,6 +79,49 @@ def run_agent(payload: Dict[str, Any]) -> Dict[str, Any]:
                 prop = client.post("http://localhost:8000/v1/approvals/propose", json=approval)
                 prop.raise_for_status()
                 return {"plan": plan, "proposed": prop.json(), "candidates": len(targets)}
+            if "assign" in query and "review" in query:
+                # 1) candidates with no review
+                rules = [{"kind": "pr_without_review", "older_than_hours": 12}]
+                plan.append({"tool": "signals.evaluate", "rules": rules})
+                sig = client.post("http://localhost:8000/v1/signals/evaluate", json={"rules": rules})
+                sig.raise_for_status()
+                sig_data = sig.json()
+                no_review = (sig_data.get("results") or {}).get("pr_without_review") or []
+                targets = [str(r.get("delivery_id") or r) for r in no_review[:20]]
+                # Reviewer selection heuristic (placeholder)
+                reviewer = payload.get("reviewer") or "owner/reviewer"  # TODO: map code owners
+                approval = {
+                    "subject": "pr:assign_reviewer",
+                    "action": "assign_reviewer",
+                    "reason": "Agent proposal to assign reviewer to PRs without review",
+                    "payload": {"reviewer": reviewer, "targets": targets},
+                }
+                plan.append({"tool": "approvals.propose", "payload": approval})
+                prop = client.post("http://localhost:8000/v1/approvals/propose", json=approval)
+                prop.raise_for_status()
+                return {"plan": plan, "proposed": prop.json(), "candidates": len(targets)}
+            if ("summarize" in query or "summary" in query) and ("pr" in query or "pull" in query):
+                # Expect target pattern owner/repo#123 in query payload (optional param)
+                target = payload.get("target") or ""
+                # naive extract owner/repo#num from query
+                import re
+                m = re.search(r"([\w.-]+/[\w.-]+)#(\d+)", query)
+                if m:
+                    target = f"{m.group(1)}#{m.group(2)}"
+                if not target:
+                    raise HTTPException(status_code=400, detail="target like owner/repo#123 required")
+                # Draft summary text (placeholder)
+                draft = f"Draft summary for {target}: scope, changes, risks, next steps."
+                approval = {
+                    "subject": "pr:comment_summary",
+                    "action": "comment_summary",
+                    "reason": "Agent proposal to post PR summary comment",
+                    "payload": {"target": target, "text": draft},
+                }
+                plan.append({"tool": "approvals.propose", "payload": approval})
+                prop = client.post("http://localhost:8000/v1/approvals/propose", json=approval)
+                prop.raise_for_status()
+                return {"plan": plan, "proposed": prop.json(), "target": target}
             # default: RAG
             plan.append({"tool": "rag.search", "q": query})
             resp = client.post(mcp_url.rstrip("/") + "/tools/rag.search", json={"q": query, "top_k": 5})

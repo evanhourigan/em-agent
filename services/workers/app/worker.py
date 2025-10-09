@@ -6,7 +6,6 @@ import structlog
 from celery import Celery
 from sqlalchemy import create_engine, text
 import json
-import os
 import httpx
 
 
@@ -37,6 +36,21 @@ def process_workflow_job(job_id: int) -> dict[str, str]:
             data = {}
         # Implement GitHub label action (best-effort)
         if action == "label":
+            gh_token = os.getenv("GH_TOKEN")
+            label = data.get("label")
+            targets = data.get("targets") or []
+            headers = {"Authorization": f"Bearer {gh_token}", "Accept": "application/vnd.github+json"} if gh_token else {}
+            for tgt in targets:
+                # Expect target like owner/repo#123 or a delivery id mapping (simplified)
+                if "#" in tgt and "/" in tgt:
+                    repo_part, num = tgt.split("#", 1)
+                    owner, repo = repo_part.split("/", 1)
+                    try:
+                        with httpx.Client(timeout=10, headers=headers) as client:
+                            # apply label
+                            client.post(f"https://api.github.com/repos/{owner}/{repo}/issues/{num}/labels", json={"labels": [label]})
+                    except httpx.HTTPError:
+                        continue
         # Implement Slack DM nudge action (best-effort)
         if action == "nudge":
             slack_webhook = os.getenv("SLACK_WEBHOOK_URL")
@@ -63,21 +77,42 @@ def process_workflow_job(job_id: int) -> dict[str, str]:
                             )
                     except httpx.HTTPError:
                         continue
+        # Implement GitHub assign reviewer action
+        if action == "assign_reviewer":
             gh_token = os.getenv("GH_TOKEN")
-            label = data.get("label")
+            reviewer = data.get("reviewer")
             targets = data.get("targets") or []
             headers = {"Authorization": f"Bearer {gh_token}", "Accept": "application/vnd.github+json"} if gh_token else {}
             for tgt in targets:
-                # Expect target like owner/repo#123 or a delivery id mapping (simplified)
+                # Expect owner/repo#PR
                 if "#" in tgt and "/" in tgt:
                     repo_part, num = tgt.split("#", 1)
                     owner, repo = repo_part.split("/", 1)
                     try:
                         with httpx.Client(timeout=10, headers=headers) as client:
-                            # apply label
-                            client.post(f"https://api.github.com/repos/{owner}/{repo}/issues/{num}/labels", json={"labels": [label]})
+                            client.post(
+                                f"https://api.github.com/repos/{owner}/{repo}/pulls/{num}/requested_reviewers",
+                                json={"reviewers": [reviewer]},
+                            )
                     except httpx.HTTPError:
                         continue
+        # Implement PR summary comment
+        if action == "comment_summary":
+            gh_token = os.getenv("GH_TOKEN")
+            headers = {"Authorization": f"Bearer {gh_token}", "Accept": "application/vnd.github+json"} if gh_token else {}
+            target = data.get("target") or ""
+            text = data.get("text") or "PR summary"
+            if "#" in target and "/" in target:
+                repo_part, num = target.split("#", 1)
+                owner, repo = repo_part.split("/", 1)
+                try:
+                    with httpx.Client(timeout=10, headers=headers) as client:
+                        client.post(
+                            f"https://api.github.com/repos/{owner}/{repo}/issues/{num}/comments",
+                            json={"body": text},
+                        )
+                except httpx.HTTPError:
+                    pass
         # Mark done
         conn.execute(text("update workflow_jobs set status='done' where id=:id"), {"id": job_id})
     logger.info("workflow.job.processed", id=job_id)

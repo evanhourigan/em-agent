@@ -231,6 +231,14 @@ This section is the single place any agent/human should consult for status and n
   - [x] 5.2 Sprint health report JSON + Slack post; weekday workflow
   - [x] 5.3 Slack commands: approvals list/post with buttons, triage text/post
   - [x] 5.4 Ask (RAG) command text/post
+  - [x] 5.5 Agent triage post (Block Kit) with Propose Nudge buttons
+  - [x] 5.6 Agent ask post (Block Kit) with Propose Nudge buttons
+  - [x] 5.7 Slack interactions wiring for `propose:nudge:<target>` → approval
+  - [x] 5.8 Worker activity: Slack DM nudge execution
+  - [x] 5.9 Agent reviewer assignment proposal (signals → approval)
+  - [x] 5.10 Worker: assign GitHub requested reviewers
+  - [x] 5.11 Agent PR summary comment proposal (approval-gated)
+  - [x] 5.12 Worker: post PR summary comment to GitHub
 
 ### Phase status
 
