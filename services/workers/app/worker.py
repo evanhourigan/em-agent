@@ -80,7 +80,8 @@ def process_workflow_job(job_id: int) -> dict[str, str]:
         # Implement GitHub assign reviewer action
         if action == "assign_reviewer":
             gh_token = os.getenv("GH_TOKEN")
-            reviewer = data.get("reviewer")
+            reviewer = data.get("reviewer") or None
+            team_reviewers = data.get("team_reviewers") or []
             targets = data.get("targets") or []
             headers = {"Authorization": f"Bearer {gh_token}", "Accept": "application/vnd.github+json"} if gh_token else {}
             for tgt in targets:
@@ -90,9 +91,33 @@ def process_workflow_job(job_id: int) -> dict[str, str]:
                     owner, repo = repo_part.split("/", 1)
                     try:
                         with httpx.Client(timeout=10, headers=headers) as client:
+                            payload = {}
+                            if reviewer:
+                                payload["reviewers"] = [reviewer]
+                            if team_reviewers:
+                                payload["team_reviewers"] = team_reviewers
+                            if payload:
+                                client.post(
+                                    f"https://api.github.com/repos/{owner}/{repo}/pulls/{num}/requested_reviewers",
+                                    json=payload,
+                                )
+                    except httpx.HTTPError:
+                        continue
+        if action == "issue_create":
+            gh_token = os.getenv("GH_TOKEN")
+            headers = {"Authorization": f"Bearer {gh_token}", "Accept": "application/vnd.github+json"} if gh_token else {}
+            targets = data.get("targets") or []
+            for tgt in targets:
+                if "#" in tgt and "/" in tgt:
+                    repo_part, num = tgt.split("#", 1)
+                    owner, repo = repo_part.split("/", 1)
+                    title = f"Missing ticket link in PR #{num}"
+                    body = "This PR appears to be missing a ticket reference. Please add one (e.g., ABC-123)."
+                    try:
+                        with httpx.Client(timeout=10, headers=headers) as client:
                             client.post(
-                                f"https://api.github.com/repos/{owner}/{repo}/pulls/{num}/requested_reviewers",
-                                json={"reviewers": [reviewer]},
+                                f"https://api.github.com/repos/{owner}/{repo}/issues",
+                                json={"title": title, "body": body},
                             )
                     except httpx.HTTPError:
                         continue

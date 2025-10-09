@@ -26,8 +26,8 @@ def run_agent(payload: Dict[str, Any]) -> Dict[str, Any]:
     calls: List[Dict[str, Any]] = []
 
     # naive router
-    try:
-        with httpx.Client(timeout=20) as client:
+        try:
+            with httpx.Client(timeout=20) as client:
             if "sprint" in query and "health" in query:
                 plan.append({"tool": "reports.sprint_health"})
                 resp = client.post(mcp_url.rstrip("/") + "/tools/reports.sprint_health", json={})
@@ -89,12 +89,87 @@ def run_agent(payload: Dict[str, Any]) -> Dict[str, Any]:
                 no_review = (sig_data.get("results") or {}).get("pr_without_review") or []
                 targets = [str(r.get("delivery_id") or r) for r in no_review[:20]]
                 # Reviewer selection heuristic (placeholder)
-                reviewer = payload.get("reviewer") or "owner/reviewer"  # TODO: map code owners
+                reviewer = payload.get("reviewer") or None
+                team_reviewers: List[str] = []
+                # Optional: suggest from CODEOWNERS if not provided
+                try:
+                    if ("codeowners" in query or not reviewer) and targets:
+                        first = targets[0]
+                        if "#" in first and "/" in first:
+                            repo_part, num = first.split("#", 1)
+                            owner, repo = repo_part.split("/", 1)
+                            # fetch CODEOWNERS
+                            gh = httpx.Client(timeout=10)
+                            gh_token = os.getenv("GH_TOKEN") if hasattr(os, "getenv") else None
+                            headers = {"Authorization": f"Bearer {gh_token}", "Accept": "application/vnd.github+json"} if gh_token else {}
+                            # try common paths
+                            paths = [".github/CODEOWNERS", "CODEOWNERS", "docs/CODEOWNERS"]
+                            codeowners_text = None
+                            for p in paths:
+                                rco = gh.get(f"https://api.github.com/repos/{owner}/{repo}/contents/{p}", headers=headers)
+                                if rco.status_code == 200:
+                                    co = rco.json()
+                                    import base64
+                                    codeowners_text = base64.b64decode(co.get("content") or b"").decode(errors="ignore")
+                                    break
+                            # get changed files
+                            files = []
+                            rf = gh.get(f"https://api.github.com/repos/{owner}/{repo}/pulls/{num}/files", headers=headers)
+                            if rf.status_code == 200:
+                                files = [f.get("filename") for f in rf.json()]
+                            if codeowners_text and files:
+                                # naive parse: pattern owners...; pick first matching owner
+                                chosen_user = None
+                                chosen_team = None
+                                lines = [ln.strip() for ln in codeowners_text.splitlines() if ln.strip() and not ln.strip().startswith("#")]
+                                for fpath in files:
+                                    for ln in lines:
+                                        parts = ln.split()
+                                        if len(parts) < 2:
+                                            continue
+                                        pattern, owners = parts[0], parts[1:]
+                                        pat = pattern.replace("*", "")
+                                        if pat and fpath.startswith(pat):
+                                            for o in owners:
+                                                if o.startswith("@"):
+                                                    if "/" in o and not chosen_team:
+                                                        chosen_team = o.split("/", 1)[1]
+                                                    elif not chosen_user:
+                                                        chosen_user = o[1:]
+                                            if chosen_user or chosen_team:
+                                                break
+                                    if chosen_user or chosen_team:
+                                        break
+                                if not reviewer and chosen_user:
+                                    reviewer = chosen_user
+                                if chosen_team:
+                                    team_reviewers = [chosen_team]
+                except Exception:
+                    pass
                 approval = {
                     "subject": "pr:assign_reviewer",
                     "action": "assign_reviewer",
                     "reason": "Agent proposal to assign reviewer to PRs without review",
-                    "payload": {"reviewer": reviewer, "targets": targets},
+                    "payload": {"reviewer": reviewer or "", "team_reviewers": team_reviewers, "targets": targets},
+                }
+                plan.append({"tool": "approvals.propose", "payload": approval})
+                prop = client.post("http://localhost:8000/v1/approvals/propose", json=approval)
+                prop.raise_for_status()
+                return {"plan": plan, "proposed": prop.json(), "candidates": len(targets)}
+            if ("create" in query and "missing" in query and "ticket" in query) or ("create issues" in query and "ticket" in query):
+                # Create GitHub issues for PRs missing ticket link
+                rules = [{"kind": "no_ticket_link", "ticket_pattern": "[A-Z]+-[0-9]+"}]
+                plan.append({"tool": "signals.evaluate", "rules": rules})
+                sig = client.post("http://localhost:8000/v1/signals/evaluate", json={"rules": rules})
+                sig.raise_for_status()
+                sig_data = sig.json()
+                results = (sig_data.get("results") or {}).get("no_ticket_link") or []
+                targets = [str(r.get("delivery_id") or r) for r in results[:20]]
+                approval = {
+                    "subject": "pr:create_missing_ticket_issue",
+                    "action": "issue_create",
+                    "reason": "Agent proposal to create issues for PRs missing ticket link",
+                    "payload": {"targets": targets},
                 }
                 plan.append({"tool": "approvals.propose", "payload": approval})
                 prop = client.post("http://localhost:8000/v1/approvals/propose", json=approval)

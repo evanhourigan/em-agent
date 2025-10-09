@@ -241,6 +241,8 @@ This section is the single place any agent/human should consult for status and n
   - [x] 5.12 Worker: post PR summary comment to GitHub
   - [x] 5.13 Slack: `agent assign-reviewers <reviewer> [older_h]` command → approval
   - [x] 5.14 Agent ask blocks include Open buttons to sources
+  - [x] 5.15 Agent reviewer suggestions from CODEOWNERS; team reviewers support
+  - [x] 5.16 Slack: agent create-missing-ticket-issues → approval; worker creates issues
 
 ### Phase status
 

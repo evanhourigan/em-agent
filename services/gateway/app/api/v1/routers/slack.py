@@ -342,6 +342,29 @@ async def commands(
             "message": f"proposed approval #{action_id} for label needs-ticket; candidates:{candidates}",
         }
 
+    if text.strip().startswith("agent create-missing-ticket-issues"):
+        try:
+            import httpx
+
+            with httpx.Client(timeout=30) as client:
+                resp = client.post(
+                    "http://localhost:8000/v1/agent/run",
+                    json={"query": "create issues for missing ticket links"},
+                )
+                resp.raise_for_status()
+                r = resp.json()
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=502, detail=str(exc))
+        prop = r.get("proposed") or {}
+        action_id = prop.get("action_id")
+        candidates = r.get("candidates")
+        if not action_id:
+            return {"ok": False, "message": "agent proposal failed"}
+        return {
+            "ok": True,
+            "message": f"proposed approval #{action_id} to create issues; candidates:{candidates}",
+        }
+
     if text.startswith("agent assign-reviewers"):
         # syntax: agent assign-reviewers <reviewer> [older_than_hours]
         parts = text.split()
