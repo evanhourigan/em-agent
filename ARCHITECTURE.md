@@ -250,9 +250,9 @@ This section is the single place any agent/human should consult for status and n
 - [x] Phase 1 — Ingestion & Normalization (complete)
 - [x] Phase 2 — Metrics & Analytics (complete)
 - [x] Phase 3 — Signal Engine & Policy
-- [ ] Phase 4 — RAG & Knowledge (partially complete; crawlers pending)
-- [x] Phase 5 — Slack App & ChatOps
-- [ ] Phase 6 — Reliability & Safety
+- [ ] Phase 4 — RAG & Knowledge (crawlers pending)
+- [x] Phase 5 — Slack App & ChatOps (complete)
+- [ ] Phase 6 — Reliability & Safety (nearly complete)
 - Phase 6 — Work Breakdown
 
   - [x] 6.1 Add readiness endpoint `/ready` (DB roundtrip)
@@ -262,8 +262,12 @@ This section is the single place any agent/human should consult for status and n
   - [x] 6.5 OTel tracing across gateway, runners, RAG (expanded spans)
   - [x] 6.6 Custom Prom metrics: approval_latency_ms, override rate, slack_post_errors
   - [x] 6.7 Rate limits, payload size limits, graceful shutdown
-- [x] 6.8 Env validation on startup (fail-fast if misconfigured)
-- [x] 6.9 Secrets hardening guidance (Vault/SOPS roadmap)
+  - [x] 6.8 Env validation on startup (fail-fast)
+  - [x] 6.9 Secrets hardening guidance (Vault/SOPS roadmap)
+  - [x] Secrets redaction in logs (Authorization/Bearer/Slack/OpenAI keys masked)
+  - [x] Audit: propose/decision/execution events recorded to `action_log`
+  - [ ] Evals harness (correctness/perf checks for signals/policy)
+  - [ ] Cost caps and quotas (config + counters)
 
 ### Secrets Hardening (roadmap)
 
@@ -319,15 +323,15 @@ Short-term objective: capture, normalize, and persist events; establish DB migra
   - [x] Mapper utilities (GitHub login → user, Slack user → user)
   - [x] Minimal `/v1/identities` list/create for verification
 
-### Phase 2 — Work Breakdown
+### Phase 2 — Work Breakdown (authoritative WBS)
 
 - [x] 2.1 dbt project scaffold (profiles, seed data)
-- [ ] 2.2 DORA models
+- [x] 2.2 DORA models
   - [x] Lead time for changes (events_raw → dora_lead_time)
   - [x] Deployment frequency (events_raw → deployment_frequency)
   - [x] Change fail rate
   - [x] MTTR
-- [ ] 2.3 Flow metrics
+- [x] 2.3 Flow metrics
   - [x] PR idle time (events_raw → pr_idle_time)
   - [x] WIP
   - [x] Aging WIP
