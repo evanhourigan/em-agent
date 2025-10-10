@@ -337,9 +337,9 @@ Short-term objective: capture, normalize, and persist events; establish DB migra
   - [x] PR idle time (events_raw → pr_idle_time)
   - [x] WIP
   - [x] Aging WIP
-- [ ] 2.4 Backfill jobs and retention windows
+- [x] 2.4 Backfill jobs and retention windows
   - [x] Seed script added (services/metrics/scripts/backfill_events.py)
-  - [ ] Retention policy + scheduler
+  - [x] Retention policy + scheduler
 - [x] 2.5 Grafana dashboards: delivery panels for lead time, PR idle, deploy freq (JSON exported)
 - [x] CI: GitHub Action to parse/compile dbt on PRs (.github/workflows/dbt.yml)
   - [x] Retention purge workflow (.github/workflows/retention.yml)
