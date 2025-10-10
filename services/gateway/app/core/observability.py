@@ -69,6 +69,14 @@ def add_prometheus(app, app_name: str = "gateway") -> None:
                 "Count of workflow runs by mode (auto vs hitl)",
                 ["mode"],
             ),
+            "quota_slack_posts_total": Counter(
+                "quota_slack_posts_total",
+                "Total Slack posts (for cost caps)",
+            ),
+            "quota_rag_searches_total": Counter(
+                "quota_rag_searches_total",
+                "Total RAG searches (for cost caps)",
+            ),
         }
         app.state.metrics = reg
         global_metrics.update(reg)

@@ -6,6 +6,7 @@ import httpx
 from fastapi import APIRouter, HTTPException
 
 from ....core.config import get_settings
+from ....core.metrics import metrics as global_metrics
 
 router = APIRouter(prefix="/v1/rag", tags=["rag"])
 
@@ -19,7 +20,14 @@ def proxy_search(payload: Dict[str, Any]) -> Dict[str, Any]:
             with httpx.Client(timeout=15) as client:
                 resp = client.post(f"{rag_url}/search", json=payload)
                 resp.raise_for_status()
-                return resp.json()
+                data = resp.json()
+                m = global_metrics
+                if m:
+                    try:
+                        m.get("quota_rag_searches_total", None) and m["quota_rag_searches_total"].inc()
+                    except Exception:
+                        pass
+                return data
         except httpx.HTTPError as exc:  # noqa: BLE001
             last_exc = exc
     raise HTTPException(status_code=502, detail=f"rag proxy error: {last_exc}")

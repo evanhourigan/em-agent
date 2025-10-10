@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     # Safety limits
     rate_limit_per_min: int = 120
     max_payload_bytes: int = 1024 * 1024
+    # Cost caps / quotas
+    max_daily_slack_posts: int = 1000
+    max_daily_rag_searches: int = 5000
 
     # OPA
     opa_url: str | None = None

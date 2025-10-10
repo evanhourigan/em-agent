@@ -16,6 +16,7 @@ class SlackClient:
         self._bot_token: Optional[str] = settings.slack_bot_token
         self._default_channel: Optional[str] = settings.slack_default_channel
         self._logger = get_logger(__name__)
+        self._max_daily = int(get_settings().max_daily_slack_posts)
 
     def _with_retry(self, func):
         try:
@@ -36,6 +37,8 @@ class SlackClient:
                 m.get("slack_post_errors_total", None) and m["slack_post_errors_total"].labels(
                     kind=kind
                 ).inc()
+            # quota counter
+            m.get("quota_slack_posts_total", None) and m["quota_slack_posts_total"].inc()
         except Exception:
             pass
 
