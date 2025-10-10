@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Set
 
 import os
+import time
 import httpx
 from fastapi import FastAPI, HTTPException
 import base64
@@ -73,19 +74,33 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=400, detail="CONFLUENCE_EMAIL/CONFLUENCE_TOKEN not set")
         docs: List[Dict[str, Any]] = []
         auth = (email, token)
-        with httpx.Client(timeout=20) as client:
+        # Basic retry/backoff
+        def _get(client: httpx.Client, url: str, **kwargs):
+            backoff = 0.5
+            for _ in range(4):
+                try:
+                    r = client.get(url, **kwargs)
+                    if r.status_code in (429, 500, 502, 503, 504):
+                        time.sleep(backoff)
+                        backoff *= 2
+                        continue
+                    return r
+                except httpx.HTTPError:
+                    time.sleep(backoff)
+                    backoff *= 2
+            raise HTTPException(status_code=502, detail=f"GET failed after retries: {url}")
+
+        since = payload.get("if_modified_since")  # RFC1123 string optional
+        headers = {"If-Modified-Since": since} if since else {}
+        with httpx.Client(timeout=20, headers=headers) as client:
             for pid in page_ids:
                 try:
-                    resp = client.get(
-                        f"{base_url}/wiki/api/v2/pages/{pid}?body-format=storage",
-                        auth=auth,
-                    )
+                    resp = _get(client, f"{base_url}/wiki/api/v2/pages/{pid}?body-format=storage", auth=auth)
                     if resp.status_code == 404:
                         # fallback to older API
-                        resp = client.get(
-                            f"{base_url}/rest/api/content/{pid}?expand=body.storage",
-                            auth=auth,
-                        )
+                        resp = _get(client, f"{base_url}/rest/api/content/{pid}?expand=body.storage", auth=auth)
+                    if resp.status_code == 304:
+                        continue
                     resp.raise_for_status()
                     data = resp.json()
                     title = (
@@ -135,11 +150,32 @@ def create_app() -> FastAPI:
         if os.getenv("GH_TOKEN"):
             headers["Authorization"] = f"Bearer {os.getenv('GH_TOKEN')}"
         docs: List[Dict[str, Any]] = []
+        # Delta: If-Modified-Since / ETag support
+        since = payload.get("if_modified_since")  # RFC1123
+        etag = payload.get("etag")
+        if since:
+            headers["If-Modified-Since"] = since
+        if etag:
+            headers["If-None-Match"] = etag
+
+        def _get(client: httpx.Client, url: str, **kwargs):
+            backoff = 0.5
+            for _ in range(4):
+                try:
+                    r = client.get(url, **kwargs)
+                    if r.status_code in (429, 500, 502, 503, 504):
+                        time.sleep(backoff)
+                        backoff *= 2
+                        continue
+                    return r
+                except httpx.HTTPError:
+                    time.sleep(backoff)
+                    backoff *= 2
+            raise HTTPException(status_code=502, detail=f"GET failed after retries: {url}")
+
         with httpx.Client(timeout=30, headers=headers) as client:
             # Get tree
-            r = client.get(
-                f"https://api.github.com/repos/{owner}/{repo}/git/trees/{ref}?recursive=1"
-            )
+            r = _get(client, f"https://api.github.com/repos/{owner}/{repo}/git/trees/{ref}?recursive=1")
             r.raise_for_status()
             tree = r.json().get("tree", [])
             for node in tree:
@@ -151,9 +187,9 @@ def create_app() -> FastAPI:
                 if exts and not any(path.lower().endswith(e) for e in exts):
                     continue
                 try:
-                    c = client.get(
-                        f"https://api.github.com/repos/{owner}/{repo}/contents/{path}?ref={ref}"
-                    )
+                    c = _get(client, f"https://api.github.com/repos/{owner}/{repo}/contents/{path}?ref={ref}")
+                    if c.status_code == 304:
+                        continue
                     c.raise_for_status()
                     meta_json = c.json()
                     if meta_json.get("encoding") == "base64":
@@ -162,6 +198,9 @@ def create_app() -> FastAPI:
                         )
                     else:
                         raw = meta_json.get("content", "")
+                    # Prefer text for markdown-like files; else skip binaries
+                    if not raw:
+                        continue
                     docs.append(
                         {
                             "id": f"gh:{owner}/{repo}:{path}",
@@ -171,6 +210,7 @@ def create_app() -> FastAPI:
                                 "url": meta_json.get("html_url"),
                                 "path": path,
                                 "ref": ref,
+                                "etag": c.headers.get("ETag"),
                             },
                         }
                     )
@@ -181,6 +221,37 @@ def create_app() -> FastAPI:
         chunk_size = int(payload.get("chunk_size", 800))
         overlap = int(payload.get("overlap", 100))
         return ingest_docs({"docs": docs, "chunk_size": chunk_size, "overlap": overlap})
+
+    # Optional simple scheduler for periodic crawls
+    import threading
+
+    class Scheduler(threading.Thread):
+        def __init__(self) -> None:
+            super().__init__(daemon=True)
+            self._stop = threading.Event()
+
+        def run(self) -> None:  # pragma: no cover
+            interval = int(os.getenv("CRAWLER_INTERVAL_SEC", "0") or 0)
+            if interval <= 0:
+                return
+            while not self._stop.is_set():
+                # Example: run GitHub crawl if env configured
+                try:
+                    owner = os.getenv("CRAWL_GH_OWNER")
+                    repo = os.getenv("CRAWL_GH_REPO")
+                    if owner and repo:
+                        try:
+                            crawl_github({"owner": owner, "repo": repo, "include_paths": ["docs/","README.md"]})
+                        except Exception:
+                            pass
+                finally:
+                    self._stop.wait(interval)
+
+        def stop(self) -> None:
+            self._stop.set()
+
+    sched = Scheduler()
+    sched.start()
 
     return app
 

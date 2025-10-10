@@ -123,7 +123,9 @@ An AI-assisted “Chief of Staff” for engineering that plugs into your stack, 
 - [x] Optional pgvector persistence + Sentence-Transformers embeddings (env gated)
 - [x] UI search + simple file uploader (indexes docs to RAG)
 - [x] Add citations/provenance in results (source, url)
-- [ ] Confluence/repo crawlers, retrieval with citations & provenance
+- [x] Confluence/repo crawlers, retrieval with citations & provenance
+- [x] Crawlers: retry/backoff; delta sync via If-Modified-Since/ETag
+- [x] Optional scheduler for periodic crawl (env-driven)
 
 ### Phase 5 — Slack App & ChatOps
 
