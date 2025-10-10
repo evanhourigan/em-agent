@@ -204,6 +204,13 @@ def decide(id: int, payload: Dict[str, Any]) -> Dict[str, Any]:
                 span.end()
             except Exception:
                 pass
+        # Additional HITL metrics: auto vs hitl tally
+        try:
+            if m:
+                mode = "hitl" if decision in {"approve", "decline", "modify"} else "auto"
+                m["workflows_auto_vs_hitl_total"].labels(mode=mode).inc()
+        except Exception:
+            pass
         return resp
 
 
