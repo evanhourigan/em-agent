@@ -341,6 +341,7 @@ Short-term objective: capture, normalize, and persist events; establish DB migra
 - [x] 2.5 Grafana dashboards: delivery panels for lead time, PR idle, deploy freq (JSON exported)
 - [x] CI: GitHub Action to parse/compile dbt on PRs (.github/workflows/dbt.yml)
   - [x] Retention purge workflow (.github/workflows/retention.yml)
+  - [x] Retention runner purges `events_raw` older than `RETENTION_DAYS` (daily)
 
 ### Metrics API
 

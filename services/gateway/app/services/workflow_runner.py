@@ -7,6 +7,7 @@ import time
 from sqlalchemy.orm import Session
 
 from ..core.logging import get_logger
+from ..models.events import EventRaw
 from ..models.workflow_jobs import WorkflowJob
 
 
@@ -76,6 +77,55 @@ def maybe_start_workflow_runner(app, session_factory) -> WorkflowRunner | None:
 
 def maybe_stop_workflow_runner(app) -> None:
     t = getattr(app.state, "workflow_runner_thread", None)
+    if t is not None:
+        try:
+            t.stop()
+        except Exception:
+            pass
+
+
+class RetentionRunner(threading.Thread):
+    def __init__(self, session_factory, days: int, interval_sec: int = 86400) -> None:
+        super().__init__(daemon=True)
+        self._session_factory = session_factory
+        self._days = days
+        self._interval = interval_sec
+        self._stop = threading.Event()
+        self._logger = get_logger(__name__)
+
+    def run(self) -> None:  # pragma: no cover
+        while not self._stop.is_set():
+            try:
+                with self._session_factory() as session:
+                    # purge events_raw older than N days
+                    session.execute(
+                        "delete from events_raw where received_at < now() - (:days || ' days')::interval",
+                        {"days": self._days},
+                    )
+                    session.commit()
+                    self._logger.info("retention.purge_complete", days=self._days)
+            except Exception as exc:
+                self._logger.warning("retention.error", error=str(exc))
+            self._stop.wait(self._interval)
+
+    def stop(self) -> None:
+        self._stop.set()
+
+
+def maybe_start_retention(app, session_factory) -> RetentionRunner | None:
+    days = int(os.getenv("RETENTION_DAYS", "0") or 0)
+    if days <= 0:
+        return None
+    interval = int(os.getenv("RETENTION_INTERVAL_SEC", "86400"))
+    t = RetentionRunner(session_factory, days, interval)
+    t.start()
+    app.state.retention_runner_thread = t
+    get_logger(__name__).info("retention.started", days=days, interval_sec=interval)
+    return t
+
+
+def maybe_stop_retention(app) -> None:
+    t = getattr(app.state, "retention_runner_thread", None)
     if t is not None:
         try:
             t.stop()
