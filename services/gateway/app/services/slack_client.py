@@ -92,6 +92,15 @@ class SlackClient:
                 self._inc_metric("text", ok)
                 return {"ok": ok, "response": data}
 
+        # quota enforcement (best-effort): deny posting if over limit
+        try:
+            m = global_metrics
+            if m and m.get("quota_slack_posts_total") is not None and self._max_daily > 0:
+                val = m["quota_slack_posts_total"]._value.get()  # type: ignore[attr-defined]
+                if val and int(val) >= self._max_daily:
+                    return {"ok": False, "error": "quota_exceeded"}
+        except Exception:
+            pass
         res = self._with_retry(_call_api)
         if span:
             try:
@@ -151,6 +160,15 @@ class SlackClient:
                 self._inc_metric("blocks", ok)
                 return {"ok": ok, "response": data}
 
+        # quota enforcement
+        try:
+            m = global_metrics
+            if m and m.get("quota_slack_posts_total") is not None and self._max_daily > 0:
+                val = m["quota_slack_posts_total"]._value.get()  # type: ignore[attr-defined]
+                if val and int(val) >= self._max_daily:
+                    return {"ok": False, "error": "quota_exceeded"}
+        except Exception:
+            pass
         res = self._with_retry(_call_api)
         if span:
             try:

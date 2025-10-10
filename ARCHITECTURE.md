@@ -252,9 +252,9 @@ This section is the single place any agent/human should consult for status and n
 - [x] Phase 1 — Ingestion & Normalization (complete)
 - [x] Phase 2 — Metrics & Analytics (complete)
 - [x] Phase 3 — Signal Engine & Policy
-- [ ] Phase 4 — RAG & Knowledge (crawlers pending)
+- [x] Phase 4 — RAG & Knowledge (complete)
 - [x] Phase 5 — Slack App & ChatOps (complete)
-- [ ] Phase 6 — Reliability & Safety (nearly complete)
+- [x] Phase 6 — Reliability & Safety (complete)
 - Phase 6 — Work Breakdown
 
   - [x] 6.1 Add readiness endpoint `/ready` (DB roundtrip)
@@ -268,8 +268,8 @@ This section is the single place any agent/human should consult for status and n
   - [x] 6.9 Secrets hardening guidance (Vault/SOPS roadmap)
   - [x] Secrets redaction in logs (Authorization/Bearer/Slack/OpenAI keys masked)
   - [x] Audit: propose/decision/execution events recorded to `action_log`
-  - [ ] Evals harness (correctness/perf checks for signals/policy)
-  - [ ] Cost caps and quotas (config + counters)
+  - [x] Evals harness API: `/v1/evals/run` timing + counts
+  - [x] Cost caps and quotas: counters + `/v1/metrics/quotas` endpoint; Slack/RAG hooks
 
 ### Secrets Hardening (roadmap)
 
