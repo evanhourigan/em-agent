@@ -88,6 +88,14 @@ Prometheus series exposed by the gateway:
 - workflows auto vs HITL
   - prom: `sum(rate(workflows_auto_vs_hitl_total[5m])) by (mode)`
 
+### Log Redaction Check
+
+```bash
+# simulate a log with an Authorization header
+docker compose logs -f gateway | grep -i authorization || true
+# expected: values are shown as [REDACTED] and Bearer tokens masked
+```
+
 Safety limits (optional)
 
 ```bash

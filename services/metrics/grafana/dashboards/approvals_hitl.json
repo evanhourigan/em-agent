@@ -25,6 +25,28 @@
         }
       ],
       "gridPos": { "h": 9, "w": 12, "x": 12, "y": 0 }
+    },
+    {
+      "type": "stat",
+      "title": "HITL Approvals Last 1h",
+      "targets": [
+        {
+          "expr": "sum(increase(approvals_decisions_total{status=\"approve\"}[1h]))",
+          "legendFormat": "approved"
+        }
+      ],
+      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 9 }
+    },
+    {
+      "type": "stat",
+      "title": "Overrides Last 1h",
+      "targets": [
+        {
+          "expr": "sum(increase(approvals_override_total[1h]))",
+          "legendFormat": "overrides"
+        }
+      ],
+      "gridPos": { "h": 5, "w": 6, "x": 6, "y": 9 }
     }
   ]
 }
