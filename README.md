@@ -1,8 +1,58 @@
 # EM Agent (Engineering Manager Agent)
 
+[![License](https://img.shields.io/github/license/evanhourigan/em-agent)](./LICENSE) [![Python](https://img.shields.io/badge/python-3.12-blue)](#) [![Docker](https://img.shields.io/badge/docker-ready-blue)](#) [![CI](https://img.shields.io/github/actions/workflow/status/evanhourigan/em-agent/ci.yml?branch=main&label=CI)](https://github.com/evanhourigan/em-agent/actions)
+
+[EM Agent Comprehensive Guide](./COMPREHENSIVE.md) • [Architecture](./ARCHITECTURE.md)
+
 An AI-assisted “Chief of Staff” for engineering. Plugs into your stack, surfaces risks, automates toil, and produces trustworthy operating metrics—while keeping humans in control.
 
-See `ARCHITECTURE.md` for the vision, reference architecture, phases, and execution tracker.
+See `ARCHITECTURE.md` for the vision, reference architecture, and phase plan. For a complete, step-by-step test guide, see `COMPREHENSIVE.md`.
+
+## Highlights
+- FastAPI gateway: signals, policy, approvals (HITL), Slack, reports
+- RAG service: TF‑IDF by default; optional pgvector + sentence-transformers
+- Connectors: Confluence & GitHub crawlers with retry/backoff + delta sync
+- Observability: Prometheus metrics, optional OpenTelemetry tracing, secret redaction
+- Phase 7 extras: Incidents, Onboarding autopilot, OKR mapping
+
+## Table of Contents
+- Quickstart (Docker)
+- Health and Metrics
+- Database & Migrations
+- API (alpha)
+  - Periodic Evaluator (Phase 3)
+  - Metrics API (DORA)
+  - Projects CRUD
+  - Signals & Policy
+  - Reports (Phase 5)
+  - Workflows & Approvals (Phase 3)
+  - RAG Service (Phase 4)
+  - Slack Commands (Phase 5)
+  - Connectors (Phase 4)
+  - MCP Tools (Phase 4)
+  - OPA policy/bundles
+  - Event Bus (NATS)
+  - Workers (Celery) & Temporal
+- Secrets hardening (Phase 6)
+- Development Notes
+
+---
+
+### Architecture Diagram
+
+See the full reference diagram in [ARCHITECTURE.md](./ARCHITECTURE.md). It includes service boundaries, observability, policy/approvals placement, and data flows.
+
+### Demo (Quick Peek)
+
+Bring up the stack and post a triage summary to Slack (unsigned local request):
+```bash
+make up && make health
+curl -sS -X POST http://localhost:8000/v1/slack/commands \
+  -H 'content-type: application/json' \
+  -d '{"text":"triage"}' | jq
+```
+
+---
 
 ## Releases
 
