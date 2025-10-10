@@ -262,7 +262,15 @@ This section is the single place any agent/human should consult for status and n
   - [x] 6.5 OTel tracing across gateway, runners, RAG (expanded spans)
   - [x] 6.6 Custom Prom metrics: approval_latency_ms, override rate, slack_post_errors
   - [x] 6.7 Rate limits, payload size limits, graceful shutdown
-  - [ ] 6.8 Secrets hardening guidance (Vault/SOPS roadmap)
+- [x] 6.8 Env validation on startup (fail-fast if misconfigured)
+- [x] 6.9 Secrets hardening guidance (Vault/SOPS roadmap)
+
+### Secrets Hardening (roadmap)
+
+- Prefer external secret stores in production (Vault, AWS/GCP secret managers) over env files.
+- Local dev: `.env` strictly for non-production; never commit secrets; use direnv.
+- Rotate tokens periodically; least-privilege tokens for GitHub/Slack.
+- Validate required secrets at startup; fail fast if missing.
 
 - [ ] Phase 7 — Extras
 

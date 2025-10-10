@@ -140,6 +140,21 @@ def process_workflow_job(job_id: int) -> dict[str, str]:
                     pass
         # Mark done
         conn.execute(text("update workflow_jobs set status='done' where id=:id"), {"id": job_id})
+        # Audit execution
+        try:
+            conn.execute(
+                text(
+                    "insert into action_log(rule_name, subject, action, payload, created_at) values (:rn, :subj, :act, :pl, now())"
+                ),
+                {
+                    "rn": "workflow.execute",
+                    "subj": (row or {}).get("subject") or "n/a",
+                    "act": action,
+                    "pl": payload,
+                },
+            )
+        except Exception:
+            pass
     logger.info("workflow.job.processed", id=job_id)
     return {"status": "done"}
 

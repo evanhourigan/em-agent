@@ -16,7 +16,7 @@ from .api.v1.routers.signals import router as signals_router
 from .api.v1.routers.slack import router as slack_router
 from .api.v1.routers.webhooks import router as webhooks_router
 from .api.v1.routers.workflows import router as workflows_router
-from .core.config import get_settings
+from .core.config import get_settings, validate_settings
 from .core.logging import configure_structlog, get_logger
 from .core.observability import add_prometheus, add_tracing
 from .db import get_engine, get_sessionmaker
@@ -26,6 +26,12 @@ from .services.workflow_runner import maybe_start_workflow_runner, maybe_stop_wo
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    # Reliability: validate env/settings early
+    try:
+        validate_settings(settings)
+    except Exception as exc:  # noqa: BLE001
+        # Fail-fast with a clear error
+        raise RuntimeError(f"Invalid configuration: {exc}")
 
     configure_structlog()
     logger = get_logger(__name__)

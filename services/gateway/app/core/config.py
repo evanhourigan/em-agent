@@ -1,6 +1,7 @@
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import Optional
 
 
 class Settings(BaseSettings):
@@ -40,3 +41,20 @@ class Settings(BaseSettings):
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     return Settings()
+
+
+def validate_settings(settings: Settings) -> None:
+    """Basic runtime validation for reliability and secret hygiene."""
+    # Database must be set
+    if not (settings.database_url or "").strip():
+        raise ValueError("DATABASE_URL is required")
+    # Slack signing enforcement requires secret
+    if settings.slack_signing_required and not (settings.slack_signing_secret or "").strip():
+        raise ValueError("SLACK_SIGNING_REQUIRED=true but SLACK_SIGNING_SECRET is not set")
+    # OTel enabled should have endpoint
+    if settings.otel_enabled and not (settings.otel_exporter_otlp_endpoint or "").strip():
+        # non-fatal, but warn via print to avoid logger import cycle
+        print("[warn] OTEL_ENABLED=true but OTEL_EXPORTER_OTLP_ENDPOINT is not set")
+    # RAG URL should be reachable format
+    if not (settings.rag_url or "").startswith("http"):
+        print("[warn] RAG_URL does not look like an http URL; set to service URL if using RAG")

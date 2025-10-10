@@ -13,6 +13,7 @@ from ....core.observability import add_prometheus
 from ....db import get_sessionmaker
 from ....models.approvals import Approval
 from ....models.workflow_jobs import WorkflowJob
+from ....models.action_log import ActionLog
 from ....services.slack_client import SlackClient
 from ....core.logging import get_logger
 from ....services.temporal_client import get_temporal
@@ -62,6 +63,19 @@ def propose_action(payload: Dict[str, Any]) -> Dict[str, Any]:
         )
         session.add(a)
         session.commit()
+        # Audit: record proposal
+        try:
+            session.add(
+                ActionLog(
+                    rule_name="approval.propose",
+                    subject=a.subject,
+                    action=a.action,
+                    payload=a.payload,
+                )
+            )
+            session.commit()
+        except Exception:
+            session.rollback()
         result = {"action_id": a.id, "proposed": payload}
         if span:
             try:
@@ -153,6 +167,19 @@ def decide(id: int, payload: Dict[str, Any]) -> Dict[str, Any]:
             except Exception:
                 pass
         session.commit()
+        # Audit: record decision and potential job enqueue
+        try:
+            session.add(
+                ActionLog(
+                    rule_name="approval.decision",
+                    subject=a.subject,
+                    action=decision,
+                    payload=a.payload,
+                )
+            )
+            session.commit()
+        except Exception:
+            session.rollback()
         # Metrics: decision counter and latency (if available)
         m = global_metrics
         if m:
