@@ -13,6 +13,9 @@ from .api.v1.routers.projects import router as projects_router
 from .api.v1.routers.rag import router as rag_router
 from .api.v1.routers.reports import router as reports_router
 from .api.v1.routers.evals import router as evals_router
+from .api.v1.routers.incidents import router as incidents_router
+from .api.v1.routers.onboarding import router as onboarding_router
+from .api.v1.routers.okr import router as okr_router
 from .api.v1.routers.signals import router as signals_router
 from .api.v1.routers.slack import router as slack_router
 from .api.v1.routers.webhooks import router as webhooks_router
@@ -89,6 +92,9 @@ def create_app() -> FastAPI:
     app.include_router(reports_router)
     app.include_router(agent_router)
     app.include_router(evals_router)
+    app.include_router(incidents_router)
+    app.include_router(onboarding_router)
+    app.include_router(okr_router)
 
     @app.get("/")
     def root() -> dict:

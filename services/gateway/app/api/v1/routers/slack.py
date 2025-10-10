@@ -16,6 +16,7 @@ from ....api.v1.routers.signals import _evaluate_rule
 from ....core.config import get_settings
 from ....db import get_sessionmaker
 from ....models.approvals import Approval
+from ....models.incidents import Incident, IncidentTimeline
 from ....models.workflow_jobs import WorkflowJob
 
 router = APIRouter(prefix="/v1/slack", tags=["slack"])
@@ -317,6 +318,183 @@ async def commands(
         if "results" in result:
             msg += f" | results:{len(result['results'])}"
         return {"ok": True, "message": msg}
+
+    if text.startswith("incident start"):
+        title = text[len("incident start"):].strip() or "Untitled Incident"
+        try:
+            import httpx
+
+            with httpx.Client(timeout=10) as client:
+                resp = client.post("http://localhost:8000/v1/incidents", json={"title": title})
+                resp.raise_for_status()
+                inc = resp.json()
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=502, detail=str(exc))
+        return {"ok": True, "message": f"incident #{inc.get('id')} started: {title}"}
+
+    if text.startswith("incident note "):
+        parts = text.split(maxsplit=3)
+        if len(parts) < 4 or not parts[2].isdigit():
+            return {"ok": False, "message": "usage: incident note <id> <text>"}
+        inc_id = int(parts[2])
+        note = parts[3]
+        try:
+            import httpx
+
+            with httpx.Client(timeout=10) as client:
+                resp = client.post(f"http://localhost:8000/v1/incidents/{inc_id}/note", json={"text": note})
+                resp.raise_for_status()
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=502, detail=str(exc))
+        return {"ok": True, "message": f"noted on incident #{inc_id}"}
+
+    if text.startswith("incident post"):
+        # usage: incident post <id> [#channel]
+        parts = text.split()
+        if len(parts) < 3 or not parts[2].isdigit():
+            return {"ok": False, "message": "usage: incident post <id> [#channel]"}
+        inc_id = int(parts[2])
+        channel = parts[3] if len(parts) > 3 and parts[3].startswith("#") else None
+        SessionLocal = get_sessionmaker()
+        with SessionLocal() as session:
+            inc = session.get(Incident, inc_id)
+            if not inc:
+                raise HTTPException(status_code=404, detail="incident not found")
+            rows = (
+                session.query(IncidentTimeline)
+                .filter(IncidentTimeline.incident_id == inc_id)
+                .order_by(IncidentTimeline.ts.asc())
+                .all()
+            )
+        from ....services.slack_client import SlackClient
+
+        blocks: List[Dict[str, Any]] = [
+            {
+                "type": "header",
+                "text": {
+                    "type": "plain_text",
+                    "text": f"Incident #{inc_id} — {inc.title}",
+                },
+            },
+            {
+                "type": "section",
+                "fields": [
+                    {"type": "mrkdwn", "text": f"*Status:* {inc.status}"},
+                    {"type": "mrkdwn", "text": f"*Severity:* {inc.severity or '-'}"},
+                ],
+            },
+            {"type": "divider"},
+        ]
+        for tl in rows[-10:]:
+            ts = tl.ts.isoformat() if hasattr(tl.ts, "isoformat") else str(tl.ts)
+            who = f" by {tl.author}" if tl.author else ""
+            blocks.append(
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"*{ts}*{who}: {tl.text}",
+                    },
+                }
+            )
+        res = SlackClient().post_blocks(text=f"Incident #{inc_id}", blocks=blocks, channel=channel)
+        return {"ok": True, "posted": res}
+
+    if text.startswith("incident close "):
+        parts = text.split(maxsplit=2)
+        if len(parts) < 3 or not parts[2].isdigit():
+            return {"ok": False, "message": "usage: incident close <id>"}
+        inc_id = int(parts[2])
+        try:
+            import httpx
+
+            with httpx.Client(timeout=10) as client:
+                resp = client.post(f"http://localhost:8000/v1/incidents/{inc_id}/close")
+                resp.raise_for_status()
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=502, detail=str(exc))
+        return {"ok": True, "message": f"incident #{inc_id} closed"}
+
+    if text.startswith("incident sev "):
+        # usage: incident sev <id> <S0|S1|S2|S3>
+        parts = text.split(maxsplit=3)
+        if len(parts) < 4 or not parts[2].isdigit():
+            return {"ok": False, "message": "usage: incident sev <id> <S0|S1|S2|S3>"}
+        inc_id = int(parts[2])
+        sev = parts[3]
+        try:
+            import httpx
+
+            with httpx.Client(timeout=10) as client:
+                resp = client.post(f"http://localhost:8000/v1/incidents/{inc_id}/severity", json={"severity": sev})
+                resp.raise_for_status()
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=502, detail=str(exc))
+        return {"ok": True, "message": f"incident #{inc_id} severity -> {sev}"}
+
+    if text.startswith("onboarding plan "):
+        # usage: onboarding plan <title>
+        title = text[len("onboarding plan "):].strip() or "New Hire Plan"
+        try:
+            import httpx
+
+            with httpx.Client(timeout=10) as client:
+                resp = client.post("http://localhost:8000/v1/onboarding/plans", json={"title": title})
+                resp.raise_for_status()
+                plan = resp.json()
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=502, detail=str(exc))
+        return {"ok": True, "message": f"onboarding plan #{plan.get('id')} created"}
+
+    if text.startswith("onboarding task "):
+        # usage: onboarding task <plan_id> <title>
+        parts = text.split(maxsplit=3)
+        if len(parts) < 4 or not parts[2].isdigit():
+            return {"ok": False, "message": "usage: onboarding task <plan_id> <title>"}
+        pid = int(parts[2])
+        t = parts[3]
+        try:
+            import httpx
+
+            with httpx.Client(timeout=10) as client:
+                resp = client.post(f"http://localhost:8000/v1/onboarding/plans/{pid}/tasks", json={"title": t})
+                resp.raise_for_status()
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=502, detail=str(exc))
+        return {"ok": True, "message": f"task added to plan #{pid}"}
+
+    if text.startswith("okr new "):
+        # usage: okr new <title>
+        title = text[len("okr new "):].strip()
+        if not title:
+            return {"ok": False, "message": "usage: okr new <title>"}
+        try:
+            import httpx
+
+            with httpx.Client(timeout=10) as client:
+                resp = client.post("http://localhost:8000/v1/okr/objectives", json={"title": title})
+                resp.raise_for_status()
+                obj = resp.json()
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=502, detail=str(exc))
+        return {"ok": True, "message": f"objective #{obj.get('id')} created"}
+
+    if text.startswith("okr kr "):
+        # usage: okr kr <objective_id> <title>
+        parts = text.split(maxsplit=3)
+        if len(parts) < 4 or not parts[2].isdigit():
+            return {"ok": False, "message": "usage: okr kr <objective_id> <title>"}
+        oid = int(parts[2])
+        krt = parts[3]
+        try:
+            import httpx
+
+            with httpx.Client(timeout=10) as client:
+                resp = client.post(f"http://localhost:8000/v1/okr/objectives/{oid}/krs", json={"title": krt})
+                resp.raise_for_status()
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=502, detail=str(exc))
+        return {"ok": True, "message": f"kr added to objective #{oid}"}
 
     if text.strip().startswith("agent label-missing-ticket"):
         # Trigger agent flow to propose labeling PRs without ticket links
