@@ -691,6 +691,204 @@ We've transformed the approvals router from a risky, untested module with bare e
 
 ---
 
+## Phase 3: Test Coverage Expansion (Week 9)
+
+### 🔄 In Progress - 39% coverage (Goal: 70%)
+
+**Status**: Active development
+**Objective**: Expand test coverage from 36% to 70%+ by testing all critical routers
+
+#### Completed Router Tests
+
+##### 1. Identities Router
+**Status**: ✅ Complete - 100% coverage
+**Delivered**: `tests/gateway/test_identities.py` (15 tests, all passing)
+
+**Test Coverage**:
+- List operations (empty, all, ordering)
+- Create operations (minimal, all fields, duplicates)
+- Validation (missing, empty, too long fields)
+- Unique constraint testing (external_type + external_id)
+
+**Key Features Tested**:
+- ✅ Idempotency via unique constraints
+- ✅ Pydantic schema validation
+- ✅ Database persistence
+- ✅ Optional field handling
+
+---
+
+##### 2. Evals Router
+**Status**: ✅ Complete - 93% coverage
+**Delivered**: `tests/gateway/test_evals.py` (12 tests, 11 passing, 1 skipped)
+
+**Test Coverage**:
+- Input validation (5 tests) - missing, empty, wrong types
+- Rule evaluation (6 tests) - single, multiple, errors, timing
+- Response structure validation
+
+**Key Features Tested**:
+- ✅ Error handling (captures rule errors gracefully)
+- ✅ Timing metrics (elapsed_ms for all evaluations)
+- ✅ Returns 200 even when rules fail
+- ✅ Unsupported rule kinds captured as errors
+
+---
+
+##### 3. Signals Router
+**Status**: ✅ Complete - 76% coverage
+**Delivered**: `tests/gateway/test_signals.py` (12 tests, 7 passing, 5 skipped)
+
+**Test Coverage**:
+- Input format (YAML vs JSON)
+- Rule evaluation (empty, single, multiple)
+- Error handling (unsupported kinds)
+- **Skipped**: PostgreSQL-specific features (interval, date_trunc, regex operators)
+
+**Key Features Tested**:
+- ✅ YAML and JSON input formats
+- ✅ Multiple rule evaluation
+- ✅ Unsupported rule kind returns 400
+- ⏭️ Actual rule execution requires PostgreSQL (skipped on SQLite)
+
+---
+
+##### 4. Webhooks Router
+**Status**: ✅ Complete - 55% coverage
+**Delivered**: `tests/gateway/test_webhooks.py` (13 tests, 11 passing, 2 skipped)
+
+**Test Coverage**:
+- GitHub webhooks (8 tests): basic, duplicate, headers, payload
+- Jira webhooks (5 tests): basic, duplicate, payload, signature
+- **Skipped**: Signature verification (requires app.state configuration)
+
+**Key Features Tested**:
+- ✅ Idempotency via delivery ID checks
+- ✅ Event storage in EventRaw table
+- ✅ Header and payload preservation
+- ✅ Duplicate detection returns 200 with "duplicate" status
+- ✅ Missing headers handled gracefully
+
+---
+
+#### Test Infrastructure Updates
+
+##### conftest.py Enhancements
+**Changes**:
+- Added JWT_SECRET_KEY environment variable for auth tests
+- Fixed model imports in test_db_engine fixture
+- All 9 models now imported before Base.metadata.create_all()
+- Prevents "no such table" errors in tests
+
+**Impact**:
+- ✅ All database tests now work correctly
+- ✅ JWT token tests can run
+- ✅ Proper test isolation maintained
+
+---
+
+### Metrics - Phase 3 (Current)
+
+**Test Files Created**: 4
+- `tests/gateway/test_identities.py` (15 tests)
+- `tests/gateway/test_evals.py` (12 tests)
+- `tests/gateway/test_signals.py` (12 tests)
+- `tests/gateway/test_webhooks.py` (13 tests)
+
+**Test Results**:
+| Router | Tests | Passing | Failing | Skipped | Coverage | Improvement |
+|--------|-------|---------|---------|---------|----------|-------------|
+| identities | 15 | 15 | 0 | 0 | 100% | +37% |
+| evals | 12 | 11 | 0 | 1 | 93% | +56% |
+| signals | 12 | 7 | 0 | 5 | 76% | +56% |
+| webhooks | 13 | 11 | 0 | 2 | 55% | +30% |
+| **TOTAL** | **157** | **108** | **33** | **16** | **39%** | **+3%** |
+
+**Coverage Progress**:
+```
+Starting: 36% (end of Phase 2)
+Current:  39% (Phase 3 in progress)
+Goal:     70% (end of Phase 3)
+Remaining: 31 percentage points
+```
+
+**Router Coverage Breakdown**:
+```
+✅ Excellent (>90%):
+  - identities: 100%
+  - evals: 93%
+
+✅ Good (70-90%):
+  - signals: 76%
+  - approvals: 70%
+
+✅ Moderate (50-70%):
+  - incidents: 68%
+  - okr: 67%
+  - webhooks: 55%
+  - workflows: 54%
+  - auth: 52%
+
+⚠️  Needs Work (<50%):
+  - metrics: 48%
+  - projects: 46%
+  - health: 43%
+  - reports: 33%
+  - policy: 30%
+  - rag: 25%
+  - onboarding: 23%
+  - agent: 4%
+  - slack: 3%
+```
+
+---
+
+### Testing Patterns Established
+
+**Successful Patterns**:
+1. **CRUD Testing**: List → Create → Get → Update → Delete
+2. **Validation Testing**: Missing → Empty → Too Long → Invalid Type
+3. **Idempotency Testing**: Duplicate requests → Same response
+4. **Error Handling**: Specific exceptions → Proper HTTP status codes
+5. **Database Testing**: Create → Query → Verify persistence
+
+**Challenges Encountered**:
+1. **SQLite Limitations**: PostgreSQL-specific SQL (intervals, date_trunc, regex)
+   - Solution: Skip tests requiring PostgreSQL features, document with skip reasons
+2. **Async Event Bus**: Cannot test background tasks in synchronous tests
+   - Solution: Verify events stored, skip event bus publishing tests
+3. **App State Configuration**: Signature verification needs runtime config
+   - Solution: Skip signature tests, document configuration requirements
+
+---
+
+### Next Steps - Phase 3
+
+**Priority 1: Continue Router Testing** (30 percentage points needed)
+- [ ] Reports router (33% → 70%+)
+- [ ] RAG router (25% → 70%+)
+- [ ] Onboarding router (23% → 70%+)
+- [ ] Policy router (30% → 70%+)
+- [ ] Metrics router (48% → 70%+)
+
+**Priority 2: Fix Failing Tests** (33 tests failing)
+- [ ] Projects router (15 failures - schema mismatches)
+- [ ] Auth router (5 failures - password hashing issues)
+- [ ] Workflows router (2 failures)
+- [ ] Other errors (15 savepoint issues in approvals/incidents/okr)
+
+**Priority 3: Integration Tests**
+- [ ] Rate limiting functionality
+- [ ] Database transaction handling
+- [ ] End-to-end API workflows
+
+**Priority 4: Documentation**
+- [ ] Testing patterns guide
+- [ ] Best practices for new tests
+- [ ] CI/CD test execution guide
+
+---
+
 ## What's Next?
 
 The codebase now has a solid foundation. Here are the recommended next phases:
