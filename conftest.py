@@ -30,6 +30,16 @@ def test_db_engine():
     Session-scoped so it's created once for all tests.
     """
     from services.gateway.app.db import Base
+    # Import all models so they're registered with Base.metadata
+    from services.gateway.app.models.projects import Project
+    from services.gateway.app.models.identities import Identity
+    from services.gateway.app.models.events import EventRaw
+    from services.gateway.app.models.approvals import Approval
+    from services.gateway.app.models.workflow_jobs import WorkflowJob
+    from services.gateway.app.models.action_log import ActionLog
+    from services.gateway.app.models.incidents import Incident, IncidentTimeline
+    from services.gateway.app.models.onboarding import OnboardingPlan, OnboardingTask
+    from services.gateway.app.models.okr import Objective, KeyResult
 
     # Use in-memory SQLite for tests (fast and isolated)
     engine = create_engine(
