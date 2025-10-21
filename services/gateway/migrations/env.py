@@ -1,17 +1,35 @@
 from __future__ import annotations
 
 import os
+import sys
 from logging.config import fileConfig
+from pathlib import Path
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
+
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+# Import all models so Alembic can detect them
+from app.db import Base
+from app.models.projects import Project
+from app.models.identities import Identity
+from app.models.events import EventRaw
+from app.models.approvals import Approval
+from app.models.workflow_jobs import WorkflowJob
+from app.models.action_log import ActionLog
+from app.models.incidents import Incident, IncidentTimeline
+from app.models.onboarding import OnboardingPlan, OnboardingTask
+from app.models.okr import Objective, KeyResult
 
 # Interpret the config file for Python logging.
 config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-target_metadata = None  # Using imperative migrations for now
+# Set target metadata for auto-generation
+target_metadata = Base.metadata
 
 
 def get_url() -> str:

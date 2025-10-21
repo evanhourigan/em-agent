@@ -26,8 +26,8 @@ def run_agent(payload: Dict[str, Any]) -> Dict[str, Any]:
     calls: List[Dict[str, Any]] = []
 
     # naive router
-        try:
-            with httpx.Client(timeout=20) as client:
+    try:
+        with httpx.Client(timeout=20) as client:
             if "sprint" in query and "health" in query:
                 plan.append({"tool": "reports.sprint_health"})
                 resp = client.post(mcp_url.rstrip("/") + "/tools/reports.sprint_health", json={})

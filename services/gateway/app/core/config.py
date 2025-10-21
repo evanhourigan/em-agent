@@ -10,7 +10,15 @@ class Settings(BaseSettings):
     env: str = "development"
     app_name: str = "EM Agent Gateway"
     app_version: str = "0.1.0"
+
+    # CORS Configuration
+    # In development: ["*"] is acceptable for convenience
+    # In production: Set to specific origins like ["https://yourdomain.com", "https://app.yourdomain.com"]
     cors_allow_origins: list[str] = ["*"]
+    cors_allow_credentials: bool = True
+    cors_allow_methods: list[str] = ["*"]
+    cors_allow_headers: list[str] = ["*"]
+    cors_max_age: int = 600  # Cache preflight requests for 10 minutes
 
     database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/postgres"
     rag_url: str = "http://rag:8000"
@@ -31,7 +39,8 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-4o-mini"
 
     # Safety limits
-    rate_limit_per_min: int = 120
+    rate_limit_per_min: int = 120  # Default rate limit (requests per minute)
+    rate_limit_enabled: bool = True  # Enable/disable rate limiting
     max_payload_bytes: int = 1024 * 1024
     # Cost caps / quotas
     max_daily_slack_posts: int = 1000
@@ -39,6 +48,13 @@ class Settings(BaseSettings):
 
     # OPA
     opa_url: str | None = None
+
+    # Authentication
+    jwt_secret_key: str | None = None
+    jwt_algorithm: str = "HS256"
+    jwt_access_token_expire_minutes: int = 60  # 1 hour
+    jwt_refresh_token_expire_days: int = 7  # 7 days
+    auth_enabled: bool = False  # Feature flag to enable/disable auth
 
 
 @lru_cache(maxsize=1)
@@ -54,6 +70,11 @@ def validate_settings(settings: Settings) -> None:
     # Slack signing enforcement requires secret
     if settings.slack_signing_required and not (settings.slack_signing_secret or "").strip():
         raise ValueError("SLACK_SIGNING_REQUIRED=true but SLACK_SIGNING_SECRET is not set")
+    # JWT auth enabled requires secret key
+    if settings.auth_enabled and not (settings.jwt_secret_key or "").strip():
+        raise ValueError("AUTH_ENABLED=true but JWT_SECRET_KEY is not set")
+    if settings.auth_enabled and len(settings.jwt_secret_key or "") < 32:
+        raise ValueError("JWT_SECRET_KEY must be at least 32 characters for security")
     # OTel enabled should have endpoint
     if settings.otel_enabled and not (settings.otel_exporter_otlp_endpoint or "").strip():
         # non-fatal, but warn via print to avoid logger import cycle
@@ -61,3 +82,9 @@ def validate_settings(settings: Settings) -> None:
     # RAG URL should be reachable format
     if not (settings.rag_url or "").startswith("http"):
         print("[warn] RAG_URL does not look like an http URL; set to service URL if using RAG")
+    # CORS security check for production
+    if settings.env in ("production", "prod", "staging") and "*" in settings.cors_allow_origins:
+        print(
+            "[SECURITY WARNING] CORS allows all origins (*) in production environment. "
+            "Set CORS_ALLOW_ORIGINS to specific domains for security."
+        )

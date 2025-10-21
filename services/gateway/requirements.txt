@@ -6,6 +6,13 @@ starlette-exporter>=0.20.0
 pydantic-settings>=2.4.0
 structlog>=24.1.0
 
+# Authentication
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+
+# Rate limiting
+slowapi>=0.1.9
+
 # Migrations
 alembic>=1.13.2
 PyYAML>=6.0.1

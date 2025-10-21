@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(pip install:*)",
+      "Bash(PYTHONPATH=/Users/evan/code/ema/em-agent pytest:*)",
+      "Bash(python -c:*)",
+      "Bash(PYTHONPATH=/Users/evan/code/ema/em-agent python:*)",
+      "Bash(ENV=production PYTHONPATH=/Users/evan/code/ema/em-agent python:*)",
+      "Bash(alembic revision:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

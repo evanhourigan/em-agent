@@ -31,13 +31,23 @@ def get_engine() -> Engine:
     )
     database_url = _normalize_database_url(database_url)
 
-    _engine = create_engine(
-        database_url,
-        pool_pre_ping=True,
-        pool_size=5,
-        max_overflow=5,
-        future=True,
-    )
+    # SQLite doesn't support connection pooling
+    if database_url.startswith("sqlite"):
+        from sqlalchemy.pool import StaticPool
+        _engine = create_engine(
+            database_url,
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+            future=True,
+        )
+    else:
+        _engine = create_engine(
+            database_url,
+            pool_pre_ping=True,
+            pool_size=5,
+            max_overflow=5,
+            future=True,
+        )
     return _engine
 
 
