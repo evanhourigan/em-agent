@@ -19,6 +19,9 @@ os.environ["WORKFLOW_RUNNER_ENABLED"] = "false"
 os.environ["SIGNAL_EVALUATOR_ENABLED"] = "false"
 os.environ["RETENTION_ENABLED"] = "false"
 
+# Set JWT secret for auth tests (32+ chars required)
+os.environ["JWT_SECRET_KEY"] = "test_secret_key_for_testing_purposes_only_do_not_use_in_production"
+
 
 @pytest.fixture(scope="session")
 def test_db_engine():
