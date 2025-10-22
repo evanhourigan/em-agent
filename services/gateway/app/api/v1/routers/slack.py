@@ -253,7 +253,6 @@ async def commands(
         parts = text.split()
         channel = parts[2] if len(parts) > 2 else None
         older = int(parts[3]) if len(parts) > 3 and parts[3].isdigit() else 48
-        from ....api.v1.routers.reports import build_standup
         from ....services.slack_client import SlackClient
 
         SessionLocal = get_sessionmaker()
