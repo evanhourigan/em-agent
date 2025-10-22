@@ -19,8 +19,21 @@ os.environ["WORKFLOW_RUNNER_ENABLED"] = "false"
 os.environ["SIGNAL_EVALUATOR_ENABLED"] = "false"
 os.environ["RETENTION_ENABLED"] = "false"
 
+# Disable rate limiting for tests (prevents 429 errors in full suite)
+os.environ["RATE_LIMIT_ENABLED"] = "false"
+
 # Set JWT secret for auth tests (32+ chars required)
 os.environ["JWT_SECRET_KEY"] = "test_secret_key_for_testing_purposes_only_do_not_use_in_production"
+
+
+@pytest.fixture(scope="session", autouse=True)
+def clear_settings_cache():
+    """Clear settings cache before tests to ensure environment variables are used."""
+    from services.gateway.app.core.config import get_settings
+    get_settings.cache_clear()
+    yield
+    # Clear again after all tests
+    get_settings.cache_clear()
 
 
 @pytest.fixture(scope="session")
@@ -64,28 +77,35 @@ def db_session(test_db_engine) -> Generator[Session, None, None]:
     """
     Create a new database session for a test.
     Function-scoped so each test gets a fresh session with rollback.
+
+    Uses nested transactions (savepoints) so that session.commit() only commits
+    the savepoint, not the outer transaction. Everything is rolled back at teardown.
     """
     connection = test_db_engine.connect()
     transaction = connection.begin()
 
-    SessionLocal = sessionmaker(bind=connection)
+    SessionLocal = sessionmaker(bind=connection, expire_on_commit=False)
     session = SessionLocal()
 
-    # Begin a nested transaction (using SAVEPOINT)
-    nested = connection.begin_nested()
+    # Start a savepoint - commits will only affect this savepoint
+    session.begin_nested()
 
-    # If the application code calls session.commit(), it will only commit
-    # the nested transaction (SAVEPOINT), not the outer transaction
+    # When the test calls session.commit(), it commits the savepoint
+    # We need to create a new savepoint after each commit
     @event.listens_for(session, "after_transaction_end")
-    def restart_savepoint(session, transaction):
-        if transaction.nested and not transaction._parent.nested:
-            session.expire_all()
-            session.begin_nested()
+    def end_savepoint(session, transaction):
+        if not transaction.nested:
+            # Don't restart for the outer transaction
+            return
+        # Restart the savepoint after it's committed
+        session.begin_nested()
 
     yield session
 
-    # Rollback everything (test changes are discarded)
+    # Cleanup: close session and rollback outer transaction
     session.close()
+    # Remove event listener to prevent errors during teardown
+    event.remove(session, "after_transaction_end", end_savepoint)
     transaction.rollback()
     connection.close()
 
