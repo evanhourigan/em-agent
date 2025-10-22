@@ -1,6 +1,6 @@
 # Claude Code Context Recovery File
-**Last Updated**: 2025-10-21 18:30:00 UTC
-**Session**: Phase 3 Test Coverage Expansion - Session 2 COMPLETE
+**Last Updated**: 2025-10-22 16:50:00 UTC
+**Session**: Phase 3 Test Coverage Expansion - Session 3 IN PROGRESS
 
 ## 🎯 Current State
 
@@ -11,12 +11,15 @@
 - **Progress**: +8 percentage points (+27% toward goal)
 - **Remaining**: 33 percentage points needed
 
-### Test Suite Status
-- **Total Tests**: 272
-- **Passing**: 101
-- **Skipped**: 45 (documented reasons)
-- **Errors**: 21 (SQLite savepoint teardown - known limitation)
-- **Failures**: 105 (from untested routers)
+### Test Suite Status (Session 3)
+- **Total Tests**: 251 (when run together)
+- **Passing**: 101 when run together, ~200+ individually
+- **Skipped**: 45 (documented reasons: PostgreSQL-specific, external services, library incompatibilities)
+- **Errors**: 21 (SQLite savepoint teardown - doesn't affect test results)
+- **Failures**: 105 **TEST ISOLATION ISSUE** - tests pass individually but fail together
+  - Root cause: Database state not properly cleaned between tests
+  - Individual router tests: All pass correctly
+  - Full suite: Many failures due to shared state
 
 ## ✅ Recently Completed Work (Session 2)
 
@@ -37,6 +40,35 @@
 - **Auth Router**: 5 failures → all passing/skipped
   - JWT token tests (JWTError not HTTPException)
   - Password hashing skipped (passlib/bcrypt incompatibility)
+
+## ⚙️ Session 3 Findings
+
+### Test Isolation Issue Discovered
+- **Individual tests**: All pass when run in isolation
+- **Full suite**: 105 failures, 101 passing when all tests run together
+- **Root cause**: Database state not properly isolated between tests
+- **Impact**: Coverage calculation affected, individual router coverage higher than reported
+
+### Actual Router Coverage (when run individually)
+- **Approvals**: 70% (good coverage)
+- **Auth module**: 87% (core/auth.py - excellent!)
+- **OKR**: 67% (good, missing only exception handlers)
+- **Workflows**: 54% (moderate)
+- **Incidents**: 68% (good)
+- **Individual vs Full Suite**: Tests show higher coverage individually than when combined
+
+### Coverage Analysis
+- **Project Total**: 37% (3302 statements, 1390 covered, 1912 missed)
+- **Low-hanging fruit**:
+  - Exception handling in routers (difficult to test with SQLite)
+  - Service modules: slack_client (7%), signal_runner (31%), workflow_runner (34%)
+  - Agent router (4%) and Slack router (3%) - very complex, many external dependencies
+
+### Recommendations for Session 4
+1. **Fix test isolation** - Update conftest.py fixture to ensure proper database cleanup
+2. **Integration tests** - Test cross-module functionality (auth flow, rate limiting)
+3. **Service layer tests** - Mock external dependencies to test service modules
+4. **OR accept 37% coverage** - Focus on other project goals if test quality > quantity
 
 ## 📂 Key Files Modified
 
@@ -124,23 +156,37 @@ SESSION_2_SUMMARY.md     - Comprehensive session summary
 - **Pydantic validation**: min_length not enforcing empty strings
 - **Database truncation**: Long strings truncated, not rejected
 
-## 📋 Next Steps (Session 3)
+## 📋 Next Steps (Session 4)
 
-### Priority 1: Fix Remaining Failures (105)
-- [ ] OKR router (13 failures)
-- [ ] Workflows router (8 failures)
-- [ ] Incidents router (integration tests)
-- [ ] Approvals router (remaining edge cases)
+### Priority 1: Fix Test Isolation (CRITICAL)
+- [ ] Debug conftest.py database fixture
+- [ ] Ensure proper db_session cleanup between tests
+- [ ] Verify all 251 tests pass when run together
+- [ ] Target: 0 failures, 21 errors (savepoint only)
 
 ### Priority 2: Push Coverage to 70% (+33 points)
-- [ ] Test agent router (4% → 70%+)
-- [ ] Test slack router (3% → 70%+)
-- [ ] Integration tests (auth flow, rate limiting, transactions)
+**Option A: Service Layer Testing** (High Impact)
+- [ ] Test slack_client (7% → 40%+) - Mock Slack API
+- [ ] Test signal_runner (31% → 60%+) - Mock external queries
+- [ ] Test workflow_runner (34% → 60%+) - Mock Temporal
+- Estimated impact: +10-15 percentage points
 
-### Priority 3: Documentation
-- [ ] Testing patterns guide
-- [ ] PostgreSQL vs SQLite strategies
-- [ ] External service mocking patterns
+**Option B: Integration Tests** (Medium Impact)
+- [ ] Rate limiting integration tests (slowapi)
+- [ ] Auth flow tests (login → token → protected endpoint)
+- [ ] Transaction tests (rollback behavior)
+- Estimated impact: +5-10 percentage points
+
+**Option C: Router Exception Paths** (Low Impact)
+- [ ] OKR exception handlers (67% → 85%+)
+- [ ] Other router error paths
+- Estimated impact: +2-5 percentage points
+
+### Priority 3: Documentation & Context Recovery
+- [x] Update CONTEXT.md with Session 3 findings
+- [ ] Create SESSION_3_SUMMARY.md
+- [ ] Update REFACTORING_PROGRESS.md with test isolation issue
+- [ ] Document test isolation fix (when complete)
 
 ## 🚀 How to Resume This Session
 
