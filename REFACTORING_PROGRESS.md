@@ -691,12 +691,14 @@ We've transformed the approvals router from a risky, untested module with bare e
 
 ---
 
-## Phase 3: Test Coverage Expansion (Week 9)
+## Phase 3: Test Coverage Expansion (Week 9-10)
 
-### 🔄 In Progress - 37% coverage (Goal: 70%)
+### 🔄 In Progress - 45% coverage (Goal: 70%)
 
-**Status**: Active development (Session 2 completed)
-**Objective**: Expand test coverage from 36% to 70%+ by testing all critical routers
+**Status**: Active development (Session 5 completed - Service layer testing)
+**Objective**: Expand test coverage from 29% to 70%+ by testing all critical routers and services
+
+**Progress**: +16 percentage points gained (+39% toward goal, 25 points remaining)
 
 #### Completed Router Tests
 
@@ -933,15 +935,15 @@ We've transformed the approvals router from a risky, untested module with bare e
 
 ---
 
-### Metrics - Phase 3 (Sessions 1 & 2)
+### Metrics - Phase 3 (Sessions 1-5)
 
-**Test Files Created (Session 1)**: 4
+**Test Files Created (Session 1 - Router Tests)**: 4 files, 52 tests
 - `tests/gateway/test_identities.py` (15 tests)
 - `tests/gateway/test_evals.py` (12 tests)
 - `tests/gateway/test_signals.py` (12 tests)
 - `tests/gateway/test_webhooks.py` (13 tests)
 
-**Test Files Created (Session 2)**: 7
+**Test Files Created (Session 2 - Router Tests)**: 7 files, 114 tests
 - `tests/gateway/test_onboarding.py` (18 tests)
 - `tests/gateway/test_policy.py` (12 tests)
 - `tests/gateway/test_metrics.py` (10 tests)
@@ -949,6 +951,13 @@ We've transformed the approvals router from a risky, untested module with bare e
 - `tests/gateway/test_rag.py` (15 tests)
 - `tests/gateway/test_health.py` (17 tests)
 - `tests/gateway/test_projects.py` (22 tests - fixed 15 failures)
+
+**Test Files Created (Session 5 - Service Tests)**: 5 files, 103 tests
+- `tests/gateway/test_slack_client.py` (20 tests - 7% → 83% coverage)
+- `tests/gateway/test_signal_runner.py` (26 tests - 31% → 100% coverage)
+- `tests/gateway/test_workflow_runner.py` (35 tests - 34% → 97% coverage)
+- `tests/gateway/test_event_bus.py` (12 tests - 37% → 100% coverage)
+- `tests/gateway/test_temporal_client.py` (10 tests - 39% → 100% coverage)
 
 **Test Results (All Routers)**:
 | Router | Tests | Passing | Skipped | Coverage | Improvement |
@@ -969,20 +978,29 @@ We've transformed the approvals router from a risky, untested module with bare e
 **Coverage Progress**:
 ```
 Starting: 29% (end of Phase 2, after context reset)
-Current:  37% (Phase 3, Session 2 complete)
+Session 2:  37% (11 routers tested, +8 points)
+Session 5:  45% (5 services tested, +8 points)
+Current:  45% (Phase 3, Session 5 complete)
 Goal:     70% (end of Phase 3)
-Remaining: 33 percentage points
-Progress: +8% (11 routers tested)
+Remaining: 25 percentage points
+Total Progress: +16% in Phase 3 (39% toward goal)
 ```
 
-**Router Coverage Breakdown (After Session 2)**:
+**Module Coverage Breakdown (After Session 5)**:
 ```
-✅ Excellent (>90%):
+✅ Services (Session 5 - Near-Perfect Coverage):
+  - event_bus: 100% ✅
+  - signal_runner: 100% ✅
+  - temporal_client: 100% ✅
+  - workflow_runner: 97% ✅
+  - slack_client: 83% ✅
+
+✅ Routers - Excellent (>90%):
   - identities: 100% ✅
   - projects: 100% ✅
   - evals: 93% ✅
 
-✅ Good (70-90%):
+✅ Routers - Good (70-90%):
   - metrics: 85% ✅
   - health: 82% ✅
   - onboarding: 77% ✅
@@ -990,7 +1008,7 @@ Progress: +8% (11 routers tested)
   - rag: 71% ✅
   - approvals: 70% ✅
 
-✅ Moderate (50-70%):
+✅ Routers - Moderate (50-70%):
   - incidents: 68%
   - okr: 67%
   - policy: 68% ✅
@@ -999,9 +1017,9 @@ Progress: +8% (11 routers tested)
   - reports: 53% ✅
   - auth: 52%
 
-⚠️  Needs Work (<50%):
-  - agent: 4%
-  - slack: 3%
+⚠️  Routers - Needs Work (<50%):
+  - agent: 4% (complex, many external dependencies)
+  - slack: 3% (complex command parsing, external Slack API)
 ```
 
 ---
