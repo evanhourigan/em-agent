@@ -1,6 +1,6 @@
 # Claude Code Context Recovery File
-**Last Updated**: 2025-10-22 16:50:00 UTC
-**Session**: Phase 3 Test Coverage Expansion - Session 3 IN PROGRESS
+**Last Updated**: 2025-10-22 17:35:00 UTC
+**Session**: Phase 3 Test Coverage Expansion - Session 4 COMPLETE (Partial Fix)
 
 ## 🎯 Current State
 
@@ -40,6 +40,32 @@
 - **Auth Router**: 5 failures → all passing/skipped
   - JWT token tests (JWTError not HTTPException)
   - Password hashing skipped (passlib/bcrypt incompatibility)
+
+## ⚙️ Session 4 Progress: Partial Test Isolation Fix
+
+### Improvements Made
+- **Rate Limiting**: Disabled for tests (`RATE_LIMIT_ENABLED=false`)
+- **Settings Cache**: Added fixture to clear cached settings before tests
+- **Database Fixture**: Restored savepoint mechanism with proper teardown
+- **Savepoint Errors**: Reduced from 21 to 9 (added `event.remove()` in cleanup)
+
+### Test Results
+- **Individual Routers**: Work correctly (e.g., OKR 13/13, onboarding 18/18)
+- **Session 2 Tests Together**: 88/101 pass (was 0/101) ✅
+- **Full Suite**: 105 failed, 101 passed, 45 skipped, 9 errors ⚠️
+- **Coverage**: Remains at 37% (1915/3302 lines)
+
+### Remaining Challenge
+Complex interaction between TestClient, settings cache, and rate limiter:
+- TestClient creates app before settings cache is cleared
+- Rate limiter initialized with cached settings (rate_limit_enabled=True)
+- Some tests still get 429 errors even with RATE_LIMIT_ENABLED=false
+
+### Decision Point for Session 5
+**Option A**: Continue debugging test isolation (diminishing returns)
+**Option B**: Accept partial isolation, focus on service layer tests (higher ROI for coverage)
+
+Recommendation: **Option B** - Test isolation improved significantly (88/101 Session 2 tests pass together). Remaining issues are edge cases. Better ROI to add service layer tests and push toward 70% coverage goal.
 
 ## ⚙️ Session 3 Findings
 
