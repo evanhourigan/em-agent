@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(git commit:*)",
-      "Bash(pytest:*)"
+      "Bash(pytest:*)",
+      "Bash(sort:*)",
+      "Bash(for file in test_onboarding test_policy test_metrics test_reports test_rag test_health test_projects)",
+      "Bash(do echo \"=== $file ===\")",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": []
