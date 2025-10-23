@@ -312,3 +312,25 @@ class TestAddTracing:
 
                                     # Should use console exporter (empty string is falsy)
                                     mock_console.assert_called_once()
+
+
+class TestLimitsMiddlewareIntegration:
+    """Integration tests for rate limiting middleware using real app."""
+
+    @pytest.mark.asyncio
+    async def test_large_payload_blocked_integration(self, client):
+        """Test that large payloads are blocked by the real middleware."""
+        from services.gateway.app.core.config import get_settings
+        
+        settings = get_settings()
+        
+        # Create a payload larger than max_payload_bytes
+        large_payload = {"data": "x" * (settings.max_payload_bytes + 1000)}
+        
+        # Try to post to any endpoint (health is simplest)
+        response = client.post("/v1/health", json=large_payload)
+        
+        # Should be blocked with 413
+        assert response.status_code == 413
+        assert "payload too large" in response.json()["detail"]
+
