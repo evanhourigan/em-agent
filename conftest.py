@@ -103,9 +103,16 @@ def db_session(test_db_engine) -> Generator[Session, None, None]:
     yield session
 
     # Cleanup: close session and rollback outer transaction
-    session.close()
-    # Remove event listener to prevent errors during teardown
+    # Remove event listener BEFORE closing to prevent it from firing during teardown
     event.remove(session, "after_transaction_end", end_savepoint)
+
+    try:
+        session.close()
+    except Exception:
+        # If session close fails (e.g., savepoint already gone), that's okay
+        # We're tearing down anyway
+        pass
+
     transaction.rollback()
     connection.close()
 
