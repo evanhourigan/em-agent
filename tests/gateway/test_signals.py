@@ -2,9 +2,12 @@
 
 Note: Many tests are skipped because the signals router uses PostgreSQL-specific
 SQL features (interval, date_trunc, regex ~) that don't work with SQLite test database.
+
+Current coverage: 76% → Target: 90%+
 """
 
 import pytest
+from unittest.mock import Mock, patch
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
@@ -231,3 +234,110 @@ class TestEvaluateSignals:
 
         response = client.post("/v1/signals/evaluate", json=payload)
         assert response.status_code == 400
+
+
+class TestEvaluateRuleMocked:
+    """Test _evaluate_rule with mocked database calls to cover SQL paths."""
+
+    def test_stale_pr_rule_with_mocked_db(self, client: TestClient, db_session: Session):
+        """Test stale_pr rule with mocked database response."""
+        with patch.object(db_session, 'execute') as mock_execute:
+            mock_result = Mock()
+            mock_result.mappings.return_value.all.return_value = [
+                {"delivery_id": "org/repo#123", "opened_at": "2024-01-01"},
+                {"delivery_id": "org/repo#456", "opened_at": "2024-01-02"}
+            ]
+            mock_execute.return_value = mock_result
+
+            payload = {
+                "rules": [{"name": "stale", "kind": "stale_pr", "older_than_hours": 48}]
+            }
+
+            response = client.post("/v1/signals/evaluate", json=payload)
+
+            assert response.status_code == 200
+            data = response.json()
+            assert "stale" in data["results"]
+            assert len(data["results"]["stale"]) == 2
+
+    def test_wip_limit_exceeded_with_mocked_db(self, client: TestClient, db_session: Session):
+        """Test wip_limit_exceeded rule with mocked database response."""
+        with patch.object(db_session, 'execute') as mock_execute:
+            mock_result = Mock()
+            mock_result.mappings.return_value.first.return_value = {
+                "day": "2024-01-01",
+                "wip": 8
+            }
+            mock_execute.return_value = mock_result
+
+            payload = {
+                "rules": [{"name": "wip", "kind": "wip_limit_exceeded", "limit": 5}]
+            }
+
+            response = client.post("/v1/signals/evaluate", json=payload)
+
+            assert response.status_code == 200
+            data = response.json()
+            assert "wip" in data["results"]
+            assert data["results"]["wip"][0]["wip"] == 8
+            assert data["results"]["wip"][0]["exceeded"] is True
+
+    def test_wip_limit_not_exceeded_with_mocked_db(self, client: TestClient, db_session: Session):
+        """Test wip_limit_exceeded when limit is not exceeded."""
+        with patch.object(db_session, 'execute') as mock_execute:
+            mock_result = Mock()
+            mock_result.mappings.return_value.first.return_value = {
+                "day": "2024-01-01",
+                "wip": 3
+            }
+            mock_execute.return_value = mock_result
+
+            payload = {
+                "rules": [{"name": "wip", "kind": "wip_limit_exceeded", "limit": 5}]
+            }
+
+            response = client.post("/v1/signals/evaluate", json=payload)
+
+            assert response.status_code == 200
+            data = response.json()
+            assert data["results"]["wip"][0]["exceeded"] is False
+
+    def test_no_ticket_link_rule_with_mocked_db(self, client: TestClient, db_session: Session):
+        """Test no_ticket_link rule with mocked database response."""
+        with patch.object(db_session, 'execute') as mock_execute:
+            mock_result = Mock()
+            mock_result.mappings.return_value.all.return_value = [
+                {"delivery_id": "org/repo#999", "opened_at": "2024-01-01"}
+            ]
+            mock_execute.return_value = mock_result
+
+            payload = {
+                "rules": [{"name": "no_ticket", "kind": "no_ticket_link", "ticket_pattern": "[A-Z]+-[0-9]+"}]
+            }
+
+            response = client.post("/v1/signals/evaluate", json=payload)
+
+            assert response.status_code == 200
+            data = response.json()
+            assert "no_ticket" in data["results"]
+            assert len(data["results"]["no_ticket"]) == 1
+
+    def test_pr_without_review_rule_with_mocked_db(self, client: TestClient, db_session: Session):
+        """Test pr_without_review rule with mocked database response."""
+        with patch.object(db_session, 'execute') as mock_execute:
+            mock_result = Mock()
+            mock_result.mappings.return_value.all.return_value = [
+                {"delivery_id": "org/repo#789", "opened_at": "2024-01-01"}
+            ]
+            mock_execute.return_value = mock_result
+
+            payload = {
+                "rules": [{"name": "no_review", "kind": "pr_without_review", "older_than_hours": 12}]
+            }
+
+            response = client.post("/v1/signals/evaluate", json=payload)
+
+            assert response.status_code == 200
+            data = response.json()
+            assert "no_review" in data["results"]
+            assert len(data["results"]["no_review"]) == 1

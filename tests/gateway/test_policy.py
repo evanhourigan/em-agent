@@ -163,3 +163,78 @@ class TestEvaluatePolicy:
         data = response.json()
         assert data["allow"] is False
         assert data["action"] == "block"
+
+
+class TestPolicyOPAIntegration:
+    """Test OPA integration in policy evaluation."""
+
+    def test_policy_with_opa_success(self, client: TestClient):
+        """Test policy evaluation with OPA returning success."""
+        from unittest.mock import Mock, patch
+        import httpx
+
+        with patch("services.gateway.app.api.v1.routers.policy.get_settings") as mock_settings:
+            with patch("services.gateway.app.api.v1.routers.policy.httpx.Client") as mock_client_class:
+                settings = Mock()
+                settings.opa_url = "http://localhost:8181"
+                mock_settings.return_value = settings
+
+                mock_response = Mock()
+                mock_response.status_code = 200
+                mock_response.json.return_value = {
+                    "result": {"allow": True, "action": "approve", "reason": "opa_decision"}
+                }
+
+                mock_client = Mock()
+                mock_client.__enter__ = Mock(return_value=mock_client)
+                mock_client.__exit__ = Mock(return_value=None)
+                mock_client.post.return_value = mock_response
+
+                mock_client_class.return_value = mock_client
+
+                payload = {"kind": "test_rule"}
+
+                response = client.post("/v1/policy/evaluate", json=payload)
+
+                assert response.status_code == 200
+                data = response.json()
+                assert data["allow"] is True
+                assert data["opa"] is True
+
+    def test_policy_with_opa_fallback_to_yaml(self, client: TestClient):
+        """Test policy falls back to YAML when OPA fails."""
+        from unittest.mock import Mock, patch
+        import httpx
+
+        with patch("services.gateway.app.api.v1.routers.policy.get_settings") as mock_settings:
+            with patch("services.gateway.app.api.v1.routers.policy.httpx.Client") as mock_client_class:
+                settings = Mock()
+                settings.opa_url = "http://localhost:8181"
+                mock_settings.return_value = settings
+
+                mock_client = Mock()
+                mock_client.__enter__ = Mock(return_value=mock_client)
+                mock_client.__exit__ = Mock(return_value=None)
+                mock_client.post.side_effect = httpx.ConnectError("Connection refused")
+
+                mock_client_class.return_value = mock_client
+
+                payload = {"kind": "stale_pr"}
+
+                response = client.post("/v1/policy/evaluate", json=payload)
+
+                # Should fallback to default policy
+                assert response.status_code == 200
+                data = response.json()
+                assert "opa" not in data or data["opa"] is not True
+
+    def test_policy_unknown_kind_allows_by_default(self, client: TestClient):
+        """Test that unknown policy kind allows by default."""
+        payload = {"kind": "totally_unknown_rule_type"}
+
+        response = client.post("/v1/policy/evaluate", json=payload)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["allow"] is True
+        assert "no policy" in data["reason"]

@@ -1,11 +1,23 @@
 """Tests for authentication endpoints.
 
 Security-critical tests for JWT authentication flow.
+Current coverage: 52% → Target: 80%+
 """
 
 import pytest
+from datetime import timedelta
+from jose import jwt, JWTError
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
+
+from services.gateway.app.core.auth import (
+    verify_password,
+    get_password_hash,
+    create_access_token,
+    create_refresh_token,
+    decode_token,
+    verify_token
+)
 
 
 class TestAuthLogin:
@@ -293,3 +305,107 @@ class TestJWTTokens:
 
         payload = verify_token(token)
         assert "type" not in payload or payload.get("type") != "refresh"
+
+
+class TestTokenCreation:
+    """Test JWT token creation with custom expiration."""
+
+    def test_access_token_with_custom_expiration(self):
+        """Test creating access token with custom expiration delta."""
+        from services.gateway.app.core.auth import create_access_token, verify_token
+
+        token_data = {"sub": "user@example.com", "role": "admin"}
+        custom_expiration = timedelta(hours=2)
+
+        token = create_access_token(token_data, expires_delta=custom_expiration)
+
+        assert isinstance(token, str)
+        assert len(token) > 20
+
+        # Verify token is valid
+        payload = verify_token(token)
+        assert payload["sub"] == "user@example.com"
+        assert payload["role"] == "admin"
+
+    def test_access_token_default_expiration(self):
+        """Test creating access token with default expiration."""
+        from services.gateway.app.core.auth import create_access_token, verify_token
+
+        token_data = {"sub": "user@example.com"}
+        token = create_access_token(token_data)
+
+        payload = verify_token(token)
+        assert "exp" in payload
+        assert "iat" in payload
+
+    def test_refresh_token_creation(self):
+        """Test creating refresh token."""
+        from services.gateway.app.core.auth import create_refresh_token, verify_token
+
+        token_data = {"sub": "user@example.com"}
+        token = create_refresh_token(token_data)
+
+        assert isinstance(token, str)
+        payload = verify_token(token)
+        assert payload["sub"] == "user@example.com"
+        assert payload["type"] == "refresh"
+
+
+class TestTokenVerification:
+    """Test JWT token verification edge cases."""
+
+    def test_decode_token_with_invalid_signature(self):
+        """Test decoding token with tampered signature fails."""
+        from services.gateway.app.core.auth import create_access_token, decode_token
+
+        token_data = {"sub": "user@example.com"}
+        token = create_access_token(token_data)
+
+        # Tamper with token
+        parts = token.split('.')
+        tampered_token = parts[0] + "." + parts[1] + ".tamperedsignature"
+
+        with pytest.raises(JWTError):
+            decode_token(tampered_token)
+
+    def test_verify_token_missing_sub_claim(self):
+        """Test verifying token without 'sub' claim fails."""
+        from services.gateway.app.core.auth import verify_token
+        from services.gateway.app.core.config import get_settings
+
+        settings = get_settings()
+
+        # Create token without 'sub' claim
+        token_data = {"role": "admin"}  # No 'sub'
+        token = jwt.encode(
+            token_data,
+            settings.jwt_secret_key,
+            algorithm=settings.jwt_algorithm
+        )
+
+        with pytest.raises(JWTError) as exc_info:
+            verify_token(token)
+        assert "sub" in str(exc_info.value).lower()
+
+    def test_verify_token_with_expired_token(self):
+        """Test verifying expired token fails."""
+        from datetime import datetime, UTC
+        from services.gateway.app.core.auth import verify_token
+        from services.gateway.app.core.config import get_settings
+
+        settings = get_settings()
+
+        # Create token that expired in the past
+        token_data = {
+            "sub": "user@example.com",
+            "exp": datetime.now(UTC) - timedelta(hours=1),  # Expired 1 hour ago
+            "iat": datetime.now(UTC) - timedelta(hours=2)
+        }
+        token = jwt.encode(
+            token_data,
+            settings.jwt_secret_key,
+            algorithm=settings.jwt_algorithm
+        )
+
+        with pytest.raises(JWTError):
+            verify_token(token)

@@ -2,10 +2,14 @@
 Tests for workflows router.
 
 Basic validation tests to ensure refactored endpoints work correctly.
+Current coverage: 54% → Target: 70%+
 """
 import pytest
+from unittest.mock import Mock, patch
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError, OperationalError
+import httpx
 
 from services.gateway.app.models.action_log import ActionLog
 from services.gateway.app.models.workflow_jobs import WorkflowJob
@@ -172,3 +176,307 @@ class TestGetJob:
         assert response.status_code == 404
         data = response.json()
         assert "detail" in data
+
+
+class TestWorkflowPolicyIntegration:
+    """Test workflow policy integration (OPA and policy file fallback)."""
+
+    def test_run_workflow_with_opa_allow(self, client: TestClient, db_session: Session):
+        """Test workflow with OPA returning allow decision."""
+        db_session.query(ActionLog).delete()
+        db_session.query(WorkflowJob).delete()
+        db_session.commit()
+
+        with patch("services.gateway.app.api.v1.routers.workflows.get_settings") as mock_settings:
+            with patch("services.gateway.app.api.v1.routers.workflows.httpx.Client") as mock_client_class:
+                settings = Mock()
+                settings.opa_url = "http://localhost:8181"
+                mock_settings.return_value = settings
+
+                mock_response = Mock()
+                mock_response.status_code = 200
+                mock_response.json.return_value = {"result": {"action": "allow"}}
+
+                mock_client = Mock()
+                mock_client.__enter__ = Mock(return_value=mock_client)
+                mock_client.__exit__ = Mock(return_value=None)
+                mock_client.post.return_value = mock_response
+
+                mock_client_class.return_value = mock_client
+
+                payload = {"kind": "deploy", "subject": "deploy:test"}
+
+                response = client.post("/v1/workflows/run", json=payload)
+
+                assert response.status_code == 200
+                data = response.json()
+                assert data["status"] == "queued"
+                assert data["action"] == "allow"
+
+    def test_run_workflow_with_opa_block(self, client: TestClient, db_session: Session):
+        """Test workflow with OPA returning block decision."""
+        db_session.query(Approval).delete()
+        db_session.query(ActionLog).delete()
+        db_session.query(WorkflowJob).delete()
+        db_session.commit()
+
+        with patch("services.gateway.app.api.v1.routers.workflows.get_settings") as mock_settings:
+            with patch("services.gateway.app.api.v1.routers.workflows.httpx.Client") as mock_client_class:
+                settings = Mock()
+                settings.opa_url = "http://localhost:8181"
+                mock_settings.return_value = settings
+
+                mock_response = Mock()
+                mock_response.status_code = 200
+                mock_response.json.return_value = {"result": {"allow": False}}
+
+                mock_client = Mock()
+                mock_client.__enter__ = Mock(return_value=mock_client)
+                mock_client.__exit__ = Mock(return_value=None)
+                mock_client.post.return_value = mock_response
+
+                mock_client_class.return_value = mock_client
+
+                payload = {"kind": "deploy", "subject": "deploy:prod"}
+
+                response = client.post("/v1/workflows/run", json=payload)
+
+                assert response.status_code == 200
+                data = response.json()
+                assert data["status"] == "awaiting_approval"
+
+    def test_run_workflow_opa_http_error_fallback_to_policy(self, client: TestClient, db_session: Session):
+        """Test workflow falls back to policy file when OPA returns HTTP error."""
+        db_session.query(ActionLog).delete()
+        db_session.query(WorkflowJob).delete()
+        db_session.commit()
+
+        with patch("services.gateway.app.api.v1.routers.workflows.get_settings") as mock_settings:
+            with patch("services.gateway.app.api.v1.routers.workflows.httpx.Client") as mock_client_class:
+                with patch("services.gateway.app.api.v1.routers.workflows._load_policy") as mock_policy:
+                    settings = Mock()
+                    settings.opa_url = "http://localhost:8181"
+                    mock_settings.return_value = settings
+
+                    mock_response = Mock()
+                    mock_response.status_code = 500
+                    mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+                        "500 error", request=Mock(), response=mock_response
+                    )
+
+                    mock_client = Mock()
+                    mock_client.__enter__ = Mock(return_value=mock_client)
+                    mock_client.__exit__ = Mock(return_value=None)
+                    mock_client.post.return_value = mock_response
+
+                    mock_client_class.return_value = mock_client
+
+                    # Policy file returns nudge
+                    mock_policy.return_value = {"deploy": {"action": "nudge"}}
+
+                    payload = {"kind": "deploy", "subject": "deploy:test"}
+
+                    response = client.post("/v1/workflows/run", json=payload)
+
+                    assert response.status_code == 200
+                    data = response.json()
+                    assert data["status"] == "queued"
+                    assert data["action"] == "nudge"
+
+    def test_run_workflow_opa_request_error_fallback_to_policy(self, client: TestClient, db_session: Session):
+        """Test workflow falls back to policy file when OPA is unreachable."""
+        db_session.query(ActionLog).delete()
+        db_session.query(WorkflowJob).delete()
+        db_session.commit()
+
+        with patch("services.gateway.app.api.v1.routers.workflows.get_settings") as mock_settings:
+            with patch("services.gateway.app.api.v1.routers.workflows.httpx.Client") as mock_client_class:
+                with patch("services.gateway.app.api.v1.routers.workflows._load_policy") as mock_policy:
+                    settings = Mock()
+                    settings.opa_url = "http://localhost:8181"
+                    mock_settings.return_value = settings
+
+                    mock_client = Mock()
+                    mock_client.__enter__ = Mock(return_value=mock_client)
+                    mock_client.__exit__ = Mock(return_value=None)
+                    mock_client.post.side_effect = httpx.ConnectError("Connection refused")
+
+                    mock_client_class.return_value = mock_client
+
+                    # Policy file returns allow
+                    mock_policy.return_value = {"deploy": {"action": "allow"}}
+
+                    payload = {"kind": "deploy", "subject": "deploy:test"}
+
+                    response = client.post("/v1/workflows/run", json=payload)
+
+                    assert response.status_code == 200
+                    data = response.json()
+                    assert data["status"] == "queued"
+                    assert data["action"] == "allow"
+
+    def test_run_workflow_policy_file_default_nudge(self, client: TestClient, db_session: Session):
+        """Test workflow defaults to 'nudge' when policy file has no matching rule."""
+        db_session.query(ActionLog).delete()
+        db_session.query(WorkflowJob).delete()
+        db_session.commit()
+
+        with patch("services.gateway.app.api.v1.routers.workflows.get_settings") as mock_settings:
+            with patch("services.gateway.app.api.v1.routers.workflows._load_policy") as mock_policy:
+                settings = Mock()
+                settings.opa_url = None  # No OPA
+                mock_settings.return_value = settings
+
+                # Policy file has no matching rule
+                mock_policy.return_value = {}
+
+                payload = {"kind": "unknown_kind", "subject": "test"}
+
+                response = client.post("/v1/workflows/run", json=payload)
+
+                assert response.status_code == 200
+                data = response.json()
+                assert data["status"] == "queued"
+                assert data["action"] == "nudge"
+
+
+class TestWorkflowErrorHandling:
+    """Test workflow error handling paths."""
+
+    def test_run_workflow_integrity_error(self, client: TestClient, db_session: Session):
+        """Test workflow handles database integrity errors."""
+        with patch.object(db_session, "commit", side_effect=IntegrityError("", "", "")):
+            payload = {"action": "allow", "subject": "test"}
+
+            response = client.post("/v1/workflows/run", json=payload)
+
+            assert response.status_code == 409
+            assert "conflict" in response.json()["detail"].lower()
+
+    def test_run_workflow_operational_error(self, client: TestClient, db_session: Session):
+        """Test workflow handles database operational errors."""
+        with patch.object(db_session, "commit", side_effect=OperationalError("", "", "")):
+            payload = {"action": "allow", "subject": "test"}
+
+            response = client.post("/v1/workflows/run", json=payload)
+
+            assert response.status_code == 503
+            assert "unavailable" in response.json()["detail"].lower()
+
+    def test_run_workflow_unexpected_error(self, client: TestClient, db_session: Session):
+        """Test workflow handles unexpected errors."""
+        with patch.object(db_session, "commit", side_effect=RuntimeError("Unexpected")):
+            payload = {"action": "allow", "subject": "test"}
+
+            response = client.post("/v1/workflows/run", json=payload)
+
+            assert response.status_code == 500
+            assert "internal" in response.json()["detail"].lower()
+
+    def test_list_jobs_operational_error(self, client: TestClient, db_session: Session):
+        """Test list jobs handles database errors."""
+        with patch.object(db_session, "query", side_effect=OperationalError("", "", "")):
+            response = client.get("/v1/workflows/jobs")
+
+            assert response.status_code == 503
+            assert "unavailable" in response.json()["detail"].lower()
+
+    def test_list_jobs_unexpected_error(self, client: TestClient, db_session: Session):
+        """Test list jobs handles unexpected errors."""
+        with patch.object(db_session, "query", side_effect=RuntimeError("Unexpected")):
+            response = client.get("/v1/workflows/jobs")
+
+            assert response.status_code == 500
+            assert "internal" in response.json()["detail"].lower()
+
+    def test_get_job_operational_error(self, client: TestClient, db_session: Session):
+        """Test get job handles database errors."""
+        with patch.object(db_session, "get", side_effect=OperationalError("", "", "")):
+            response = client.get("/v1/workflows/jobs/1")
+
+            assert response.status_code == 503
+            assert "unavailable" in response.json()["detail"].lower()
+
+    def test_get_job_unexpected_error(self, client: TestClient, db_session: Session):
+        """Test get job handles unexpected errors."""
+        with patch.object(db_session, "get", side_effect=RuntimeError("Unexpected")):
+            response = client.get("/v1/workflows/jobs/1")
+
+            assert response.status_code == 500
+            assert "internal" in response.json()["detail"].lower()
+
+
+class TestWorkflowMetrics:
+    """Test workflow metrics integration."""
+
+    def test_run_workflow_metrics_auto_path(self, client: TestClient, db_session: Session):
+        """Test workflow increments auto metrics counter."""
+        db_session.query(ActionLog).delete()
+        db_session.query(WorkflowJob).delete()
+        db_session.commit()
+
+        with patch("services.gateway.app.api.v1.routers.workflows.global_metrics") as mock_metrics:
+            mock_counter = Mock()
+            mock_metrics.__getitem__.return_value = mock_counter
+
+            payload = {"action": "allow", "subject": "test"}
+
+            response = client.post("/v1/workflows/run", json=payload)
+
+            assert response.status_code == 200
+            mock_counter.labels.assert_called_with(mode="auto")
+            mock_counter.labels.return_value.inc.assert_called_once()
+
+    def test_run_workflow_metrics_hitl_path(self, client: TestClient, db_session: Session):
+        """Test blocked workflow increments HITL metrics counter."""
+        db_session.query(Approval).delete()
+        db_session.query(ActionLog).delete()
+        db_session.query(WorkflowJob).delete()
+        db_session.commit()
+
+        with patch("services.gateway.app.api.v1.routers.workflows.global_metrics") as mock_metrics:
+            mock_counter = Mock()
+            mock_metrics.__getitem__.return_value = mock_counter
+
+            payload = {"action": "block", "subject": "test"}
+
+            response = client.post("/v1/workflows/run", json=payload)
+
+            assert response.status_code == 200
+            mock_counter.labels.assert_called_with(mode="hitl")
+            mock_counter.labels.return_value.inc.assert_called_once()
+
+    def test_run_workflow_metrics_key_error_auto_path(self, client: TestClient, db_session: Session):
+        """Test workflow handles metrics KeyError gracefully for auto path."""
+        db_session.query(ActionLog).delete()
+        db_session.query(WorkflowJob).delete()
+        db_session.commit()
+
+        with patch("services.gateway.app.api.v1.routers.workflows.global_metrics") as mock_metrics:
+            mock_metrics.__getitem__.side_effect = KeyError("missing_metric")
+
+            payload = {"action": "allow", "subject": "test"}
+
+            response = client.post("/v1/workflows/run", json=payload)
+
+            # Should succeed despite metrics error
+            assert response.status_code == 200
+            assert response.json()["status"] == "queued"
+
+    def test_run_workflow_metrics_key_error_hitl_path(self, client: TestClient, db_session: Session):
+        """Test workflow handles metrics KeyError gracefully for HITL path."""
+        db_session.query(Approval).delete()
+        db_session.query(ActionLog).delete()
+        db_session.query(WorkflowJob).delete()
+        db_session.commit()
+
+        with patch("services.gateway.app.api.v1.routers.workflows.global_metrics") as mock_metrics:
+            mock_metrics.__getitem__.side_effect = KeyError("missing_metric")
+
+            payload = {"action": "block", "subject": "test"}
+
+            response = client.post("/v1/workflows/run", json=payload)
+
+            # Should succeed despite metrics error
+            assert response.status_code == 200
+            assert response.json()["status"] == "awaiting_approval"
