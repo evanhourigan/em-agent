@@ -265,3 +265,164 @@ class TestSetSeverity:
         response = client.post("/v1/incidents/99999/severity", json=payload)
 
         assert response.status_code == 404
+
+
+class TestIncidentErrorHandling:
+    """Test incident error handling paths."""
+
+    def test_add_note_integrity_error(self, client: TestClient):
+        """Test add_note handles database integrity errors."""
+        from unittest.mock import patch, Mock
+        from sqlalchemy.exc import IntegrityError
+
+        with patch("services.gateway.app.api.v1.routers.incidents.get_sessionmaker") as mock_sm:
+            mock_session = Mock()
+            mock_session.get.return_value = Mock(id=1)  # Return fake incident
+            mock_session.commit.side_effect = IntegrityError("", "", "")
+            mock_session.__enter__ = Mock(return_value=mock_session)
+            mock_session.__exit__ = Mock(return_value=None)
+            mock_sm.return_value = Mock(return_value=mock_session)
+
+            payload = {"text": "Test note"}
+            response = client.post("/v1/incidents/1/note", json=payload)
+
+            assert response.status_code == 409
+
+    def test_add_note_operational_error(self, client: TestClient):
+        """Test add_note handles database operational errors."""
+        from unittest.mock import patch, Mock
+        from sqlalchemy.exc import OperationalError
+
+        with patch("services.gateway.app.api.v1.routers.incidents.get_sessionmaker") as mock_sm:
+            mock_session = Mock()
+            mock_session.get.return_value = Mock(id=1)
+            mock_session.commit.side_effect = OperationalError("", "", "")
+            mock_session.__enter__ = Mock(return_value=mock_session)
+            mock_session.__exit__ = Mock(return_value=None)
+            mock_sm.return_value = Mock(return_value=mock_session)
+
+            payload = {"text": "Test note"}
+            response = client.post("/v1/incidents/1/note", json=payload)
+
+            assert response.status_code == 503
+
+    def test_add_note_unexpected_error(self, client: TestClient):
+        """Test add_note handles unexpected errors."""
+        from unittest.mock import patch, Mock
+
+        with patch("services.gateway.app.api.v1.routers.incidents.get_sessionmaker") as mock_sm:
+            mock_session = Mock()
+            mock_session.get.return_value = Mock(id=1)
+            mock_session.commit.side_effect = RuntimeError("Unexpected")
+            mock_session.__enter__ = Mock(return_value=mock_session)
+            mock_session.__exit__ = Mock(return_value=None)
+            mock_sm.return_value = Mock(return_value=mock_session)
+
+            payload = {"text": "Test note"}
+            response = client.post("/v1/incidents/1/note", json=payload)
+
+            assert response.status_code == 500
+
+    def test_list_incidents_operational_error(self, client: TestClient):
+        """Test list_incidents handles database operational errors."""
+        from unittest.mock import patch, Mock
+        from sqlalchemy.exc import OperationalError
+
+        with patch("services.gateway.app.api.v1.routers.incidents.get_sessionmaker") as mock_sm:
+            mock_session = Mock()
+            mock_session.query.side_effect = OperationalError("", "", "")
+            mock_session.__enter__ = Mock(return_value=mock_session)
+            mock_session.__exit__ = Mock(return_value=None)
+            mock_sm.return_value = Mock(return_value=mock_session)
+
+            response = client.get("/v1/incidents")
+
+            assert response.status_code == 503
+
+    def test_list_incidents_unexpected_error(self, client: TestClient):
+        """Test list_incidents handles unexpected errors."""
+        from unittest.mock import patch, Mock
+
+        with patch("services.gateway.app.api.v1.routers.incidents.get_sessionmaker") as mock_sm:
+            mock_session = Mock()
+            mock_session.query.side_effect = RuntimeError("Unexpected")
+            mock_session.__enter__ = Mock(return_value=mock_session)
+            mock_session.__exit__ = Mock(return_value=None)
+            mock_sm.return_value = Mock(return_value=mock_session)
+
+            response = client.get("/v1/incidents")
+
+            assert response.status_code == 500
+
+    def test_close_incident_already_closed(self, client: TestClient):
+        """Test closing an already-closed incident."""
+        from unittest.mock import patch, Mock
+
+        with patch("services.gateway.app.api.v1.routers.incidents.get_sessionmaker") as mock_sm:
+            mock_incident = Mock(id=1, status="closed")
+            mock_session = Mock()
+            mock_session.get.return_value = mock_incident
+            mock_session.__enter__ = Mock(return_value=mock_session)
+            mock_session.__exit__ = Mock(return_value=None)
+            mock_sm.return_value = Mock(return_value=mock_session)
+
+            response = client.post("/v1/incidents/1/close")
+
+            assert response.status_code == 200
+            # Should not call commit since already closed
+            mock_session.commit.assert_not_called()
+
+    def test_close_incident_integrity_error(self, client: TestClient):
+        """Test close_incident handles database integrity errors."""
+        from unittest.mock import patch, Mock
+        from sqlalchemy.exc import IntegrityError
+
+        with patch("services.gateway.app.api.v1.routers.incidents.get_sessionmaker") as mock_sm:
+            mock_incident = Mock(id=1, status="open")
+            mock_session = Mock()
+            mock_session.get.return_value = mock_incident
+            mock_session.commit.side_effect = IntegrityError("", "", "")
+            mock_session.__enter__ = Mock(return_value=mock_session)
+            mock_session.__exit__ = Mock(return_value=None)
+            mock_sm.return_value = Mock(return_value=mock_session)
+
+            response = client.post("/v1/incidents/1/close")
+
+            assert response.status_code == 409
+
+    def test_close_incident_operational_error(self, client: TestClient):
+        """Test close_incident handles database operational errors."""
+        from unittest.mock import patch, Mock
+        from sqlalchemy.exc import OperationalError
+
+        with patch("services.gateway.app.api.v1.routers.incidents.get_sessionmaker") as mock_sm:
+            mock_incident = Mock(id=1, status="open")
+            mock_session = Mock()
+            mock_session.get.return_value = mock_incident
+            mock_session.commit.side_effect = OperationalError("", "", "")
+            mock_session.__enter__ = Mock(return_value=mock_session)
+            mock_session.__exit__ = Mock(return_value=None)
+            mock_sm.return_value = Mock(return_value=mock_session)
+
+            response = client.post("/v1/incidents/1/close")
+
+            assert response.status_code == 503
+
+    def test_close_incident_unexpected_error(self, client: TestClient):
+        """Test close_incident handles unexpected errors."""
+        from unittest.mock import patch, Mock
+
+        with patch("services.gateway.app.api.v1.routers.incidents.get_sessionmaker") as mock_sm:
+            mock_incident = Mock(id=1, status="open")
+            mock_session = Mock()
+            mock_session.get.return_value = mock_incident
+            mock_session.commit.side_effect = RuntimeError("Unexpected")
+            mock_session.__enter__ = Mock(return_value=mock_session)
+            mock_session.__exit__ = Mock(return_value=None)
+            mock_sm.return_value = Mock(return_value=mock_session)
+
+            response = client.post("/v1/incidents/1/close")
+
+            assert response.status_code == 500
+
+

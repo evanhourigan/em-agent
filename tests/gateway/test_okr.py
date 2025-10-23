@@ -279,3 +279,69 @@ class TestListObjectives:
         assert all("title" in obj for obj in data)
         assert all("owner" in obj for obj in data)
         assert all("period" in obj for obj in data)
+
+
+class TestOKRErrorHandling:
+    """Test OKR error handling paths."""
+
+    def test_create_objective_operational_error(self, client: TestClient):
+        """Test create_objective handles database errors."""
+        from unittest.mock import patch, Mock
+        from sqlalchemy.exc import OperationalError
+
+        with patch("services.gateway.app.api.v1.routers.okr.get_sessionmaker") as mock_sm:
+            mock_session = Mock()
+            mock_session.commit.side_effect = OperationalError("", "", "")
+            mock_session.__enter__ = Mock(return_value=mock_session)
+            mock_session.__exit__ = Mock(return_value=None)
+            mock_sm.return_value = Mock(return_value=mock_session)
+
+            payload = {"title": "Test", "owner": "user@example.com"}
+            response = client.post("/v1/okr/objectives", json=payload)
+
+            assert response.status_code == 503
+
+    def test_create_objective_unexpected_error(self, client: TestClient):
+        """Test create_objective handles unexpected errors."""
+        from unittest.mock import patch, Mock
+
+        with patch("services.gateway.app.api.v1.routers.okr.get_sessionmaker") as mock_sm:
+            mock_session = Mock()
+            mock_session.commit.side_effect = RuntimeError("Unexpected")
+            mock_session.__enter__ = Mock(return_value=mock_session)
+            mock_session.__exit__ = Mock(return_value=None)
+            mock_sm.return_value = Mock(return_value=mock_session)
+
+            payload = {"title": "Test", "owner": "user@example.com"}
+            response = client.post("/v1/okr/objectives", json=payload)
+
+            assert response.status_code == 500
+
+
+
+class TestOKRValidation:
+    """Simple validation tests for OKR."""
+
+    def test_create_objective_empty_title(self, client: TestClient):
+        """Test that empty objective title is rejected."""
+        payload = {"title": "", "owner": "user@example.com"}
+        response = client.post("/v1/okr/objectives", json=payload)
+        assert response.status_code == 422
+
+    def test_create_objective_missing_title(self, client: TestClient):
+        """Test that missing objective title is rejected."""
+        payload = {"owner": "user@example.com"}
+        response = client.post("/v1/okr/objectives", json=payload)
+        assert response.status_code == 422
+
+    def test_create_key_result_for_nonexistent_objective(self, client: TestClient):
+        """Test creating key result for non-existent objective."""
+        payload = {"title": "Test KR"}
+        response = client.post("/v1/okr/objectives/99999/key-results", json=payload)
+        assert response.status_code == 404
+
+    def test_update_progress_for_nonexistent_key_result(self, client: TestClient):
+        """Test updating progress for non-existent key result."""
+        payload = {"progress": 50.0}
+        response = client.post("/v1/okr/key-results/99999/progress", json=payload)
+        assert response.status_code == 404
