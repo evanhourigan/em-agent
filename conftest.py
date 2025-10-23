@@ -36,11 +36,12 @@ def clear_settings_cache():
     get_settings.cache_clear()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def test_db_engine():
     """
     Create a test database engine using SQLite in-memory.
-    Session-scoped so it's created once for all tests.
+    Function-scoped so each test gets a fresh, isolated database.
+    This eliminates cross-test contamination issues.
     """
     from services.gateway.app.db import Base
     # Import all models so they're registered with Base.metadata
@@ -121,18 +122,50 @@ def db_session(test_db_engine) -> Generator[Session, None, None]:
 def client(test_db_engine, db_session: Session) -> Generator[TestClient, None, None]:
     """
     Create a FastAPI test client with database overrides.
+
+    IMPORTANT: All app code must use the test's db_session (with savepoint rollback)
+    rather than creating new sessions that commit permanently.
     """
     # Must import here to ensure test environment is set
     import services.gateway.app.db as db_module
-    from services.gateway.app.main import app
+    from services.gateway.app.main import create_app  # Import factory, not global app
     from services.gateway.app.api.deps import get_db_session
+
+    # Create a fresh app for this test with current settings
+    app = create_app()
 
     # Override the global engine and sessionmaker
     original_engine = db_module._engine
     original_sessionmaker = db_module._SessionLocal
+    original_get_sessionmaker = db_module.get_sessionmaker
 
+    # Set the test engine
     db_module._engine = test_db_engine
-    db_module._SessionLocal = sessionmaker(bind=test_db_engine, expire_on_commit=False)
+
+    # CRITICAL FIX: Create a fake sessionmaker that always returns the SAME db_session
+    # This ensures all code paths (dependency injection, direct sessionmaker calls)
+    # use the same session with the same savepoint transaction
+    class FakeSessionmaker:
+        """Fake sessionmaker that always returns the test's db_session."""
+        def __call__(self):
+            # Return a context manager that yields db_session
+            return self
+
+        def __enter__(self):
+            return db_session
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            # Don't close the session - it's managed by the db_session fixture
+            return False
+
+    fake_sessionmaker = FakeSessionmaker()
+
+    # Override get_sessionmaker to return our fake sessionmaker
+    def mock_get_sessionmaker():
+        return fake_sessionmaker
+
+    db_module.get_sessionmaker = mock_get_sessionmaker
+    db_module._SessionLocal = fake_sessionmaker
 
     # Override the database session dependency
     def override_get_db():
@@ -150,6 +183,7 @@ def client(test_db_engine, db_session: Session) -> Generator[TestClient, None, N
     app.dependency_overrides.clear()
     db_module._engine = original_engine
     db_module._SessionLocal = original_sessionmaker
+    db_module.get_sessionmaker = original_get_sessionmaker
 
 
 @pytest.fixture
@@ -180,11 +214,22 @@ def sample_workflow_data():
 
 @pytest.fixture(autouse=True)
 def reset_environment():
-    """Reset environment variables after each test."""
+    """Reset environment variables after each test and clear settings cache."""
+    from services.gateway.app.core.config import get_settings
+
     original_env = os.environ.copy()
+
+    # Clear settings cache BEFORE each test to ensure environment variables are used
+    get_settings.cache_clear()
+
     yield
+
+    # Reset environment
     os.environ.clear()
     os.environ.update(original_env)
+
+    # Clear settings cache AFTER each test
+    get_settings.cache_clear()
 
 
 @pytest.fixture
