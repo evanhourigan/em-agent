@@ -43,6 +43,139 @@ def _verify_slack(request: Request, body: bytes, ts: str | None, sig: str | None
         raise HTTPException(status_code=401, detail="invalid signature")
 
 
+# Helper functions to reduce code duplication
+def _make_http_request(url: str, method: str = "POST", json_data: Dict[str, Any] | None = None, timeout: int = 30) -> Dict[str, Any]:
+    """Make HTTP request with consistent error handling."""
+    import httpx
+    try:
+        with httpx.Client(timeout=timeout) as client:
+            if method == "POST":
+                resp = client.post(url, json=json_data or {})
+            else:
+                resp = client.get(url)
+            resp.raise_for_status()
+            return resp.json()
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=str(exc))
+
+
+def _get_pending_approvals(session, limit: int = 10) -> List[Approval]:
+    """Get pending approvals from database."""
+    return (
+        session.query(Approval)
+        .filter(Approval.status == "pending")
+        .order_by(Approval.id.desc())
+        .limit(limit)
+        .all()
+    )
+
+
+# Command Handlers
+def _handle_signals(text: str) -> Dict[str, Any]:
+    """Handle 'signals' command."""
+    parts = text.split()
+    kinds: List[str]
+    if len(parts) > 1:
+        kinds = [parts[1]]
+    else:
+        kinds = ["stale_pr", "wip_limit_exceeded", "pr_without_review"]
+
+    SessionLocal = get_sessionmaker()
+    out: List[str] = []
+    with SessionLocal() as session:
+        for kind in kinds:
+            try:
+                results = _evaluate_rule(session, {"kind": kind})
+            except HTTPException as exc:
+                out.append(f"{kind}: error {exc.detail}")
+                continue
+            count = len(results)
+            subjects = []
+            for r in results[:5]:
+                subj = str(r.get("delivery_id") or r.get("subject") or r)
+                subjects.append(subj)
+            out.append(f"{kind}: {count} found; top: {', '.join(subjects)}")
+    return {"ok": True, "message": " | ".join(out)}
+
+
+def _handle_approvals_list(text: str) -> Dict[str, Any]:
+    """Handle 'approvals' command (list pending)."""
+    SessionLocal = get_sessionmaker()
+    with SessionLocal() as session:
+        rows = _get_pending_approvals(session)
+        if not rows:
+            return {"ok": True, "message": "No pending approvals"}
+        items = [f"#{a.id} {a.action} {a.subject}" for a in rows]
+        return {"ok": True, "message": "; ".join(items)}
+
+
+def _handle_approvals_post(text: str) -> Dict[str, Any]:
+    """Handle 'approvals post' command."""
+    from ....services.slack_client import SlackClient
+
+    parts = text.split()
+    channel = parts[2] if len(parts) > 2 else None
+    SessionLocal = get_sessionmaker()
+    with SessionLocal() as session:
+        rows = _get_pending_approvals(session)
+        if not rows:
+            return {"ok": True, "message": "No pending approvals"}
+        blocks = [
+            {
+                "type": "header",
+                "text": {"type": "plain_text", "text": "Pending Approvals"},
+            }
+        ]
+        for a in rows:
+            blocks.extend(
+                [
+                    {
+                        "type": "section",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": f"*#{a.id}* {a.action} — {a.subject}",
+                        },
+                    },
+                    {
+                        "type": "actions",
+                        "elements": [
+                            {
+                                "type": "button",
+                                "text": {"type": "plain_text", "text": "Approve"},
+                                "style": "primary",
+                                "value": f"approve:{a.id}",
+                            },
+                            {
+                                "type": "button",
+                                "text": {"type": "plain_text", "text": "Decline"},
+                                "style": "danger",
+                                "value": f"decline:{a.id}",
+                            },
+                        ],
+                    },
+                    {"type": "divider"},
+                ]
+            )
+        res = SlackClient().post_blocks(
+            text="Pending Approvals", blocks=blocks, channel=channel
+        )
+        return {"ok": True, "posted": res}
+
+
+def _handle_approve_decline(text: str) -> Dict[str, Any]:
+    """Handle 'approve <id>' or 'decline <id>' commands."""
+    parts = text.split()
+    if len(parts) != 2 or not parts[1].isdigit():
+        raise HTTPException(status_code=400, detail="usage: approve <id> | decline <id>")
+    approval_id = int(parts[1])
+    decision = "approve" if parts[0] == "approve" else "decline"
+    res = approvals_decide(approval_id, {"decision": decision, "reason": "slack"})
+    msg = f"approval #{approval_id} {res['status']}"
+    if "job_id" in res:
+        msg += f"; job_id={res['job_id']}"
+    return {"ok": True, "message": msg}
+
+
 @router.post("/commands")
 async def commands(
     request: Request,
@@ -68,115 +201,20 @@ async def commands(
             "message": "Usage: signals [kind]|approvals|approve <id>|decline <id>",
         }
 
+    # Dispatch to handler functions
     if text.startswith("signals"):
-        parts = text.split()
-        kinds: List[str]
-        if len(parts) > 1:
-            kinds = [parts[1]]
-        else:
-            kinds = ["stale_pr", "wip_limit_exceeded", "pr_without_review"]
+        return _handle_signals(text)
 
-        SessionLocal = get_sessionmaker()
-        out: List[str] = []
-        with SessionLocal() as session:
-            for kind in kinds:
-                try:
-                    results = _evaluate_rule(session, {"kind": kind})
-                except HTTPException as exc:
-                    out.append(f"{kind}: error {exc.detail}")
-                    continue
-                count = len(results)
-                subjects = []
-                for r in results[:5]:
-                    subj = str(r.get("delivery_id") or r.get("subject") or r)
-                    subjects.append(subj)
-                out.append(f"{kind}: {count} found; top: {', '.join(subjects)}")
-        return {"ok": True, "message": " | ".join(out)}
+    if text.startswith("approvals post"):
+        return _handle_approvals_post(text)
 
     if text.startswith("approvals"):
-        # "approvals post [channel]" or just "approvals"
-        if text.startswith("approvals post"):
-            from ....services.slack_client import SlackClient
-
-            parts = text.split()
-            channel = parts[2] if len(parts) > 2 else None
-            SessionLocal = get_sessionmaker()
-            with SessionLocal() as session:
-                rows = (
-                    session.query(Approval)
-                    .filter(Approval.status == "pending")
-                    .order_by(Approval.id.desc())
-                    .limit(10)
-                    .all()
-                )
-                if not rows:
-                    return {"ok": True, "message": "No pending approvals"}
-                blocks = [
-                    {
-                        "type": "header",
-                        "text": {"type": "plain_text", "text": "Pending Approvals"},
-                    }
-                ]
-                for a in rows:
-                    blocks.extend(
-                        [
-                            {
-                                "type": "section",
-                                "text": {
-                                    "type": "mrkdwn",
-                                    "text": f"*#{a.id}* {a.action} — {a.subject}",
-                                },
-                            },
-                            {
-                                "type": "actions",
-                                "elements": [
-                                    {
-                                        "type": "button",
-                                        "text": {"type": "plain_text", "text": "Approve"},
-                                        "style": "primary",
-                                        "value": f"approve:{a.id}",
-                                    },
-                                    {
-                                        "type": "button",
-                                        "text": {"type": "plain_text", "text": "Decline"},
-                                        "style": "danger",
-                                        "value": f"decline:{a.id}",
-                                    },
-                                ],
-                            },
-                            {"type": "divider"},
-                        ]
-                    )
-                res = SlackClient().post_blocks(
-                    text="Pending Approvals", blocks=blocks, channel=channel
-                )
-                return {"ok": True, "posted": res}
-        else:
-            SessionLocal = get_sessionmaker()
-            with SessionLocal() as session:
-                rows = (
-                    session.query(Approval)
-                    .filter(Approval.status == "pending")
-                    .order_by(Approval.id.desc())
-                    .limit(10)
-                    .all()
-                )
-                if not rows:
-                    return {"ok": True, "message": "No pending approvals"}
-                items = [f"#{a.id} {a.action} {a.subject}" for a in rows]
-                return {"ok": True, "message": "; ".join(items)}
+        return _handle_approvals_list(text)
 
     if text.startswith("approve ") or text.startswith("decline "):
-        parts = text.split()
-        if len(parts) != 2 or not parts[1].isdigit():
-            raise HTTPException(status_code=400, detail="usage: approve <id> | decline <id>")
-        approval_id = int(parts[1])
-        decision = "approve" if parts[0] == "approve" else "decline"
-        res = approvals_decide(approval_id, {"decision": decision, "reason": "slack"})
-        msg = f"approval #{approval_id} {res['status']}"
-        if "job_id" in res:
-            msg += f"; job_id={res['job_id']}"
-        return {"ok": True, "message": msg}
+        return _handle_approve_decline(text)
+
+    # Continue with remaining inline handlers
 
     if text.startswith("standup"):
         parts = text.split()
@@ -302,15 +340,7 @@ async def commands(
         query = text[len("agent ") :].strip()
         if not query:
             return {"ok": False, "message": "usage: agent <query>"}
-        try:
-            import httpx
-
-            with httpx.Client(timeout=30) as client:
-                resp = client.post("http://localhost:8000/v1/agent/run", json={"query": query})
-                resp.raise_for_status()
-                r = resp.json()
-        except Exception as exc:  # noqa: BLE001
-            raise HTTPException(status_code=502, detail=str(exc))
+        r = _make_http_request("http://localhost:8000/v1/agent/run", json_data={"query": query}, timeout=30)
         plan = r.get("plan") or []
         result = r.get("result") or {}
         msg = f"agent plan:{[p.get('tool') for p in plan]}"
@@ -320,15 +350,7 @@ async def commands(
 
     if text.startswith("incident start"):
         title = text[len("incident start"):].strip() or "Untitled Incident"
-        try:
-            import httpx
-
-            with httpx.Client(timeout=10) as client:
-                resp = client.post("http://localhost:8000/v1/incidents", json={"title": title})
-                resp.raise_for_status()
-                inc = resp.json()
-        except Exception as exc:  # noqa: BLE001
-            raise HTTPException(status_code=502, detail=str(exc))
+        inc = _make_http_request("http://localhost:8000/v1/incidents", json_data={"title": title}, timeout=10)
         return {"ok": True, "message": f"incident #{inc.get('id')} started: {title}"}
 
     if text.startswith("incident note "):
@@ -337,14 +359,7 @@ async def commands(
             return {"ok": False, "message": "usage: incident note <id> <text>"}
         inc_id = int(parts[2])
         note = parts[3]
-        try:
-            import httpx
-
-            with httpx.Client(timeout=10) as client:
-                resp = client.post(f"http://localhost:8000/v1/incidents/{inc_id}/note", json={"text": note})
-                resp.raise_for_status()
-        except Exception as exc:  # noqa: BLE001
-            raise HTTPException(status_code=502, detail=str(exc))
+        _make_http_request(f"http://localhost:8000/v1/incidents/{inc_id}/note", json_data={"text": note}, timeout=10)
         return {"ok": True, "message": f"noted on incident #{inc_id}"}
 
     if text.startswith("incident post"):
@@ -404,14 +419,7 @@ async def commands(
         if len(parts) < 3 or not parts[2].isdigit():
             return {"ok": False, "message": "usage: incident close <id>"}
         inc_id = int(parts[2])
-        try:
-            import httpx
-
-            with httpx.Client(timeout=10) as client:
-                resp = client.post(f"http://localhost:8000/v1/incidents/{inc_id}/close")
-                resp.raise_for_status()
-        except Exception as exc:  # noqa: BLE001
-            raise HTTPException(status_code=502, detail=str(exc))
+        _make_http_request(f"http://localhost:8000/v1/incidents/{inc_id}/close", timeout=10)
         return {"ok": True, "message": f"incident #{inc_id} closed"}
 
     if text.startswith("incident sev "):
@@ -421,28 +429,13 @@ async def commands(
             return {"ok": False, "message": "usage: incident sev <id> <S0|S1|S2|S3>"}
         inc_id = int(parts[2])
         sev = parts[3]
-        try:
-            import httpx
-
-            with httpx.Client(timeout=10) as client:
-                resp = client.post(f"http://localhost:8000/v1/incidents/{inc_id}/severity", json={"severity": sev})
-                resp.raise_for_status()
-        except Exception as exc:  # noqa: BLE001
-            raise HTTPException(status_code=502, detail=str(exc))
+        _make_http_request(f"http://localhost:8000/v1/incidents/{inc_id}/severity", json_data={"severity": sev}, timeout=10)
         return {"ok": True, "message": f"incident #{inc_id} severity -> {sev}"}
 
     if text.startswith("onboarding plan "):
         # usage: onboarding plan <title>
         title = text[len("onboarding plan "):].strip() or "New Hire Plan"
-        try:
-            import httpx
-
-            with httpx.Client(timeout=10) as client:
-                resp = client.post("http://localhost:8000/v1/onboarding/plans", json={"title": title})
-                resp.raise_for_status()
-                plan = resp.json()
-        except Exception as exc:  # noqa: BLE001
-            raise HTTPException(status_code=502, detail=str(exc))
+        plan = _make_http_request("http://localhost:8000/v1/onboarding/plans", json_data={"title": title}, timeout=10)
         return {"ok": True, "message": f"onboarding plan #{plan.get('id')} created"}
 
     if text.startswith("onboarding task "):
@@ -452,14 +445,7 @@ async def commands(
             return {"ok": False, "message": "usage: onboarding task <plan_id> <title>"}
         pid = int(parts[2])
         t = parts[3]
-        try:
-            import httpx
-
-            with httpx.Client(timeout=10) as client:
-                resp = client.post(f"http://localhost:8000/v1/onboarding/plans/{pid}/tasks", json={"title": t})
-                resp.raise_for_status()
-        except Exception as exc:  # noqa: BLE001
-            raise HTTPException(status_code=502, detail=str(exc))
+        _make_http_request(f"http://localhost:8000/v1/onboarding/plans/{pid}/tasks", json_data={"title": t}, timeout=10)
         return {"ok": True, "message": f"task added to plan #{pid}"}
 
     if text.startswith("okr new "):
@@ -467,15 +453,7 @@ async def commands(
         title = text[len("okr new "):].strip()
         if not title:
             return {"ok": False, "message": "usage: okr new <title>"}
-        try:
-            import httpx
-
-            with httpx.Client(timeout=10) as client:
-                resp = client.post("http://localhost:8000/v1/okr/objectives", json={"title": title})
-                resp.raise_for_status()
-                obj = resp.json()
-        except Exception as exc:  # noqa: BLE001
-            raise HTTPException(status_code=502, detail=str(exc))
+        obj = _make_http_request("http://localhost:8000/v1/okr/objectives", json_data={"title": title}, timeout=10)
         return {"ok": True, "message": f"objective #{obj.get('id')} created"}
 
     if text.startswith("okr kr "):
@@ -485,30 +463,12 @@ async def commands(
             return {"ok": False, "message": "usage: okr kr <objective_id> <title>"}
         oid = int(parts[2])
         krt = parts[3]
-        try:
-            import httpx
-
-            with httpx.Client(timeout=10) as client:
-                resp = client.post(f"http://localhost:8000/v1/okr/objectives/{oid}/krs", json={"title": krt})
-                resp.raise_for_status()
-        except Exception as exc:  # noqa: BLE001
-            raise HTTPException(status_code=502, detail=str(exc))
+        _make_http_request(f"http://localhost:8000/v1/okr/objectives/{oid}/krs", json_data={"title": krt}, timeout=10)
         return {"ok": True, "message": f"kr added to objective #{oid}"}
 
     if text.strip().startswith("agent label-missing-ticket"):
         # Trigger agent flow to propose labeling PRs without ticket links
-        try:
-            import httpx
-
-            with httpx.Client(timeout=30) as client:
-                resp = client.post(
-                    "http://localhost:8000/v1/agent/run",
-                    json={"query": "label missing ticket PRs"},
-                )
-                resp.raise_for_status()
-                r = resp.json()
-        except Exception as exc:  # noqa: BLE001
-            raise HTTPException(status_code=502, detail=str(exc))
+        r = _make_http_request("http://localhost:8000/v1/agent/run", json_data={"query": "label missing ticket PRs"}, timeout=30)
         prop = r.get("proposed") or {}
         action_id = prop.get("action_id")
         candidates = r.get("candidates")
@@ -520,18 +480,7 @@ async def commands(
         }
 
     if text.strip().startswith("agent create-missing-ticket-issues"):
-        try:
-            import httpx
-
-            with httpx.Client(timeout=30) as client:
-                resp = client.post(
-                    "http://localhost:8000/v1/agent/run",
-                    json={"query": "create issues for missing ticket links"},
-                )
-                resp.raise_for_status()
-                r = resp.json()
-        except Exception as exc:  # noqa: BLE001
-            raise HTTPException(status_code=502, detail=str(exc))
+        r = _make_http_request("http://localhost:8000/v1/agent/run", json_data={"query": "create issues for missing ticket links"}, timeout=30)
         prop = r.get("proposed") or {}
         action_id = prop.get("action_id")
         candidates = r.get("candidates")
@@ -663,17 +612,7 @@ async def commands(
         if not query:
             return {"ok": False, "message": "usage: agent ask <query> | agent ask post [channel] <query>"}
         # Use existing ask pathway to get results
-        try:
-            import httpx
-
-            with httpx.Client(timeout=15) as client:
-                resp = client.post(
-                    f"http://localhost:8000/v1/rag/search", json={"q": query, "top_k": 3}
-                )
-                resp.raise_for_status()
-                data = resp.json()
-        except Exception as exc:  # noqa: BLE001
-            raise HTTPException(status_code=502, detail=str(exc))
+        data = _make_http_request("http://localhost:8000/v1/rag/search", json_data={"q": query, "top_k": 3}, timeout=15)
         results = data.get("results") or []
         if not results:
             return {"ok": True, "message": "No results"}
