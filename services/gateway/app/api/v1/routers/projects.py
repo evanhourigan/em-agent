@@ -29,14 +29,17 @@ def create_project(
 
 @router.get("", response_model=List[ProjectOut])
 def list_projects(session: Session = Depends(get_db_session)) -> List[ProjectOut]:
-    rows = session.execute(select(Project).order_by(Project.id)).scalars().all()
+    # Filter out soft-deleted projects
+    rows = session.execute(
+        select(Project).where(Project.deleted_at == None).order_by(Project.id)
+    ).scalars().all()
     return [ProjectOut.from_orm(p) for p in rows]
 
 
 @router.get("/{project_id}", response_model=ProjectOut)
 def get_project(project_id: int, session: Session = Depends(get_db_session)) -> ProjectOut:
     project = session.get(Project, project_id)
-    if not project:
+    if not project or project.is_deleted:
         raise HTTPException(status_code=404, detail="not found")
     return ProjectOut.from_orm(project)
 
@@ -66,8 +69,9 @@ def update_project(
 @router.delete("/{project_id}", status_code=204)
 def delete_project(project_id: int, session: Session = Depends(get_db_session)) -> None:
     project = session.get(Project, project_id)
-    if not project:
+    if not project or project.is_deleted:
         raise HTTPException(status_code=404, detail="not found")
-    session.delete(project)
+    # Use soft delete instead of hard delete
+    project.soft_delete()
     session.commit()
     return None

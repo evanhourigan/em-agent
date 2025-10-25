@@ -37,15 +37,8 @@ class TestListProjects:
         assert len(data) == 3
         assert {p["key"] for p in data} == {"proj1", "proj2", "proj3"}
 
-    @pytest.mark.skip(
-        reason="Router doesn't filter soft-deleted projects - would need WHERE clause"
-    )
     def test_list_projects_excludes_soft_deleted(self, client: TestClient, db_session: Session):
-        """Test that soft-deleted projects are excluded from listing.
-
-        TODO: Router currently lists all projects without filtering deleted_at.
-        Need to add: .where(Project.deleted_at == None) to the query.
-        """
+        """Test that soft-deleted projects are excluded from listing."""
         from services.gateway.app.models.projects import Project
 
         # Clean and create projects
@@ -125,34 +118,22 @@ class TestCreateProject:
         errors = response.json()["errors"]
         assert any(err["loc"] == ["body", "name"] for err in errors)
 
-    @pytest.mark.skip(reason="Pydantic validation not enforcing min_length constraint")
     def test_create_project_validation_empty_key(self, client: TestClient):
-        """Test validation rejects empty key.
-
-        TODO: Pydantic min_length=1 should reject empty strings but doesn't.
-        """
+        """Test validation rejects empty key."""
         payload = {"key": "", "name": "Test Project"}
 
         response = client.post("/v1/projects", json=payload)
         assert response.status_code == 422
 
-    @pytest.mark.skip(reason="Pydantic validation not enforcing min_length constraint")
     def test_create_project_validation_empty_name(self, client: TestClient):
-        """Test validation rejects empty name.
-
-        TODO: Pydantic min_length=1 should reject empty strings but doesn't.
-        """
+        """Test validation rejects empty name."""
         payload = {"key": "test", "name": ""}
 
         response = client.post("/v1/projects", json=payload)
         assert response.status_code == 422
 
-    @pytest.mark.skip(reason="Database truncates long strings instead of rejecting")
     def test_create_project_validation_key_too_long(self, client: TestClient):
-        """Test validation rejects key exceeding max length.
-
-        TODO: Database truncates strings at column max_length instead of validation error.
-        """
+        """Test validation rejects key exceeding max length."""
         payload = {
             "key": "x" * 100,  # Exceeds 64 char limit
             "name": "Test Project"
@@ -161,12 +142,8 @@ class TestCreateProject:
         response = client.post("/v1/projects", json=payload)
         assert response.status_code == 422
 
-    @pytest.mark.skip(reason="Database truncates long strings instead of rejecting")
     def test_create_project_validation_name_too_long(self, client: TestClient):
-        """Test validation rejects name exceeding max length.
-
-        TODO: Database truncates strings at column max_length instead of validation error.
-        """
+        """Test validation rejects name exceeding max length."""
         payload = {
             "key": "test",
             "name": "x" * 300  # Exceeds 255 char limit
@@ -207,12 +184,8 @@ class TestGetProject:
         assert response.status_code == 404
         assert "not found" in response.json()["detail"].lower()
 
-    @pytest.mark.skip(reason="Router doesn't filter soft-deleted projects on GET")
     def test_get_project_soft_deleted_not_found(self, client: TestClient, db_session: Session):
-        """Test that soft-deleted projects return 404.
-
-        TODO: Router doesn't check deleted_at when fetching project.
-        """
+        """Test that soft-deleted projects return 404."""
         from services.gateway.app.models.projects import Project
 
         # Create and soft-delete project
@@ -294,12 +267,8 @@ class TestUpdateProject:
         response = client.patch("/v1/projects/99999", json=payload)
         assert response.status_code == 404
 
-    @pytest.mark.skip(reason="Pydantic validation not enforcing min_length constraint")
     def test_update_project_validation_empty_name(self, client: TestClient, db_session: Session):
-        """Test update validation rejects empty name.
-
-        TODO: Pydantic min_length=1 should reject empty strings but doesn't.
-        """
+        """Test update validation rejects empty name."""
         from services.gateway.app.models.projects import Project
 
         db_session.query(Project).delete()
@@ -317,7 +286,7 @@ class TestDeleteProject:
     """Tests for DELETE /v1/projects/{project_id} endpoint."""
 
     def test_delete_project_success(self, client: TestClient, db_session: Session):
-        """Test successfully deleting a project (hard delete)."""
+        """Test successfully deleting a project (soft delete)."""
         from services.gateway.app.models.projects import Project
 
         # Create project
@@ -330,10 +299,11 @@ class TestDeleteProject:
         response = client.delete(f"/v1/projects/{project_id}")
         assert response.status_code == 204  # No Content
 
-        # Verify project is deleted from database
+        # Verify project is soft deleted (still in DB with deleted_at set)
         db_session.expire_all()
         project = db_session.query(Project).filter_by(id=project_id).first()
-        assert project is None  # Hard deleted, not in DB
+        assert project is not None  # Still in DB
+        assert project.is_deleted  # Soft deleted
 
     def test_delete_project_not_found(self, client: TestClient, db_session: Session):
         """Test deleting non-existent project returns 404."""
@@ -345,13 +315,8 @@ class TestDeleteProject:
         response = client.delete("/v1/projects/99999")
         assert response.status_code == 404
 
-    @pytest.mark.skip(reason="Router doesn't filter soft-deleted projects")
     def test_delete_project_already_soft_deleted(self, client: TestClient, db_session: Session):
-        """Test deleting already soft-deleted project returns 404.
-
-        TODO: Router doesn't check deleted_at when fetching project.
-        Currently would successfully delete even soft-deleted projects.
-        """
+        """Test deleting already soft-deleted project returns 404."""
         from services.gateway.app.models.projects import Project
 
         # Create and soft-delete project

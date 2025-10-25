@@ -179,15 +179,8 @@ class TestAuthWithEnabledFlag:
 class TestPasswordHashing:
     """Tests for password hashing utilities."""
 
-    @pytest.mark.skip(reason="passlib 1.7.4 incompatible with bcrypt 5.x - upgrade passlib to fix")
     def test_password_hash_and_verify(self):
-        """Test password hashing and verification.
-
-        TODO: Requires passlib upgrade to support bcrypt 5.x
-        Current: passlib 1.7.4 + bcrypt 5.0.0 (incompatible)
-        Error: AttributeError: module 'bcrypt' has no attribute '__about__'
-        Fix: Upgrade passlib to 1.7.5+ or downgrade bcrypt to <5.0.0
-        """
+        """Test password hashing and verification."""
         from services.gateway.app.core.auth import get_password_hash, verify_password
 
         password = "test_password_123"  # Under 72 byte bcrypt limit
@@ -202,12 +195,8 @@ class TestPasswordHashing:
         # Verify incorrect password
         assert verify_password("wrong_password", hashed) is False
 
-    @pytest.mark.skip(reason="passlib 1.7.4 incompatible with bcrypt 5.x - upgrade passlib to fix")
     def test_same_password_different_hashes(self):
-        """Test that same password produces different hashes (salt).
-
-        TODO: Requires passlib upgrade to support bcrypt 5.x
-        """
+        """Test that same password produces different hashes (salt)."""
         from services.gateway.app.core.auth import get_password_hash
 
         password = "test_pass_123"  # Under 72 byte bcrypt limit
@@ -217,12 +206,8 @@ class TestPasswordHashing:
         # Different hashes due to random salt
         assert hash1 != hash2
 
-    @pytest.mark.skip(reason="passlib 1.7.4 incompatible with bcrypt 5.x - upgrade passlib to fix")
     def test_empty_password_can_be_hashed(self):
-        """Test that empty password can be hashed (validation should prevent this at API level).
-
-        TODO: Requires passlib upgrade to support bcrypt 5.x
-        """
+        """Test that empty password can be hashed (validation should prevent this at API level)."""
         from services.gateway.app.core.auth import get_password_hash, verify_password
 
         password = "x"  # Minimal password

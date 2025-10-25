@@ -10,8 +10,8 @@ class ProjectBase(BaseModel):
 
 
 class ProjectCreate(ProjectBase):
-    key: str
-    name: str
+    key: str = Field(..., min_length=1, max_length=64)
+    name: str = Field(..., min_length=1, max_length=255)
 
 
 class ProjectUpdate(ProjectBase):
