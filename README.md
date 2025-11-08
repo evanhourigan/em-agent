@@ -2,11 +2,11 @@
 
 [![License](https://img.shields.io/github/license/evanhourigan/em-agent)](./LICENSE) [![Python](https://img.shields.io/badge/python-3.12-blue)](#) [![Docker](https://img.shields.io/badge/docker-ready-blue)](#) [![CI](https://img.shields.io/github/actions/workflow/status/evanhourigan/em-agent/ci.yml?branch=main&label=CI)](https://github.com/evanhourigan/em-agent/actions)
 
-[EM Agent Comprehensive Guide](./COMPREHENSIVE.md) • [Architecture](./ARCHITECTURE.md)
+[Architecture](./ARCHITECTURE.md) • [Releases](./docs/releases/)
 
-An AI-assisted “Chief of Staff” for engineering. Plugs into your stack, surfaces risks, automates toil, and produces trustworthy operating metrics—while keeping humans in control.
+An AI-assisted "Chief of Staff" for engineering. Plugs into your stack, surfaces risks, automates toil, and produces trustworthy operating metrics—while keeping humans in control.
 
-See `ARCHITECTURE.md` for the vision, reference architecture, and phase plan. For a complete, step-by-step test guide, see `COMPREHENSIVE.md`.
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for the vision, reference architecture, and phase plan.
 
 ## Highlights
 - FastAPI gateway: signals, policy, approvals (HITL), Slack, reports

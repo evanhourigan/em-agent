@@ -35,3 +35,19 @@ Thumbs.db
 
 # Codex
 .codex-context/
+
+# Claude Code
+.claude/settings.local.json
+
+# Working notes and AI session conversations
+notes/
+
+# Coverage reports
+htmlcov/
+.coverage
+coverage.xml
+.pytest_cache/
+
+# Temp files
+.tmp_*
+*.tmp
