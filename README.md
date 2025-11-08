@@ -61,8 +61,17 @@ curl -sS -X POST http://localhost:8000/v1/slack/commands \
 
 ## Status
 
-- Phase 0 complete (gateway, Postgres, logging/metrics)
-- Phase 1 in progress (ingestion + normalization)
+**Core Platform (Phases 0-6): Production Ready**
+- ✅ Phase 0: Gateway, Postgres, logging/metrics, observability
+- ✅ Phase 1: Webhook ingestion (GitHub/Jira), projects, identity mapping
+- ✅ Phase 2: dbt metrics models, DORA API endpoints (lead time, deploy freq, CFR, MTTR)
+- ✅ Phase 3: Signal evaluation, policy engine (OPA), approvals & workflows
+- ✅ Phase 4: RAG service (TF-IDF/pgvector), connectors (GitHub/Confluence), event bus (NATS), workers (Celery + Temporal)
+- ✅ Phase 5: Slack integration (commands, reports, approvals), admin UI
+- ✅ Phase 6: Testing (467 tests, 88% coverage), security hardening, CI/CD
+
+**Advanced Features (Phase 7): In Progress**
+- 🚧 Incident co-pilot, onboarding autopilot, OKR mapping (prototypes exist)
 
 ## Quickstart (Docker)
 
