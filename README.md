@@ -1,6 +1,13 @@
 # EM Agent (Engineering Manager Agent)
 
-[![License](https://img.shields.io/github/license/evanhourigan/em-agent)](./LICENSE) [![Python](https://img.shields.io/badge/python-3.12-blue)](#) [![Docker](https://img.shields.io/badge/docker-ready-blue)](#) [![CI](https://img.shields.io/github/actions/workflow/status/evanhourigan/em-agent/ci.yml?branch=main&label=CI)](https://github.com/evanhourigan/em-agent/actions)
+[![CI](https://img.shields.io/github/actions/workflow/status/evanhourigan/em-agent/ci.yml?branch=main&label=CI)](https://github.com/evanhourigan/em-agent/actions)
+[![Coverage](https://img.shields.io/badge/coverage-88%25-brightgreen)](https://github.com/evanhourigan/em-agent/actions)
+[![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688)](https://fastapi.tiangolo.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-336791)](https://www.postgresql.org/)
+[![License](https://img.shields.io/github/license/evanhourigan/em-agent)](./LICENSE)
+[![Issues](https://img.shields.io/github/issues/evanhourigan/em-agent)](https://github.com/evanhourigan/em-agent/issues)
+[![Last Commit](https://img.shields.io/github/last-commit/evanhourigan/em-agent)](https://github.com/evanhourigan/em-agent/commits/main)
 
 [Architecture](./ARCHITECTURE.md) • [Releases](./docs/releases/)
 
