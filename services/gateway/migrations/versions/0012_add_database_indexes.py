@@ -22,66 +22,66 @@ def upgrade():
     """Add database indexes for performance."""
 
     # Identity indexes
-    op.execute('CREATE UNIQUE INDEX CONCURRENTLY uix_identities_external ON identities (external_type, external_id)')
-    op.execute('CREATE INDEX CONCURRENTLY ix_identities_user_id ON identities (user_id)')
+    op.execute('CREATE UNIQUE INDEX IF NOT EXISTS uix_identities_external ON identities (external_type, external_id)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_identities_user_id ON identities (user_id)')
 
     # EventRaw indexes
-    op.execute('CREATE UNIQUE INDEX CONCURRENTLY uix_events_delivery_id ON events_raw (delivery_id)')
-    op.execute('CREATE INDEX CONCURRENTLY ix_events_source ON events_raw (source)')
-    op.execute('CREATE INDEX CONCURRENTLY ix_events_event_type ON events_raw (event_type)')
-    op.execute('CREATE INDEX CONCURRENTLY ix_events_received_at ON events_raw (received_at)')
-    op.execute('CREATE INDEX CONCURRENTLY ix_events_source_received ON events_raw (source, received_at)')
+    op.execute('CREATE UNIQUE INDEX IF NOT EXISTS uix_events_delivery_id ON events_raw (delivery_id)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_events_source ON events_raw (source)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_events_event_type ON events_raw (event_type)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_events_received_at ON events_raw (received_at)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_events_source_received ON events_raw (source, received_at)')
 
     # Approval indexes
-    op.execute('CREATE INDEX CONCURRENTLY ix_approvals_status ON approvals (status)')
-    op.execute('CREATE INDEX CONCURRENTLY ix_approvals_subject ON approvals (subject)')
-    op.execute('CREATE INDEX CONCURRENTLY ix_approvals_created_at ON approvals (created_at)')
-    op.execute('CREATE INDEX CONCURRENTLY ix_approvals_status_created ON approvals (status, created_at)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_approvals_status ON approvals (status)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_approvals_subject ON approvals (subject)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_approvals_created_at ON approvals (created_at)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_approvals_status_created ON approvals (status, created_at)')
 
     # WorkflowJob indexes
-    op.execute('CREATE INDEX CONCURRENTLY ix_workflow_jobs_status ON workflow_jobs (status)')
-    op.execute('CREATE INDEX CONCURRENTLY ix_workflow_jobs_rule_kind ON workflow_jobs (rule_kind)')
-    op.execute('CREATE INDEX CONCURRENTLY ix_workflow_jobs_subject ON workflow_jobs (subject)')
-    op.execute('CREATE INDEX CONCURRENTLY ix_workflow_jobs_created_at ON workflow_jobs (created_at)')
-    op.execute('CREATE INDEX CONCURRENTLY ix_workflow_jobs_status_created ON workflow_jobs (status, created_at)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_workflow_jobs_status ON workflow_jobs (status)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_workflow_jobs_rule_kind ON workflow_jobs (rule_kind)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_workflow_jobs_subject ON workflow_jobs (subject)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_workflow_jobs_created_at ON workflow_jobs (created_at)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_workflow_jobs_status_created ON workflow_jobs (status, created_at)')
 
     # ActionLog indexes
-    op.execute('CREATE INDEX CONCURRENTLY ix_action_log_rule_name ON action_log (rule_name)')
-    op.execute('CREATE INDEX CONCURRENTLY ix_action_log_subject ON action_log (subject)')
-    op.execute('CREATE INDEX CONCURRENTLY ix_action_log_action ON action_log (action)')
-    op.execute('CREATE INDEX CONCURRENTLY ix_action_log_created_at ON action_log (created_at)')
-    op.execute('CREATE INDEX CONCURRENTLY ix_action_log_rule_created ON action_log (rule_name, created_at)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_action_log_rule_name ON action_log (rule_name)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_action_log_subject ON action_log (subject)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_action_log_action ON action_log (action)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_action_log_created_at ON action_log (created_at)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_action_log_rule_created ON action_log (rule_name, created_at)')
 
     # Incident indexes
-    op.execute('CREATE INDEX CONCURRENTLY ix_incidents_status ON incidents (status)')
-    op.execute('CREATE INDEX CONCURRENTLY ix_incidents_severity ON incidents (severity)')
-    op.execute('CREATE INDEX CONCURRENTLY ix_incidents_created_at ON incidents (created_at)')
-    op.execute('CREATE INDEX CONCURRENTLY ix_incidents_status_severity ON incidents (status, severity)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_incidents_status ON incidents (status)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_incidents_severity ON incidents (severity)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_incidents_created_at ON incidents (created_at)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_incidents_status_severity ON incidents (status, severity)')
 
     # IncidentTimeline indexes
-    op.execute('CREATE INDEX CONCURRENTLY ix_incident_timeline_ts ON incident_timeline (ts)')
-    op.execute('CREATE INDEX CONCURRENTLY ix_incident_timeline_incident_ts ON incident_timeline (incident_id, ts)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_incident_timeline_ts ON incident_timeline (ts)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_incident_timeline_incident_ts ON incident_timeline (incident_id, ts)')
 
     # OnboardingPlan indexes
-    op.execute('CREATE INDEX CONCURRENTLY ix_onboarding_plans_status ON onboarding_plans (status)')
-    op.execute('CREATE INDEX CONCURRENTLY ix_onboarding_plans_created_at ON onboarding_plans (created_at)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_onboarding_plans_status ON onboarding_plans (status)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_onboarding_plans_created_at ON onboarding_plans (created_at)')
 
     # OnboardingTask indexes
-    op.execute('CREATE INDEX CONCURRENTLY ix_onboarding_tasks_status ON onboarding_tasks (status)')
-    op.execute('CREATE INDEX CONCURRENTLY ix_onboarding_tasks_assignee ON onboarding_tasks (assignee)')
-    op.execute('CREATE INDEX CONCURRENTLY ix_onboarding_tasks_due_date ON onboarding_tasks (due_date)')
-    op.execute('CREATE INDEX CONCURRENTLY ix_onboarding_tasks_plan_status ON onboarding_tasks (plan_id, status)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_onboarding_tasks_status ON onboarding_tasks (status)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_onboarding_tasks_assignee ON onboarding_tasks (assignee)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_onboarding_tasks_due_date ON onboarding_tasks (due_date)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_onboarding_tasks_plan_status ON onboarding_tasks (plan_id, status)')
 
     # Objective indexes
-    op.execute('CREATE INDEX CONCURRENTLY ix_objectives_status ON objectives (status)')
-    op.execute('CREATE INDEX CONCURRENTLY ix_objectives_owner ON objectives (owner)')
-    op.execute('CREATE INDEX CONCURRENTLY ix_objectives_period ON objectives (period)')
-    op.execute('CREATE INDEX CONCURRENTLY ix_objectives_created_at ON objectives (created_at)')
-    op.execute('CREATE INDEX CONCURRENTLY ix_objectives_period_status ON objectives (period, status)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_objectives_status ON objectives (status)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_objectives_owner ON objectives (owner)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_objectives_period ON objectives (period)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_objectives_created_at ON objectives (created_at)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_objectives_period_status ON objectives (period, status)')
 
     # KeyResult indexes
-    op.execute('CREATE INDEX CONCURRENTLY ix_key_results_status ON key_results (status)')
-    op.execute('CREATE INDEX CONCURRENTLY ix_key_results_objective_status ON key_results (objective_id, status)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_key_results_status ON key_results (status)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_key_results_objective_status ON key_results (objective_id, status)')
 
 
 def downgrade():
