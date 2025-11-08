@@ -1,26 +1,23 @@
 from __future__ import annotations
 
-from datetime import datetime, UTC
-from typing import Any, Dict, List
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, HTTPException
 from sqlalchemy.exc import IntegrityError, OperationalError
-from sqlalchemy.orm import Session
 
 from ....core.logging import get_logger
 from ....db import get_sessionmaker
 from ....models.incidents import Incident, IncidentTimeline
 from ....schemas.incidents import (
-    IncidentStartRequest,
-    IncidentStartResponse,
     IncidentAddNoteRequest,
+    IncidentCloseResponse,
     IncidentNoteResponse,
     IncidentResponse,
-    IncidentCloseResponse,
     IncidentSetSeverityRequest,
     IncidentSeverityResponse,
+    IncidentStartRequest,
+    IncidentStartResponse,
 )
-
 
 router = APIRouter(prefix="/v1/incidents", tags=["incidents"])
 logger = get_logger(__name__)
@@ -45,7 +42,9 @@ def start_incident(payload: IncidentStartRequest) -> IncidentStartResponse:
             session.commit()
             session.refresh(inc)
 
-            logger.info("incident.started", incident_id=inc.id, title=title, severity=severity)
+            logger.info(
+                "incident.started", incident_id=inc.id, title=title, severity=severity
+            )
             return IncidentStartResponse(id=inc.id, status=inc.status, title=inc.title)
 
     except IntegrityError as e:
@@ -78,30 +77,47 @@ def add_note(id: int, payload: IncidentAddNoteRequest) -> IncidentNoteResponse:
                 incident_id=inc.id,
                 text=payload.text,
                 author=payload.author,
-                kind="note"
+                kind="note",
             )
             session.add(tl)
             session.commit()
             session.refresh(tl)
 
-            logger.info("incident.note_added", incident_id=id, timeline_id=tl.id, author=payload.author)
+            logger.info(
+                "incident.note_added",
+                incident_id=id,
+                timeline_id=tl.id,
+                author=payload.author,
+            )
             return IncidentNoteResponse(ok=True, timeline_id=tl.id)
 
     except HTTPException:
         raise  # Re-raise 404
     except IntegrityError as e:
-        logger.error("incident.add_note.integrity_error", error=str(e), incident_id=id, exc_info=True)
+        logger.error(
+            "incident.add_note.integrity_error",
+            error=str(e),
+            incident_id=id,
+            exc_info=True,
+        )
         raise HTTPException(status_code=409, detail="Note conflict")
     except OperationalError as e:
-        logger.error("incident.add_note.db_error", error=str(e), incident_id=id, exc_info=True)
+        logger.error(
+            "incident.add_note.db_error", error=str(e), incident_id=id, exc_info=True
+        )
         raise HTTPException(status_code=503, detail="Database unavailable")
     except Exception as e:
-        logger.error("incident.add_note.unexpected_error", error=str(e), incident_id=id, exc_info=True)
+        logger.error(
+            "incident.add_note.unexpected_error",
+            error=str(e),
+            incident_id=id,
+            exc_info=True,
+        )
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.get("", response_model=List[IncidentResponse])
-def list_incidents() -> List[IncidentResponse]:
+@router.get("", response_model=list[IncidentResponse])
+def list_incidents() -> list[IncidentResponse]:
     """
     List incidents (most recent first, limited to 50).
     """
@@ -142,9 +158,7 @@ def close_incident(id: int) -> IncidentCloseResponse:
                 session.add(inc)
                 session.add(
                     IncidentTimeline(
-                        incident_id=inc.id,
-                        kind="system",
-                        text="Incident closed"
+                        incident_id=inc.id, kind="system", text="Incident closed"
                     )
                 )
                 session.commit()
@@ -157,18 +171,32 @@ def close_incident(id: int) -> IncidentCloseResponse:
     except HTTPException:
         raise  # Re-raise 404
     except IntegrityError as e:
-        logger.error("incident.close.integrity_error", error=str(e), incident_id=id, exc_info=True)
+        logger.error(
+            "incident.close.integrity_error",
+            error=str(e),
+            incident_id=id,
+            exc_info=True,
+        )
         raise HTTPException(status_code=409, detail="Incident conflict")
     except OperationalError as e:
-        logger.error("incident.close.db_error", error=str(e), incident_id=id, exc_info=True)
+        logger.error(
+            "incident.close.db_error", error=str(e), incident_id=id, exc_info=True
+        )
         raise HTTPException(status_code=503, detail="Database unavailable")
     except Exception as e:
-        logger.error("incident.close.unexpected_error", error=str(e), incident_id=id, exc_info=True)
+        logger.error(
+            "incident.close.unexpected_error",
+            error=str(e),
+            incident_id=id,
+            exc_info=True,
+        )
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/{id}/severity", response_model=IncidentSeverityResponse)
-def set_severity(id: int, payload: IncidentSetSeverityRequest) -> IncidentSeverityResponse:
+def set_severity(
+    id: int, payload: IncidentSetSeverityRequest
+) -> IncidentSeverityResponse:
     """
     Set incident severity.
 
@@ -188,24 +216,39 @@ def set_severity(id: int, payload: IncidentSetSeverityRequest) -> IncidentSeveri
                 IncidentTimeline(
                     incident_id=inc.id,
                     kind="system",
-                    text=f"Severity set to {payload.severity}"
+                    text=f"Severity set to {payload.severity}",
                 )
             )
             session.commit()
 
-            logger.info("incident.severity_set", incident_id=id, severity=payload.severity)
+            logger.info(
+                "incident.severity_set", incident_id=id, severity=payload.severity
+            )
             return IncidentSeverityResponse(id=inc.id, severity=inc.severity)
 
     except HTTPException:
         raise  # Re-raise 404
     except IntegrityError as e:
-        logger.error("incident.set_severity.integrity_error", error=str(e), incident_id=id, exc_info=True)
+        logger.error(
+            "incident.set_severity.integrity_error",
+            error=str(e),
+            incident_id=id,
+            exc_info=True,
+        )
         raise HTTPException(status_code=409, detail="Incident conflict")
     except OperationalError as e:
-        logger.error("incident.set_severity.db_error", error=str(e), incident_id=id, exc_info=True)
+        logger.error(
+            "incident.set_severity.db_error",
+            error=str(e),
+            incident_id=id,
+            exc_info=True,
+        )
         raise HTTPException(status_code=503, detail="Database unavailable")
     except Exception as e:
-        logger.error("incident.set_severity.unexpected_error", error=str(e), incident_id=id, exc_info=True)
+        logger.error(
+            "incident.set_severity.unexpected_error",
+            error=str(e),
+            incident_id=id,
+            exc_info=True,
+        )
         raise HTTPException(status_code=500, detail="Internal server error")
-
-

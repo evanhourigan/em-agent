@@ -1,7 +1,4 @@
-from typing import Optional
-
-
-def map_github_identity(login: Optional[str], email: Optional[str]) -> Optional[dict]:
+def map_github_identity(login: str | None, email: str | None) -> dict | None:
     if not login and not email:
         return None
     return {
@@ -12,8 +9,8 @@ def map_github_identity(login: Optional[str], email: Optional[str]) -> Optional[
 
 
 def map_slack_identity(
-    user_id: Optional[str], email: Optional[str], real_name: Optional[str]
-) -> Optional[dict]:
+    user_id: str | None, email: str | None, real_name: str | None
+) -> dict | None:
     if not user_id and not email:
         return None
     return {

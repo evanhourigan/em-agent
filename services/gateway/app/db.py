@@ -1,12 +1,11 @@
 import os
-from typing import Optional
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
-_engine: Optional[Engine] = None
-_SessionLocal: Optional[sessionmaker[Session]] = None
+_engine: Engine | None = None
+_SessionLocal: sessionmaker[Session] | None = None
 
 
 def _normalize_database_url(url: str) -> str:
@@ -34,6 +33,7 @@ def get_engine() -> Engine:
     # SQLite doesn't support connection pooling
     if database_url.startswith("sqlite"):
         from sqlalchemy.pool import StaticPool
+
         _engine = create_engine(
             database_url,
             connect_args={"check_same_thread": False},

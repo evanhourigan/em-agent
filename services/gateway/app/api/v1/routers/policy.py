@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any
 
 import httpx
 import yaml
@@ -26,11 +26,11 @@ DEFAULT_POLICY = {
 }
 
 
-def _load_policy() -> Dict[str, Any]:
+def _load_policy() -> dict[str, Any]:
     path = os.getenv("POLICY_PATH", "/app/app/config/policy.yml")
     try:
         if os.path.exists(path):
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 data = yaml.safe_load(f) or {}
                 if isinstance(data, dict):
                     return data
@@ -40,7 +40,7 @@ def _load_policy() -> Dict[str, Any]:
 
 
 @router.post("/evaluate")
-def evaluate_policy(payload: Dict[str, Any]) -> Dict[str, Any]:
+def evaluate_policy(payload: dict[str, Any]) -> dict[str, Any]:
     rule_kind = payload.get("kind")
     if not rule_kind:
         raise HTTPException(status_code=400, detail="missing kind")
@@ -63,7 +63,7 @@ def evaluate_policy(payload: Dict[str, Any]) -> Dict[str, Any]:
                     "reason": data.get("reason", "opa"),
                     "opa": True,
                 }
-        except httpx.HTTPError as exc:
+        except httpx.HTTPError:
             # fall back to YAML policy
             pass
     policy_map = _load_policy()

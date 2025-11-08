@@ -6,41 +6,40 @@ This module handles the Human-in-the-Loop (HITL) approval workflow:
 - Making decisions on approvals
 - Notifying stakeholders via Slack
 """
+
 from __future__ import annotations
 
 import json
 import os
-from typing import List
 from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy.exc import IntegrityError, OperationalError
 
-from ....core.config import get_settings
 from ....core.logging import get_logger
 from ....core.metrics import metrics as global_metrics
 from ....db import get_sessionmaker
+from ....models.action_log import ActionLog
 from ....models.approvals import Approval
 from ....models.workflow_jobs import WorkflowJob
-from ....models.action_log import ActionLog
-from ....services.slack_client import SlackClient
-from ....services.temporal_client import get_temporal
 from ....schemas.approvals import (
-    ApprovalProposalRequest,
-    ApprovalProposalResponse,
     ApprovalDecisionRequest,
     ApprovalDecisionResponse,
     ApprovalNotifyRequest,
     ApprovalNotifyResponse,
+    ApprovalProposalRequest,
+    ApprovalProposalResponse,
     ApprovalResponse,
 )
+from ....services.slack_client import SlackClient
+from ....services.temporal_client import get_temporal
 
 router = APIRouter(prefix="/v1/approvals", tags=["approvals"])
 logger = get_logger(__name__)
 
 
-@router.get("", response_model=List[ApprovalResponse])
-def list_approvals() -> List[ApprovalResponse]:
+@router.get("", response_model=list[ApprovalResponse])
+def list_approvals() -> list[ApprovalResponse]:
     """
     List recent approvals, ordered by most recent first.
 
@@ -55,13 +54,13 @@ def list_approvals() -> List[ApprovalResponse]:
         logger.error("approval.list.db_error", error=str(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database temporarily unavailable"
+            detail="Database temporarily unavailable",
         )
     except Exception as e:
         logger.error("approval.list.unexpected_error", error=str(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
+            detail="Internal server error",
         )
 
 
@@ -77,6 +76,7 @@ def propose_action(payload: ApprovalProposalRequest) -> ApprovalProposalResponse
     span = None
     try:
         from opentelemetry import trace  # type: ignore
+
         tracer = trace.get_tracer(__name__)
         span = tracer.start_span("approvals.propose")
         span.set_attribute("action", payload.action)
@@ -103,7 +103,7 @@ def propose_action(payload: ApprovalProposalRequest) -> ApprovalProposalResponse
                 "approval.proposed",
                 approval_id=a.id,
                 action=a.action,
-                subject=a.subject
+                subject=a.subject,
             )
 
             # Audit: record proposal
@@ -119,17 +119,12 @@ def propose_action(payload: ApprovalProposalRequest) -> ApprovalProposalResponse
                 session.commit()
             except Exception as e:
                 logger.warning(
-                    "approval.propose.audit_failed",
-                    error=str(e),
-                    approval_id=a.id
+                    "approval.propose.audit_failed", error=str(e), approval_id=a.id
                 )
                 # Don't fail the whole request if audit logging fails
                 session.rollback()
 
-            result = ApprovalProposalResponse(
-                action_id=a.id,
-                proposed=payload
-            )
+            result = ApprovalProposalResponse(action_id=a.id, proposed=payload)
 
             if span:
                 try:
@@ -143,19 +138,19 @@ def propose_action(payload: ApprovalProposalRequest) -> ApprovalProposalResponse
         logger.error("approval.propose.integrity_error", error=str(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Duplicate approval request or constraint violation"
+            detail="Duplicate approval request or constraint violation",
         )
     except OperationalError as e:
         logger.error("approval.propose.db_error", error=str(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database temporarily unavailable"
+            detail="Database temporarily unavailable",
         )
     except Exception as e:
         logger.error("approval.propose.unexpected_error", error=str(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
+            detail="Internal server error",
         )
 
 
@@ -181,7 +176,7 @@ def get_approval(id: int) -> ApprovalResponse:
                 logger.warning("approval.get.not_found", approval_id=id)
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Approval {id} not found"
+                    detail=f"Approval {id} not found",
                 )
             return ApprovalResponse.model_validate(a)
     except HTTPException:
@@ -190,13 +185,13 @@ def get_approval(id: int) -> ApprovalResponse:
         logger.error("approval.get.db_error", error=str(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database temporarily unavailable"
+            detail="Database temporarily unavailable",
         )
     except Exception as e:
         logger.error("approval.get.unexpected_error", error=str(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
+            detail="Internal server error",
         )
 
 
@@ -219,6 +214,7 @@ def decide(id: int, payload: ApprovalDecisionRequest) -> ApprovalDecisionRespons
     span = None
     try:
         from opentelemetry import trace  # type: ignore
+
         tracer = trace.get_tracer(__name__)
         span = tracer.start_span("approvals.decide")
         span.set_attribute("approval.id", id)
@@ -234,7 +230,7 @@ def decide(id: int, payload: ApprovalDecisionRequest) -> ApprovalDecisionRespons
                 logger.warning("approval.decide.not_found", approval_id=id)
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Approval {id} not found"
+                    detail=f"Approval {id} not found",
                 )
 
             # Update approval
@@ -261,23 +257,26 @@ def decide(id: int, payload: ApprovalDecisionRequest) -> ApprovalDecisionRespons
                     "approval.workflow_job_created",
                     approval_id=a.id,
                     job_id=job_id,
-                    action=a.action
+                    action=a.action,
                 )
 
                 # Enqueue to Celery (best-effort)
                 try:
                     import redis
+
                     r = redis.from_url(os.getenv("REDIS_URL", "redis://redis:6379/0"))
                     celery_task = {
                         "id": "process_workflow_job",
                         "args": [job_id],
                         "kwargs": {},
-                        "retries": 0
+                        "retries": 0,
                     }
                     r.lpush("celery", json.dumps(celery_task))
                     logger.info("approval.celery_enqueued", job_id=job_id)
                 except Exception as e:
-                    logger.warning("approval.celery_enqueue_failed", error=str(e), job_id=job_id)
+                    logger.warning(
+                        "approval.celery_enqueue_failed", error=str(e), job_id=job_id
+                    )
 
                 # Start Temporal workflow (best-effort)
                 try:
@@ -296,7 +295,9 @@ def decide(id: int, payload: ApprovalDecisionRequest) -> ApprovalDecisionRespons
                     asyncio.create_task(_start())
                     logger.info("approval.temporal_started", job_id=job_id)
                 except Exception as e:
-                    logger.warning("approval.temporal_start_failed", error=str(e), job_id=job_id)
+                    logger.warning(
+                        "approval.temporal_start_failed", error=str(e), job_id=job_id
+                    )
 
             session.commit()
 
@@ -304,7 +305,7 @@ def decide(id: int, payload: ApprovalDecisionRequest) -> ApprovalDecisionRespons
                 "approval.decided",
                 approval_id=a.id,
                 decision=payload.decision,
-                job_id=job_id
+                job_id=job_id,
             )
 
             # Audit: record decision
@@ -334,16 +335,19 @@ def decide(id: int, payload: ApprovalDecisionRequest) -> ApprovalDecisionRespons
                         global_metrics["approvals_latency_seconds"].observe(latency)
 
                     # HITL metrics
-                    mode = "hitl" if payload.decision in {"approve", "decline", "modify"} else "auto"
-                    global_metrics["workflows_auto_vs_hitl_total"].labels(mode=mode).inc()
+                    mode = (
+                        "hitl"
+                        if payload.decision in {"approve", "decline", "modify"}
+                        else "auto"
+                    )
+                    global_metrics["workflows_auto_vs_hitl_total"].labels(
+                        mode=mode
+                    ).inc()
                 except Exception as e:
                     logger.warning("approval.decide.metrics_failed", error=str(e))
 
             resp = ApprovalDecisionResponse(
-                id=a.id,
-                status=a.status,
-                reason=a.reason,
-                job_id=job_id
+                id=a.id, status=a.status, reason=a.reason, job_id=job_id
             )
 
             if span:
@@ -359,25 +363,26 @@ def decide(id: int, payload: ApprovalDecisionRequest) -> ApprovalDecisionRespons
     except IntegrityError as e:
         logger.error("approval.decide.integrity_error", error=str(e), exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Database constraint violation"
+            status_code=status.HTTP_409_CONFLICT, detail="Database constraint violation"
         )
     except OperationalError as e:
         logger.error("approval.decide.db_error", error=str(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database temporarily unavailable"
+            detail="Database temporarily unavailable",
         )
     except Exception as e:
         logger.error("approval.decide.unexpected_error", error=str(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
+            detail="Internal server error",
         )
 
 
 @router.post("/{id}/notify", response_model=ApprovalNotifyResponse)
-def notify(id: int, payload: ApprovalNotifyRequest | None = None) -> ApprovalNotifyResponse:
+def notify(
+    id: int, payload: ApprovalNotifyRequest | None = None
+) -> ApprovalNotifyResponse:
     """
     Send a Slack notification about an approval.
 
@@ -401,7 +406,7 @@ def notify(id: int, payload: ApprovalNotifyRequest | None = None) -> ApprovalNot
                 logger.warning("approval.notify.not_found", approval_id=id)
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Approval {id} not found"
+                    detail=f"Approval {id} not found",
                 )
 
             text = f"Approval needed: {a.action} {a.subject}"
@@ -432,7 +437,7 @@ def notify(id: int, payload: ApprovalNotifyRequest | None = None) -> ApprovalNot
                 "approval.notified",
                 approval_id=a.id,
                 channel=channel,
-                ok=res.get("ok", False)
+                ok=res.get("ok", False),
             )
 
             # Metrics
@@ -440,15 +445,13 @@ def notify(id: int, payload: ApprovalNotifyRequest | None = None) -> ApprovalNot
                 try:
                     ok = bool(res.get("ok")) or bool(res.get("dry_run"))
                     global_metrics["slack_posts_total"].labels(
-                        kind="approval",
-                        ok=str(ok).lower()
+                        kind="approval", ok=str(ok).lower()
                     ).inc()
                 except Exception as e:
                     logger.warning("approval.notify.metrics_failed", error=str(e))
 
             return ApprovalNotifyResponse(
-                ok=bool(res.get("ok")) or bool(res.get("dry_run")),
-                posted=res
+                ok=bool(res.get("ok")) or bool(res.get("dry_run")), posted=res
             )
 
     except HTTPException:
@@ -457,11 +460,11 @@ def notify(id: int, payload: ApprovalNotifyRequest | None = None) -> ApprovalNot
         logger.error("approval.notify.db_error", error=str(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database temporarily unavailable"
+            detail="Database temporarily unavailable",
         )
     except Exception as e:
         logger.error("approval.notify.unexpected_error", error=str(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error"
+            detail="Internal server error",
         )

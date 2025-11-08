@@ -6,31 +6,24 @@ These schemas provide:
 - Type safety and documentation
 - Automatic error messages for invalid inputs
 """
-from typing import Optional
+
 from pydantic import BaseModel, Field, validator
 
 
 class ObjectiveCreateRequest(BaseModel):
     """Request schema for creating an objective."""
 
-    title: str = Field(
-        ...,
-        min_length=1,
-        max_length=255,
-        description="Objective title"
+    title: str = Field(..., min_length=1, max_length=255, description="Objective title")
+    owner: str | None = Field(
+        None, max_length=255, description="Objective owner (e.g., team or person)"
     )
-    owner: Optional[str] = Field(
-        None,
-        max_length=255,
-        description="Objective owner (e.g., team or person)"
-    )
-    period: Optional[str] = Field(
+    period: str | None = Field(
         None,
         max_length=64,
-        description="Time period for the objective (e.g., 'Q1 2025', '2025')"
+        description="Time period for the objective (e.g., 'Q1 2025', '2025')",
     )
 
-    @validator('title', pre=True)
+    @validator("title", pre=True)
     def validate_title(cls, v):
         """Ensure title is not just whitespace."""
         # Strip whitespace first
@@ -44,7 +37,7 @@ class ObjectiveCreateRequest(BaseModel):
             "example": {
                 "title": "Improve API performance by 50%",
                 "owner": "Platform Team",
-                "period": "Q1 2025"
+                "period": "Q1 2025",
             }
         }
 
@@ -53,22 +46,16 @@ class KeyResultCreateRequest(BaseModel):
     """Request schema for creating a key result."""
 
     title: str = Field(
-        ...,
-        min_length=1,
-        max_length=255,
-        description="Key result title"
+        ..., min_length=1, max_length=255, description="Key result title"
     )
-    target: Optional[float] = Field(
-        None,
-        description="Target value for the key result"
-    )
-    unit: Optional[str] = Field(
+    target: float | None = Field(None, description="Target value for the key result")
+    unit: str | None = Field(
         None,
         max_length=64,
-        description="Unit of measurement (e.g., '%', 'requests/sec', 'users')"
+        description="Unit of measurement (e.g., '%', 'requests/sec', 'users')",
     )
 
-    @validator('title', pre=True)
+    @validator("title", pre=True)
     def validate_title(cls, v):
         """Ensure title is not just whitespace."""
         # Strip whitespace first
@@ -82,7 +69,7 @@ class KeyResultCreateRequest(BaseModel):
             "example": {
                 "title": "Reduce API response time to <200ms",
                 "target": 200,
-                "unit": "ms"
+                "unit": "ms",
             }
         }
 
@@ -90,17 +77,10 @@ class KeyResultCreateRequest(BaseModel):
 class KeyResultProgressRequest(BaseModel):
     """Request schema for updating key result progress."""
 
-    current: float = Field(
-        ...,
-        description="Current value for the key result"
-    )
+    current: float = Field(..., description="Current value for the key result")
 
     class Config:
-        json_schema_extra = {
-            "example": {
-                "current": 180
-            }
-        }
+        json_schema_extra = {"example": {"current": 180}}
 
 
 class ObjectiveResponse(BaseModel):
@@ -108,8 +88,8 @@ class ObjectiveResponse(BaseModel):
 
     id: int = Field(..., description="Objective ID")
     title: str = Field(..., description="Objective title")
-    owner: Optional[str] = Field(None, description="Objective owner")
-    period: Optional[str] = Field(None, description="Time period")
+    owner: str | None = Field(None, description="Objective owner")
+    period: str | None = Field(None, description="Time period")
 
     class Config:
         from_attributes = True
@@ -118,7 +98,7 @@ class ObjectiveResponse(BaseModel):
                 "id": 123,
                 "title": "Improve API performance by 50%",
                 "owner": "Platform Team",
-                "period": "Q1 2025"
+                "period": "Q1 2025",
             }
         }
 
@@ -131,10 +111,7 @@ class ObjectiveCreateResponse(BaseModel):
 
     class Config:
         json_schema_extra = {
-            "example": {
-                "id": 123,
-                "title": "Improve API performance by 50%"
-            }
+            "example": {"id": 123, "title": "Improve API performance by 50%"}
         }
 
 
@@ -144,11 +121,7 @@ class KeyResultCreateResponse(BaseModel):
     id: int = Field(..., description="New key result ID")
 
     class Config:
-        json_schema_extra = {
-            "example": {
-                "id": 456
-            }
-        }
+        json_schema_extra = {"example": {"id": 456}}
 
 
 class KeyResultProgressResponse(BaseModel):
@@ -157,8 +130,4 @@ class KeyResultProgressResponse(BaseModel):
     ok: bool = Field(..., description="Whether the update was successful")
 
     class Config:
-        json_schema_extra = {
-            "example": {
-                "ok": True
-            }
-        }
+        json_schema_extra = {"example": {"ok": True}}

@@ -1,5 +1,3 @@
-from typing import List
-
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -11,8 +9,8 @@ from ...deps import get_db_session
 router = APIRouter(prefix="/v1/identities", tags=["identities"])
 
 
-@router.get("", response_model=List[IdentityOut])
-def list_identities(session: Session = Depends(get_db_session)) -> List[IdentityOut]:
+@router.get("", response_model=list[IdentityOut])
+def list_identities(session: Session = Depends(get_db_session)) -> list[IdentityOut]:
     rows = session.execute(select(Identity).order_by(Identity.id)).scalars().all()
     return [IdentityOut.from_orm(x) for x in rows]
 

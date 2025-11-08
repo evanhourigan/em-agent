@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-import asyncio
 import json
 import os
-from typing import Any, Optional
+from typing import Any
 
 from ..core.logging import get_logger
 
 try:
     from nats.aio.client import Client as NATS  # type: ignore
+
     _HAS_NATS = True
 except Exception:  # pragma: no cover
     _HAS_NATS = False
@@ -17,7 +17,7 @@ except Exception:  # pragma: no cover
 class EventBus:
     def __init__(self) -> None:
         self._logger = get_logger(__name__)
-        self._nats: Optional[NATS] = None
+        self._nats: NATS | None = None
         self._url = os.getenv("NATS_URL", "nats://nats:4222")
 
     async def connect(self) -> None:
@@ -37,7 +37,7 @@ class EventBus:
         await self._nats.publish(subject, data)
 
 
-_event_bus: Optional[EventBus] = None
+_event_bus: EventBus | None = None
 
 
 def get_event_bus() -> EventBus:
@@ -45,5 +45,3 @@ def get_event_bus() -> EventBus:
     if _event_bus is None:
         _event_bus = EventBus()
     return _event_bus
-
-

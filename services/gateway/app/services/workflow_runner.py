@@ -2,12 +2,10 @@ from __future__ import annotations
 
 import os
 import threading
-import time
 
 from sqlalchemy.orm import Session
 
 from ..core.logging import get_logger
-from ..models.events import EventRaw
 from ..models.workflow_jobs import WorkflowJob
 
 
@@ -64,7 +62,11 @@ class WorkflowRunner(threading.Thread):
 
 
 def maybe_start_workflow_runner(app, session_factory) -> WorkflowRunner | None:
-    enabled = os.getenv("WORKFLOW_RUNNER_ENABLED", "true").lower() in {"1", "true", "yes"}
+    enabled = os.getenv("WORKFLOW_RUNNER_ENABLED", "true").lower() in {
+        "1",
+        "true",
+        "yes",
+    }
     if not enabled:
         return None
     interval = int(os.getenv("WORKFLOW_RUNNER_INTERVAL_SEC", "10"))

@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import os
 import threading
-import time
-from typing import Any, Dict, List
+from typing import Any
 
 import yaml
 from sqlalchemy.orm import Session
@@ -15,19 +14,19 @@ from ..models.action_log import ActionLog
 from ..models.workflow_jobs import WorkflowJob
 from ..services.event_bus import get_event_bus
 
-DEFAULT_RULES: List[Dict[str, Any]] = [
+DEFAULT_RULES: list[dict[str, Any]] = [
     {"name": "stale48h", "kind": "stale_pr", "older_than_hours": 48},
     {"name": "wip_limit", "kind": "wip_limit_exceeded", "limit": 5},
     {"name": "pr_no_review", "kind": "pr_without_review", "older_than_hours": 12},
 ]
 
 
-def _load_rules() -> List[Dict[str, Any]]:
+def _load_rules() -> list[dict[str, Any]]:
     path = os.getenv("RULES_PATH", "/app/app/config/rules.yml")
     if not os.path.exists(path):
         return DEFAULT_RULES
     try:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             data = yaml.safe_load(f) or []
             if isinstance(data, list):
                 return data
@@ -36,7 +35,9 @@ def _load_rules() -> List[Dict[str, Any]]:
     return DEFAULT_RULES
 
 
-def evaluate_and_log(session: Session, rules: List[Dict[str, Any]] | None = None) -> int:
+def evaluate_and_log(
+    session: Session, rules: list[dict[str, Any]] | None = None
+) -> int:
     rules = rules or _load_rules()
     inserted = 0
     policy_map = _load_policy()
@@ -46,10 +47,15 @@ def evaluate_and_log(session: Session, rules: List[Dict[str, Any]] | None = None
         action = policy_map.get(rule.get("kind"), {}).get("action", "nudge")
         for row in results:
             subject = str(row.get("delivery_id") or row)
-            log = ActionLog(rule_name=name, subject=subject, action=action, payload=str(row))
+            log = ActionLog(
+                rule_name=name, subject=subject, action=action, payload=str(row)
+            )
             session.add(log)
             job = WorkflowJob(
-                status="queued", rule_kind=rule.get("kind", name), subject=subject, payload=str(row)
+                status="queued",
+                rule_kind=rule.get("kind", name),
+                subject=subject,
+                payload=str(row),
             )
             session.add(job)
             inserted += 1
@@ -61,7 +67,10 @@ def evaluate_and_log(session: Session, rules: List[Dict[str, Any]] | None = None
         asyncio.create_task(
             get_event_bus().publish_json(
                 subject="signals.evaluated",
-                payload={"rules": [r.get("kind") for r in (rules or [])], "inserted": inserted},
+                payload={
+                    "rules": [r.get("kind") for r in (rules or [])],
+                    "inserted": inserted,
+                },
             )
         )
     except Exception:

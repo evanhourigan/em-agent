@@ -1,23 +1,20 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List
-
 from fastapi import APIRouter, HTTPException
 from sqlalchemy.exc import IntegrityError, OperationalError
 
 from ....core.logging import get_logger
 from ....db import get_sessionmaker
-from ....models.okr import Objective, KeyResult
+from ....models.okr import KeyResult, Objective
 from ....schemas.okr import (
-    ObjectiveCreateRequest,
-    ObjectiveCreateResponse,
-    ObjectiveResponse,
     KeyResultCreateRequest,
     KeyResultCreateResponse,
     KeyResultProgressRequest,
     KeyResultProgressResponse,
+    ObjectiveCreateRequest,
+    ObjectiveCreateResponse,
+    ObjectiveResponse,
 )
-
 
 router = APIRouter(prefix="/v1/okr", tags=["okr"])
 logger = get_logger(__name__)
@@ -34,25 +31,32 @@ def create_objective(payload: ObjectiveCreateRequest) -> ObjectiveCreateResponse
         SessionLocal = get_sessionmaker()
         with SessionLocal() as session:
             obj = Objective(
-                title=payload.title,
-                owner=payload.owner,
-                period=payload.period
+                title=payload.title, owner=payload.owner, period=payload.period
             )
             session.add(obj)
             session.commit()
             session.refresh(obj)
 
-            logger.info("okr.objective_created", objective_id=obj.id, title=payload.title, owner=payload.owner)
+            logger.info(
+                "okr.objective_created",
+                objective_id=obj.id,
+                title=payload.title,
+                owner=payload.owner,
+            )
             return ObjectiveCreateResponse(id=obj.id, title=obj.title)
 
     except IntegrityError as e:
-        logger.error("okr.create_objective.integrity_error", error=str(e), exc_info=True)
+        logger.error(
+            "okr.create_objective.integrity_error", error=str(e), exc_info=True
+        )
         raise HTTPException(status_code=409, detail="Objective conflict")
     except OperationalError as e:
         logger.error("okr.create_objective.db_error", error=str(e), exc_info=True)
         raise HTTPException(status_code=503, detail="Database unavailable")
     except Exception as e:
-        logger.error("okr.create_objective.unexpected_error", error=str(e), exc_info=True)
+        logger.error(
+            "okr.create_objective.unexpected_error", error=str(e), exc_info=True
+        )
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -75,30 +79,43 @@ def add_key_result(id: int, payload: KeyResultCreateRequest) -> KeyResultCreateR
                 objective_id=obj.id,
                 title=payload.title,
                 target=payload.target,
-                unit=payload.unit
+                unit=payload.unit,
             )
             session.add(kr)
             session.commit()
             session.refresh(kr)
 
-            logger.info("okr.key_result_added", objective_id=id, kr_id=kr.id, title=payload.title)
+            logger.info(
+                "okr.key_result_added",
+                objective_id=id,
+                kr_id=kr.id,
+                title=payload.title,
+            )
             return KeyResultCreateResponse(id=kr.id)
 
     except HTTPException:
         raise  # Re-raise 404
     except IntegrityError as e:
-        logger.error("okr.add_kr.integrity_error", error=str(e), objective_id=id, exc_info=True)
+        logger.error(
+            "okr.add_kr.integrity_error", error=str(e), objective_id=id, exc_info=True
+        )
         raise HTTPException(status_code=409, detail="Key result conflict")
     except OperationalError as e:
-        logger.error("okr.add_kr.db_error", error=str(e), objective_id=id, exc_info=True)
+        logger.error(
+            "okr.add_kr.db_error", error=str(e), objective_id=id, exc_info=True
+        )
         raise HTTPException(status_code=503, detail="Database unavailable")
     except Exception as e:
-        logger.error("okr.add_kr.unexpected_error", error=str(e), objective_id=id, exc_info=True)
+        logger.error(
+            "okr.add_kr.unexpected_error", error=str(e), objective_id=id, exc_info=True
+        )
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/krs/{id}/progress", response_model=KeyResultProgressResponse)
-def update_progress(id: int, payload: KeyResultProgressRequest) -> KeyResultProgressResponse:
+def update_progress(
+    id: int, payload: KeyResultProgressRequest
+) -> KeyResultProgressResponse:
     """
     Update the current progress value for a key result.
 
@@ -116,31 +133,47 @@ def update_progress(id: int, payload: KeyResultProgressRequest) -> KeyResultProg
             session.add(kr)
             session.commit()
 
-            logger.info("okr.progress_updated", kr_id=id, current=payload.current, target=kr.target)
+            logger.info(
+                "okr.progress_updated",
+                kr_id=id,
+                current=payload.current,
+                target=kr.target,
+            )
             return KeyResultProgressResponse(ok=True)
 
     except HTTPException:
         raise  # Re-raise 404
     except IntegrityError as e:
-        logger.error("okr.update_progress.integrity_error", error=str(e), kr_id=id, exc_info=True)
+        logger.error(
+            "okr.update_progress.integrity_error", error=str(e), kr_id=id, exc_info=True
+        )
         raise HTTPException(status_code=409, detail="Progress update conflict")
     except OperationalError as e:
-        logger.error("okr.update_progress.db_error", error=str(e), kr_id=id, exc_info=True)
+        logger.error(
+            "okr.update_progress.db_error", error=str(e), kr_id=id, exc_info=True
+        )
         raise HTTPException(status_code=503, detail="Database unavailable")
     except Exception as e:
-        logger.error("okr.update_progress.unexpected_error", error=str(e), kr_id=id, exc_info=True)
+        logger.error(
+            "okr.update_progress.unexpected_error",
+            error=str(e),
+            kr_id=id,
+            exc_info=True,
+        )
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.get("/objectives", response_model=List[ObjectiveResponse])
-def list_objectives() -> List[ObjectiveResponse]:
+@router.get("/objectives", response_model=list[ObjectiveResponse])
+def list_objectives() -> list[ObjectiveResponse]:
     """
     List objectives (most recent first, limited to 50).
     """
     try:
         SessionLocal = get_sessionmaker()
         with SessionLocal() as session:
-            rows = session.query(Objective).order_by(Objective.id.desc()).limit(50).all()
+            rows = (
+                session.query(Objective).order_by(Objective.id.desc()).limit(50).all()
+            )
             logger.info("okr.list_objectives", count=len(rows))
             return [ObjectiveResponse.model_validate(o) for o in rows]
 
@@ -148,7 +181,7 @@ def list_objectives() -> List[ObjectiveResponse]:
         logger.error("okr.list_objectives.db_error", error=str(e), exc_info=True)
         raise HTTPException(status_code=503, detail="Database unavailable")
     except Exception as e:
-        logger.error("okr.list_objectives.unexpected_error", error=str(e), exc_info=True)
+        logger.error(
+            "okr.list_objectives.unexpected_error", error=str(e), exc_info=True
+        )
         raise HTTPException(status_code=500, detail="Internal server error")
-
-

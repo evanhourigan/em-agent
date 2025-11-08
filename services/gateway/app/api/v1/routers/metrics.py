@@ -1,13 +1,13 @@
-from typing import Any, List, Dict
+from typing import Any
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from starlette.responses import PlainTextResponse
 
-from ...deps import get_db_session
-from ....core.metrics import metrics as global_metrics
 from ....core.config import get_settings
+from ....core.metrics import metrics as global_metrics
+from ...deps import get_db_session
 
 router = APIRouter(tags=["metrics"])
 
@@ -19,18 +19,20 @@ def metrics_placeholder() -> PlainTextResponse:
 
 
 @router.get("/v1/metrics/quotas")
-def quotas_info() -> Dict[str, Any]:
+def quotas_info() -> dict[str, Any]:
     m = global_metrics
-    out: Dict[str, Any] = {"ok": True}
+    out: dict[str, Any] = {"ok": True}
     try:
         settings = get_settings()
         if m:
+
             def _val(k):
                 c = m.get(k)
                 try:
                     return c._value.get() if c else None  # type: ignore[attr-defined]
                 except Exception:
                     return None
+
             out["quota"] = {
                 "slack_posts": _val("quota_slack_posts_total"),
                 "rag_searches": _val("quota_rag_searches_total"),
@@ -44,13 +46,13 @@ def quotas_info() -> Dict[str, Any]:
     return out
 
 
-def _query_list(session: Session, sql: str) -> List[dict[str, Any]]:
+def _query_list(session: Session, sql: str) -> list[dict[str, Any]]:
     rows = session.execute(text(sql)).mappings().all()
     return [dict(r) for r in rows]
 
 
 @router.get("/v1/metrics/dora/lead-time")
-def dora_lead_time(session: Session = Depends(get_db_session)) -> List[dict[str, Any]]:
+def dora_lead_time(session: Session = Depends(get_db_session)) -> list[dict[str, Any]]:
     return _query_list(
         session,
         "select delivery_id, lead_time_hours from public.dora_lead_time order by lead_time_hours desc limit 200",
@@ -60,7 +62,7 @@ def dora_lead_time(session: Session = Depends(get_db_session)) -> List[dict[str,
 @router.get("/v1/metrics/dora/deployment-frequency")
 def deployment_frequency(
     session: Session = Depends(get_db_session),
-) -> List[dict[str, Any]]:
+) -> list[dict[str, Any]]:
     return _query_list(
         session,
         "select day, deployments from public.deployment_frequency order by day desc limit 60",
@@ -70,7 +72,7 @@ def deployment_frequency(
 @router.get("/v1/metrics/dora/change-fail-rate")
 def change_fail_rate(
     session: Session = Depends(get_db_session),
-) -> List[dict[str, Any]]:
+) -> list[dict[str, Any]]:
     return _query_list(
         session,
         "select day, change_fail_rate from public.change_fail_rate order by day desc limit 60",
@@ -78,7 +80,7 @@ def change_fail_rate(
 
 
 @router.get("/v1/metrics/dora/mttr")
-def mttr(session: Session = Depends(get_db_session)) -> List[dict[str, Any]]:
+def mttr(session: Session = Depends(get_db_session)) -> list[dict[str, Any]]:
     return _query_list(
         session,
         "select delivery_id, mttr_hours from public.mttr order by mttr_hours desc limit 200",

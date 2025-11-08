@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 import httpx
 
@@ -12,9 +12,9 @@ from ..core.metrics import metrics as global_metrics
 class SlackClient:
     def __init__(self) -> None:
         settings = get_settings()
-        self._webhook_url: Optional[str] = settings.slack_webhook_url
-        self._bot_token: Optional[str] = settings.slack_bot_token
-        self._default_channel: Optional[str] = settings.slack_default_channel
+        self._webhook_url: str | None = settings.slack_webhook_url
+        self._bot_token: str | None = settings.slack_bot_token
+        self._default_channel: str | None = settings.slack_default_channel
         self._logger = get_logger(__name__)
         self._max_daily = int(get_settings().max_daily_slack_posts)
 
@@ -34,15 +34,17 @@ class SlackClient:
         try:
             m["slack_posts_total"].labels(kind=kind, ok=str(ok).lower()).inc()
             if not ok:
-                m.get("slack_post_errors_total", None) and m["slack_post_errors_total"].labels(
-                    kind=kind
-                ).inc()
+                m.get("slack_post_errors_total", None) and m[
+                    "slack_post_errors_total"
+                ].labels(kind=kind).inc()
             # quota counter
-            m.get("quota_slack_posts_total", None) and m["quota_slack_posts_total"].inc()
+            m.get("quota_slack_posts_total", None) and m[
+                "quota_slack_posts_total"
+            ].inc()
         except Exception:
             pass
 
-    def post_text(self, text: str, channel: Optional[str] = None) -> Dict[str, Any]:
+    def post_text(self, text: str, channel: str | None = None) -> dict[str, Any]:
         # Trace span if OTel enabled
         try:
             from opentelemetry import trace  # type: ignore
@@ -85,7 +87,9 @@ class SlackClient:
         def _call_api():
             with httpx.Client(timeout=10) as client:
                 resp = client.post(
-                    "https://slack.com/api/chat.postMessage", headers=headers, json=payload
+                    "https://slack.com/api/chat.postMessage",
+                    headers=headers,
+                    json=payload,
                 )
                 data = resp.json()
                 ok = bool(data.get("ok"))
@@ -95,7 +99,11 @@ class SlackClient:
         # quota enforcement (best-effort): deny posting if over limit
         try:
             m = global_metrics
-            if m and m.get("quota_slack_posts_total") is not None and self._max_daily > 0:
+            if (
+                m
+                and m.get("quota_slack_posts_total") is not None
+                and self._max_daily > 0
+            ):
                 val = m["quota_slack_posts_total"]._value.get()  # type: ignore[attr-defined]
                 if val and int(val) >= self._max_daily:
                     return {"ok": False, "error": "quota_exceeded"}
@@ -110,8 +118,8 @@ class SlackClient:
         return res
 
     def post_blocks(
-        self, *, text: str, blocks: list[dict[str, Any]], channel: Optional[str] = None
-    ) -> Dict[str, Any]:
+        self, *, text: str, blocks: list[dict[str, Any]], channel: str | None = None
+    ) -> dict[str, Any]:
         try:
             from opentelemetry import trace  # type: ignore
 
@@ -134,7 +142,9 @@ class SlackClient:
 
             def _call():
                 with httpx.Client(timeout=10) as client:
-                    resp = client.post(self._webhook_url, json={"text": text, "blocks": blocks})
+                    resp = client.post(
+                        self._webhook_url, json={"text": text, "blocks": blocks}
+                    )
                     ok = resp.status_code < 300
                     self._inc_metric("blocks", ok)
                     return {"ok": ok}
@@ -148,12 +158,18 @@ class SlackClient:
             return res
 
         headers = {"Authorization": f"Bearer {self._bot_token}"}
-        payload = {"channel": channel or self._default_channel, "text": text, "blocks": blocks}
+        payload = {
+            "channel": channel or self._default_channel,
+            "text": text,
+            "blocks": blocks,
+        }
 
         def _call_api():
             with httpx.Client(timeout=10) as client:
                 resp = client.post(
-                    "https://slack.com/api/chat.postMessage", headers=headers, json=payload
+                    "https://slack.com/api/chat.postMessage",
+                    headers=headers,
+                    json=payload,
                 )
                 data = resp.json()
                 ok = bool(data.get("ok"))
@@ -163,7 +179,11 @@ class SlackClient:
         # quota enforcement
         try:
             m = global_metrics
-            if m and m.get("quota_slack_posts_total") is not None and self._max_daily > 0:
+            if (
+                m
+                and m.get("quota_slack_posts_total") is not None
+                and self._max_daily > 0
+            ):
                 val = m["quota_slack_posts_total"]._value.get()  # type: ignore[attr-defined]
                 if val and int(val) >= self._max_daily:
                     return {"ok": False, "error": "quota_exceeded"}

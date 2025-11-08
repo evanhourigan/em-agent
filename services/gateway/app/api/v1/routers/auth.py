@@ -3,14 +3,13 @@ Authentication router.
 
 Provides endpoints for login, token refresh, and user info.
 """
-from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from ....core.auth import create_access_token, create_refresh_token, verify_token
 from ....core.config import get_settings
 from ....core.logging import get_logger
-from ....schemas.auth import LoginRequest, TokenResponse, RefreshTokenRequest, UserInfo
+from ....schemas.auth import LoginRequest, RefreshTokenRequest, TokenResponse, UserInfo
 from ...deps import get_current_user
 
 router = APIRouter(prefix="/v1/auth", tags=["authentication"])
@@ -37,7 +36,7 @@ def login(credentials: LoginRequest) -> TokenResponse:
         logger.warning("auth.login_attempt_when_disabled")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Authentication is not enabled"
+            detail="Authentication is not enabled",
         )
 
     # TODO: Replace with actual database user lookup and password verification
@@ -53,7 +52,7 @@ def login(credentials: LoginRequest) -> TokenResponse:
     token_data = {
         "sub": credentials.username,
         "email": credentials.username,  # Assuming username is email
-        "role": "user"  # Default role
+        "role": "user",  # Default role
     }
 
     # Generate tokens
@@ -66,7 +65,7 @@ def login(credentials: LoginRequest) -> TokenResponse:
         access_token=access_token,
         refresh_token=refresh_token,
         token_type="bearer",
-        expires_in=settings.jwt_access_token_expire_minutes * 60
+        expires_in=settings.jwt_access_token_expire_minutes * 60,
     )
 
 
@@ -82,7 +81,7 @@ def refresh_access_token(request: RefreshTokenRequest) -> TokenResponse:
     if not settings.auth_enabled:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Authentication is not enabled"
+            detail="Authentication is not enabled",
         )
 
     try:
@@ -94,7 +93,7 @@ def refresh_access_token(request: RefreshTokenRequest) -> TokenResponse:
             logger.warning("auth.refresh_with_access_token", sub=payload.get("sub"))
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid token type. Refresh token required."
+                detail="Invalid token type. Refresh token required.",
             )
 
         # Create new access token
@@ -106,7 +105,7 @@ def refresh_access_token(request: RefreshTokenRequest) -> TokenResponse:
         return TokenResponse(
             access_token=access_token,
             token_type="bearer",
-            expires_in=settings.jwt_access_token_expire_minutes * 60
+            expires_in=settings.jwt_access_token_expire_minutes * 60,
         )
 
     except HTTPException:
@@ -115,7 +114,7 @@ def refresh_access_token(request: RefreshTokenRequest) -> TokenResponse:
         logger.error("auth.refresh_failed", error=str(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired refresh token"
+            detail="Invalid or expired refresh token",
         )
 
 
@@ -133,5 +132,5 @@ def get_current_user_info(current_user: dict = Depends(get_current_user)) -> Use
         sub=current_user.get("sub"),
         email=current_user.get("email"),
         role=current_user.get("role"),
-        auth_disabled=current_user.get("auth_disabled")
+        auth_disabled=current_user.get("auth_disabled"),
     )

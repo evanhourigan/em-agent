@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any
 
 import yaml
 from fastapi import APIRouter, Depends, HTTPException
@@ -12,14 +12,15 @@ from ...deps import get_db_session
 router = APIRouter(prefix="/v1/signals", tags=["signals"])
 
 
-def _evaluate_rule(session: Session, rule: dict[str, Any]) -> List[dict[str, Any]]:
+def _evaluate_rule(session: Session, rule: dict[str, Any]) -> list[dict[str, Any]]:
     kind = rule.get("kind")
     if kind == "stale_pr":
         hours = int(rule.get("older_than_hours", 48))
         sql = (
             "select delivery_id, min(received_at) as opened_at "
             "from events_raw where source='github' and event_type='pull_request' "
-            "group by delivery_id having now() - min(received_at) > interval '%d hours'" % hours
+            "group by delivery_id having now() - min(received_at) > interval '%d hours'"
+            % hours
         )
         rows = session.execute(text(sql)).mappings().all()
         return [dict(r) for r in rows]
@@ -40,7 +41,13 @@ def _evaluate_rule(session: Session, rule: dict[str, Any]) -> List[dict[str, Any
         )
         row = session.execute(text(sql)).mappings().first()
         wip = int(row["wip"]) if row else 0
-        return [{"day": str(row["day"]) if row else None, "wip": wip, "exceeded": wip > limit}]
+        return [
+            {
+                "day": str(row["day"]) if row else None,
+                "wip": wip,
+                "exceeded": wip > limit,
+            }
+        ]
 
     if kind == "no_ticket_link":
         # Detect PRs whose payload does not match a ticket pattern (very rough placeholder)
@@ -72,16 +79,16 @@ def _evaluate_rule(session: Session, rule: dict[str, Any]) -> List[dict[str, Any
 
 @router.post("/evaluate")
 def evaluate_signals(
-    body: Dict[str, Any], session: Session = Depends(get_db_session)
-) -> Dict[str, Any]:
+    body: dict[str, Any], session: Session = Depends(get_db_session)
+) -> dict[str, Any]:
     # Accept either JSON rules or a YAML string under { yaml: "..." }
-    rules: List[dict[str, Any]]
+    rules: list[dict[str, Any]]
     if "yaml" in body:
         rules = yaml.safe_load(body["yaml"]) or []
     else:
         rules = body.get("rules", [])
 
-    results: Dict[str, Any] = {}
+    results: dict[str, Any] = {}
     for rule in rules:
         name = rule.get("name", rule.get("kind", "rule"))
         results[name] = _evaluate_rule(session, rule)

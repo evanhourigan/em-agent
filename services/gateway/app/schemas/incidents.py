@@ -6,25 +6,26 @@ These schemas provide:
 - Type safety and documentation
 - Automatic error messages for invalid inputs
 """
+
 from datetime import datetime
-from typing import Optional, Literal
+from typing import Literal
+
 from pydantic import BaseModel, Field, validator
 
 
 class IncidentStartRequest(BaseModel):
     """Request schema for starting an incident."""
 
-    title: Optional[str] = Field(
+    title: str | None = Field(
         None,
         max_length=255,
-        description="Incident title (defaults to 'Untitled Incident')"
+        description="Incident title (defaults to 'Untitled Incident')",
     )
-    severity: Optional[Literal["low", "medium", "high", "critical"]] = Field(
-        None,
-        description="Incident severity level"
+    severity: Literal["low", "medium", "high", "critical"] | None = Field(
+        None, description="Incident severity level"
     )
 
-    @validator('title', pre=True)
+    @validator("title", pre=True)
     def validate_title(cls, v):
         """Ensure title is not just whitespace."""
         if isinstance(v, str):
@@ -35,29 +36,17 @@ class IncidentStartRequest(BaseModel):
 
     class Config:
         json_schema_extra = {
-            "example": {
-                "title": "Production API outage",
-                "severity": "critical"
-            }
+            "example": {"title": "Production API outage", "severity": "critical"}
         }
 
 
 class IncidentAddNoteRequest(BaseModel):
     """Request schema for adding a note to an incident."""
 
-    text: str = Field(
-        ...,
-        min_length=1,
-        max_length=5000,
-        description="Note text"
-    )
-    author: Optional[str] = Field(
-        None,
-        max_length=255,
-        description="Note author"
-    )
+    text: str = Field(..., min_length=1, max_length=5000, description="Note text")
+    author: str | None = Field(None, max_length=255, description="Note author")
 
-    @validator('text', pre=True)
+    @validator("text", pre=True)
     def validate_text(cls, v):
         """Ensure text is not just whitespace."""
         # Strip whitespace first
@@ -70,7 +59,7 @@ class IncidentAddNoteRequest(BaseModel):
         json_schema_extra = {
             "example": {
                 "text": "Identified root cause: memory leak in caching service",
-                "author": "alice@example.com"
+                "author": "alice@example.com",
             }
         }
 
@@ -79,16 +68,11 @@ class IncidentSetSeverityRequest(BaseModel):
     """Request schema for setting incident severity."""
 
     severity: Literal["low", "medium", "high", "critical"] = Field(
-        ...,
-        description="New severity level"
+        ..., description="New severity level"
     )
 
     class Config:
-        json_schema_extra = {
-            "example": {
-                "severity": "high"
-            }
-        }
+        json_schema_extra = {"example": {"severity": "high"}}
 
 
 class IncidentResponse(BaseModel):
@@ -97,9 +81,9 @@ class IncidentResponse(BaseModel):
     id: int = Field(..., description="Incident ID")
     title: str = Field(..., description="Incident title")
     status: str = Field(..., description="Incident status (open, closed)")
-    severity: Optional[str] = Field(None, description="Incident severity")
-    created_at: Optional[datetime] = Field(None, description="When incident was created")
-    closed_at: Optional[datetime] = Field(None, description="When incident was closed")
+    severity: str | None = Field(None, description="Incident severity")
+    created_at: datetime | None = Field(None, description="When incident was created")
+    closed_at: datetime | None = Field(None, description="When incident was closed")
 
     class Config:
         from_attributes = True
@@ -110,7 +94,7 @@ class IncidentResponse(BaseModel):
                 "status": "open",
                 "severity": "critical",
                 "created_at": "2025-01-20T10:30:00Z",
-                "closed_at": None
+                "closed_at": None,
             }
         }
 
@@ -124,11 +108,7 @@ class IncidentStartResponse(BaseModel):
 
     class Config:
         json_schema_extra = {
-            "example": {
-                "id": 123,
-                "status": "open",
-                "title": "Production API outage"
-            }
+            "example": {"id": 123, "status": "open", "title": "Production API outage"}
         }
 
 
@@ -139,12 +119,7 @@ class IncidentNoteResponse(BaseModel):
     timeline_id: int = Field(..., description="ID of the created timeline entry")
 
     class Config:
-        json_schema_extra = {
-            "example": {
-                "ok": True,
-                "timeline_id": 456
-            }
-        }
+        json_schema_extra = {"example": {"ok": True, "timeline_id": 456}}
 
 
 class IncidentCloseResponse(BaseModel):
@@ -154,12 +129,7 @@ class IncidentCloseResponse(BaseModel):
     status: str = Field(..., description="New status (closed)")
 
     class Config:
-        json_schema_extra = {
-            "example": {
-                "id": 123,
-                "status": "closed"
-            }
-        }
+        json_schema_extra = {"example": {"id": 123, "status": "closed"}}
 
 
 class IncidentSeverityResponse(BaseModel):
@@ -169,9 +139,4 @@ class IncidentSeverityResponse(BaseModel):
     severity: str = Field(..., description="New severity")
 
     class Config:
-        json_schema_extra = {
-            "example": {
-                "id": 123,
-                "severity": "high"
-            }
-        }
+        json_schema_extra = {"example": {"id": 123, "severity": "high"}}

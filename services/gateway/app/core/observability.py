@@ -1,5 +1,3 @@
-from typing import Optional
-
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -112,7 +110,7 @@ def add_prometheus(app, app_name: str = "gateway") -> None:
     app.add_middleware(_LimitsMiddleware)
 
 
-def add_tracing(app, app_name: str, endpoint: Optional[str]) -> None:
+def add_tracing(app, app_name: str, endpoint: str | None) -> None:
     if not _HAS_OTEL:
         return
     resource = Resource.create({"service.name": app_name})

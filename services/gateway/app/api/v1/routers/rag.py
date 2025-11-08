@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 import httpx
 from fastapi import APIRouter, HTTPException
@@ -12,7 +12,7 @@ router = APIRouter(prefix="/v1/rag", tags=["rag"])
 
 
 @router.post("/search")
-def proxy_search(payload: Dict[str, Any]) -> Dict[str, Any]:
+def proxy_search(payload: dict[str, Any]) -> dict[str, Any]:
     rag_url = get_settings().rag_url.rstrip("/")
     last_exc: Exception | None = None
     for _ in range(3):
@@ -24,7 +24,9 @@ def proxy_search(payload: Dict[str, Any]) -> Dict[str, Any]:
                 m = global_metrics
                 if m:
                     try:
-                        m.get("quota_rag_searches_total", None) and m["quota_rag_searches_total"].inc()
+                        m.get("quota_rag_searches_total", None) and m[
+                            "quota_rag_searches_total"
+                        ].inc()
                     except Exception:
                         pass
                 return data
@@ -34,7 +36,7 @@ def proxy_search(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 
 @router.post("/index")
-def proxy_index(payload: Dict[str, Any]) -> Dict[str, Any]:
+def proxy_index(payload: dict[str, Any]) -> dict[str, Any]:
     rag_url = get_settings().rag_url.rstrip("/")
     try:
         with httpx.Client(timeout=15) as client:
@@ -46,7 +48,7 @@ def proxy_index(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 
 @router.post("/index/bulk")
-def proxy_index_bulk(payload: Dict[str, Any]) -> Dict[str, Any]:
+def proxy_index_bulk(payload: dict[str, Any]) -> dict[str, Any]:
     rag_url = get_settings().rag_url.rstrip("/")
     try:
         with httpx.Client(timeout=30) as client:

@@ -3,8 +3,9 @@ JWT Authentication utilities.
 
 Provides functions for creating and verifying JWT tokens for API authentication.
 """
-from datetime import datetime, timedelta, UTC
-from typing import Optional, Dict, Any
+
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -28,7 +29,9 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 
-def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(
+    data: dict[str, Any], expires_delta: timedelta | None = None
+) -> str:
     """
     Create a JWT access token.
 
@@ -48,21 +51,23 @@ def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta]
     if expires_delta:
         expire = datetime.now(UTC) + expires_delta
     else:
-        expire = datetime.now(UTC) + timedelta(minutes=settings.jwt_access_token_expire_minutes)
+        expire = datetime.now(UTC) + timedelta(
+            minutes=settings.jwt_access_token_expire_minutes
+        )
 
     to_encode.update({"exp": expire, "iat": datetime.now(UTC)})
 
     encoded_jwt = jwt.encode(
-        to_encode,
-        settings.jwt_secret_key,
-        algorithm=settings.jwt_algorithm
+        to_encode, settings.jwt_secret_key, algorithm=settings.jwt_algorithm
     )
 
-    logger.info("auth.token_created", sub=data.get("sub"), expires_at=expire.isoformat())
+    logger.info(
+        "auth.token_created", sub=data.get("sub"), expires_at=expire.isoformat()
+    )
     return encoded_jwt
 
 
-def create_refresh_token(data: Dict[str, Any]) -> str:
+def create_refresh_token(data: dict[str, Any]) -> str:
     """
     Create a JWT refresh token with longer expiration.
 
@@ -79,16 +84,16 @@ def create_refresh_token(data: Dict[str, Any]) -> str:
     to_encode.update({"exp": expire, "iat": datetime.now(UTC), "type": "refresh"})
 
     encoded_jwt = jwt.encode(
-        to_encode,
-        settings.jwt_secret_key,
-        algorithm=settings.jwt_algorithm
+        to_encode, settings.jwt_secret_key, algorithm=settings.jwt_algorithm
     )
 
-    logger.info("auth.refresh_token_created", sub=data.get("sub"), expires_at=expire.isoformat())
+    logger.info(
+        "auth.refresh_token_created", sub=data.get("sub"), expires_at=expire.isoformat()
+    )
     return encoded_jwt
 
 
-def decode_token(token: str) -> Optional[Dict[str, Any]]:
+def decode_token(token: str) -> dict[str, Any] | None:
     """
     Decode and verify a JWT token.
 
@@ -105,9 +110,7 @@ def decode_token(token: str) -> Optional[Dict[str, Any]]:
 
     try:
         payload = jwt.decode(
-            token,
-            settings.jwt_secret_key,
-            algorithms=[settings.jwt_algorithm]
+            token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm]
         )
         return payload
     except JWTError as e:
@@ -115,7 +118,7 @@ def decode_token(token: str) -> Optional[Dict[str, Any]]:
         raise
 
 
-def verify_token(token: str) -> Dict[str, Any]:
+def verify_token(token: str) -> dict[str, Any]:
     """
     Verify a JWT token and return the payload.
 

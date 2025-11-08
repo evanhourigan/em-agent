@@ -1,7 +1,6 @@
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import Optional
 
 
 class Settings(BaseSettings):
@@ -68,22 +67,35 @@ def validate_settings(settings: Settings) -> None:
     if not (settings.database_url or "").strip():
         raise ValueError("DATABASE_URL is required")
     # Slack signing enforcement requires secret
-    if settings.slack_signing_required and not (settings.slack_signing_secret or "").strip():
-        raise ValueError("SLACK_SIGNING_REQUIRED=true but SLACK_SIGNING_SECRET is not set")
+    if (
+        settings.slack_signing_required
+        and not (settings.slack_signing_secret or "").strip()
+    ):
+        raise ValueError(
+            "SLACK_SIGNING_REQUIRED=true but SLACK_SIGNING_SECRET is not set"
+        )
     # JWT auth enabled requires secret key
     if settings.auth_enabled and not (settings.jwt_secret_key or "").strip():
         raise ValueError("AUTH_ENABLED=true but JWT_SECRET_KEY is not set")
     if settings.auth_enabled and len(settings.jwt_secret_key or "") < 32:
         raise ValueError("JWT_SECRET_KEY must be at least 32 characters for security")
     # OTel enabled should have endpoint
-    if settings.otel_enabled and not (settings.otel_exporter_otlp_endpoint or "").strip():
+    if (
+        settings.otel_enabled
+        and not (settings.otel_exporter_otlp_endpoint or "").strip()
+    ):
         # non-fatal, but warn via print to avoid logger import cycle
         print("[warn] OTEL_ENABLED=true but OTEL_EXPORTER_OTLP_ENDPOINT is not set")
     # RAG URL should be reachable format
     if not (settings.rag_url or "").startswith("http"):
-        print("[warn] RAG_URL does not look like an http URL; set to service URL if using RAG")
+        print(
+            "[warn] RAG_URL does not look like an http URL; set to service URL if using RAG"
+        )
     # CORS security check for production
-    if settings.env in ("production", "prod", "staging") and "*" in settings.cors_allow_origins:
+    if (
+        settings.env in ("production", "prod", "staging")
+        and "*" in settings.cors_allow_origins
+    ):
         print(
             "[SECURITY WARNING] CORS allows all origins (*) in production environment. "
             "Set CORS_ALLOW_ORIGINS to specific domains for security."

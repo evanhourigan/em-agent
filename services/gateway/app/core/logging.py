@@ -1,8 +1,8 @@
 import logging
-from typing import Any, Dict
+import re
+from typing import Any
 
 import structlog
-import re
 
 
 def _configure_stdlib_logging() -> None:
@@ -16,9 +16,15 @@ def configure_structlog() -> None:
     _configure_stdlib_logging()
 
     # Redaction processor for secrets and tokens
-    secret_keys = {"authorization", "x-slack-signature", "slack_signing_secret", "slack_bot_token", "openai_api_key"}
+    secret_keys = {
+        "authorization",
+        "x-slack-signature",
+        "slack_signing_secret",
+        "slack_bot_token",
+        "openai_api_key",
+    }
 
-    def _redact_event_logger(_logger, _name, event_dict: Dict[str, Any]):  # type: ignore[override]
+    def _redact_event_logger(_logger, _name, event_dict: dict[str, Any]):  # type: ignore[override]
         # redact obvious keys
         for k in list(event_dict.keys()):
             lk = str(k).lower()
@@ -28,7 +34,9 @@ def configure_structlog() -> None:
         for k, v in list(event_dict.items()):
             if isinstance(v, str):
                 if "Bearer " in v:
-                    event_dict[k] = re.sub(r"Bearer\s+[A-Za-z0-9\-_.=:+/]+", "Bearer [REDACTED]", v)
+                    event_dict[k] = re.sub(
+                        r"Bearer\s+[A-Za-z0-9\-_.=:+/]+", "Bearer [REDACTED]", v
+                    )
                 if "xoxb-" in v or "xapp-" in v:
                     event_dict[k] = "[REDACTED]"
         return event_dict

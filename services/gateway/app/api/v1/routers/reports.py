@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import text
@@ -13,11 +13,15 @@ from ...deps import get_db_session
 router = APIRouter(prefix="/v1/reports", tags=["reports"])
 
 
-def build_standup(session: Session, older_than_hours: int = 48) -> Dict[str, Any]:
+def build_standup(session: Session, older_than_hours: int = 48) -> dict[str, Any]:
     # Signals
-    stale = _evaluate_rule(session, {"kind": "stale_pr", "older_than_hours": older_than_hours})
+    stale = _evaluate_rule(
+        session, {"kind": "stale_pr", "older_than_hours": older_than_hours}
+    )
     wip_list = _evaluate_rule(session, {"kind": "wip_limit_exceeded"})
-    pr_no_review = _evaluate_rule(session, {"kind": "pr_without_review", "older_than_hours": 12})
+    pr_no_review = _evaluate_rule(
+        session, {"kind": "pr_without_review", "older_than_hours": 12}
+    )
 
     # Deploys last 24h (successes)
     deploys_24h = session.execute(
@@ -35,7 +39,9 @@ def build_standup(session: Session, older_than_hours: int = 48) -> Dict[str, Any
 
     # Compose summary
     top_stale = [str(x.get("delivery_id") or x) for x in stale[:5]]
-    wip = int(wip_list[0]["wip"]) if wip_list and "wip" in wip_list[0] else len(wip_list)
+    wip = (
+        int(wip_list[0]["wip"]) if wip_list and "wip" in wip_list[0] else len(wip_list)
+    )
     report = {
         "stale_pr_count": len(stale),
         "stale_pr_top": top_stale,
@@ -48,16 +54,16 @@ def build_standup(session: Session, older_than_hours: int = 48) -> Dict[str, Any
 
 @router.post("/standup")
 def standup(
-    body: Dict[str, Any] | None = None, session: Session = Depends(get_db_session)
-) -> Dict[str, Any]:
+    body: dict[str, Any] | None = None, session: Session = Depends(get_db_session)
+) -> dict[str, Any]:
     older = int((body or {}).get("older_than_hours", 48))
     return {"report": build_standup(session, older)}
 
 
 @router.post("/standup/post")
 def standup_post(
-    body: Dict[str, Any] | None = None, session: Session = Depends(get_db_session)
-) -> Dict[str, Any]:
+    body: dict[str, Any] | None = None, session: Session = Depends(get_db_session)
+) -> dict[str, Any]:
     older = int((body or {}).get("older_than_hours", 48))
     channel = (body or {}).get("channel")
     r = build_standup(session, older)
@@ -69,8 +75,14 @@ def standup_post(
             "fields": [
                 {"type": "mrkdwn", "text": f"*Stale PRs:* {r['stale_pr_count']}"},
                 {"type": "mrkdwn", "text": f"*WIP:* {r['wip_open_prs']}"},
-                {"type": "mrkdwn", "text": f"*No Review:* {r['pr_without_review_count']}"},
-                {"type": "mrkdwn", "text": f"*Deploys 24h:* {r['deployments_last_24h']}"},
+                {
+                    "type": "mrkdwn",
+                    "text": f"*No Review:* {r['pr_without_review_count']}",
+                },
+                {
+                    "type": "mrkdwn",
+                    "text": f"*Deploys 24h:* {r['deployments_last_24h']}",
+                },
             ],
         },
     ]
@@ -89,7 +101,7 @@ def standup_post(
     return {"posted": res}
 
 
-def build_sprint_health(session: Session, days: int = 14) -> Dict[str, Any]:
+def build_sprint_health(session: Session, days: int = 14) -> dict[str, Any]:
     # Deployments in last N days and average per day
     total_deploys = session.execute(
         text(
@@ -155,16 +167,16 @@ def build_sprint_health(session: Session, days: int = 14) -> Dict[str, Any]:
 
 @router.post("/sprint-health")
 def sprint_health(
-    body: Dict[str, Any] | None = None, session: Session = Depends(get_db_session)
-) -> Dict[str, Any]:
+    body: dict[str, Any] | None = None, session: Session = Depends(get_db_session)
+) -> dict[str, Any]:
     days = int((body or {}).get("days", 14))
     return {"report": build_sprint_health(session, days)}
 
 
 @router.post("/sprint-health/post")
 def sprint_health_post(
-    body: Dict[str, Any] | None = None, session: Session = Depends(get_db_session)
-) -> Dict[str, Any]:
+    body: dict[str, Any] | None = None, session: Session = Depends(get_db_session)
+) -> dict[str, Any]:
     days = int((body or {}).get("days", 14))
     channel = (body or {}).get("channel")
     r = build_sprint_health(session, days)

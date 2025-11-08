@@ -1,7 +1,5 @@
 import hashlib
 import hmac
-import json
-from typing import Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from sqlalchemy import select
@@ -23,9 +21,9 @@ def _hmac_sha256(secret: str, body: bytes) -> str:
 async def github_webhook(
     request: Request,
     session: Session = Depends(get_db_session),
-    x_github_event: Optional[str] = Header(None, alias="X-GitHub-Event"),
-    x_hub_signature_256: Optional[str] = Header(None, alias="X-Hub-Signature-256"),
-    x_github_delivery: Optional[str] = Header(None, alias="X-GitHub-Delivery"),
+    x_github_event: str | None = Header(None, alias="X-GitHub-Event"),
+    x_hub_signature_256: str | None = Header(None, alias="X-Hub-Signature-256"),
+    x_github_delivery: str | None = Header(None, alias="X-GitHub-Delivery"),
 ) -> dict:
     body = await request.body()
 
@@ -79,7 +77,7 @@ async def github_webhook(
 async def jira_webhook(
     request: Request,
     session: Session = Depends(get_db_session),
-    x_atlassian_webhook_identifier: Optional[str] = Header(
+    x_atlassian_webhook_identifier: str | None = Header(
         None, alias="X-Atlassian-Webhook-Identifier"
     ),
 ) -> dict:
@@ -87,7 +85,9 @@ async def jira_webhook(
     delivery = x_atlassian_webhook_identifier or ""
     if delivery:
         exists = session.execute(
-            select(EventRaw).where(EventRaw.source == "jira", EventRaw.delivery_id == delivery)
+            select(EventRaw).where(
+                EventRaw.source == "jira", EventRaw.delivery_id == delivery
+            )
         ).scalar_one_or_none()
         if exists:
             return {"status": "duplicate", "id": exists.id}

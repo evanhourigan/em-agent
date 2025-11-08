@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import psycopg
 from fastapi import FastAPI, HTTPException
@@ -67,7 +67,7 @@ def create_app() -> FastAPI:
     app.state.backend: str = os.getenv("EMBEDDINGS_BACKEND", "tfidf").lower()
 
     # In-memory index of chunks: each doc is { id, content, parent_id, meta }
-    app.state.docs: List[Dict[str, Any]] = []
+    app.state.docs: list[dict[str, Any]] = []
 
     # Optional pgvector persistence
     app.state.pg_dsn = os.getenv(
@@ -86,7 +86,7 @@ def create_app() -> FastAPI:
     }
 
     # TF-IDF state
-    app.state.vectorizer: Optional[TfidfVectorizer] = None
+    app.state.vectorizer: TfidfVectorizer | None = None
     app.state.doc_vectors = None  # sparse matrix
 
     # Sentence-Transformers state
@@ -94,21 +94,21 @@ def create_app() -> FastAPI:
     app.state.st_doc_vectors = None  # dense numpy array
 
     @app.get("/")
-    def root() -> Dict[str, Any]:
+    def root() -> dict[str, Any]:
         return {"service": "rag", "status": "ok"}
 
     @app.get("/health")
-    def health() -> Dict[str, Any]:
+    def health() -> dict[str, Any]:
         return {
             "status": "ok",
             "backend": app.state.backend,
             "doc_count": len(app.state.docs),
         }
 
-    def _chunk_text(text: str, chunk_size: int, overlap: int) -> List[str]:
+    def _chunk_text(text: str, chunk_size: int, overlap: int) -> list[str]:
         if chunk_size <= 0:
             return [text]
-        chunks: List[str] = []
+        chunks: list[str] = []
         n = len(text)
         start = 0
         step = max(1, chunk_size - max(0, overlap))
@@ -142,7 +142,7 @@ def create_app() -> FastAPI:
             app.state.doc_vectors = app.state.vectorizer.fit_transform(texts)
 
     @app.post("/reset")
-    def reset() -> Dict[str, Any]:
+    def reset() -> dict[str, Any]:
         app.state.docs = []
         app.state.vectorizer = None
         app.state.doc_vectors = None
@@ -151,7 +151,7 @@ def create_app() -> FastAPI:
         return {"reset": True}
 
     @app.post("/index")
-    def index(payload: Dict[str, Any]) -> Dict[str, Any]:
+    def index(payload: dict[str, Any]) -> dict[str, Any]:
         doc_id = payload.get("id")
         content = payload.get("content")
         meta = payload.get("meta")
@@ -221,7 +221,7 @@ def create_app() -> FastAPI:
         return {"indexed": doc_id}
 
     @app.post("/index/bulk")
-    def index_bulk(payload: Dict[str, Any]) -> Dict[str, Any]:
+    def index_bulk(payload: dict[str, Any]) -> dict[str, Any]:
         docs = payload.get("docs") or []
         if not isinstance(docs, list) or not docs:
             raise HTTPException(status_code=400, detail="docs required")
@@ -319,7 +319,7 @@ def create_app() -> FastAPI:
         return {"indexed": added}
 
     @app.post("/search")
-    def search(payload: Dict[str, Any]) -> Dict[str, Any]:
+    def search(payload: dict[str, Any]) -> dict[str, Any]:
         query = payload.get("q", "").lower()
         top_k = int(payload.get("top_k", 5))
         include_meta = bool(payload.get("include_meta", True))
@@ -395,11 +395,12 @@ def create_app() -> FastAPI:
                 return {"results": out}
             q_vec = app.state.st_model.encode([query], normalize_embeddings=True)
             # cosine similarity = dot product on normalized vectors
-            import numpy as np  # local import to avoid global dependency when unused
 
             sims = (q_vec @ app.state.st_doc_vectors.T)[0]
-            ranked: List[Tuple[Dict[str, Any], float]] = sorted(
-                zip(app.state.docs, sims.tolist()), key=lambda x: x[1], reverse=True
+            ranked: list[tuple[dict[str, Any], float]] = sorted(
+                zip(app.state.docs, sims.tolist(), strict=False),
+                key=lambda x: x[1],
+                reverse=True,
             )
             out = []
             for doc, score in ranked[:top_k]:
@@ -432,7 +433,9 @@ def create_app() -> FastAPI:
             return {"results": out}
         q_vec = app.state.vectorizer.transform([query])
         sims = cosine_similarity(q_vec, app.state.doc_vectors)[0]
-        ranked = sorted(zip(app.state.docs, sims), key=lambda x: x[1], reverse=True)
+        ranked = sorted(
+            zip(app.state.docs, sims, strict=False), key=lambda x: x[1], reverse=True
+        )
         out = []
         for doc, score in ranked[:top_k]:
             m = doc.get("meta") if isinstance(doc.get("meta"), dict) else {}

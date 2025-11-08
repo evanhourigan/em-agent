@@ -4,7 +4,7 @@ import hashlib
 import hmac
 import json
 import time
-from typing import Any, Dict, List
+from typing import Any
 from urllib.parse import parse_qs
 
 from fastapi import APIRouter, Header, HTTPException, Request
@@ -22,7 +22,9 @@ from ....models.workflow_jobs import WorkflowJob
 router = APIRouter(prefix="/v1/slack", tags=["slack"])
 
 
-def _verify_slack(request: Request, body: bytes, ts: str | None, sig: str | None) -> None:
+def _verify_slack(
+    request: Request, body: bytes, ts: str | None, sig: str | None
+) -> None:
     settings = get_settings()
     if not settings.slack_signing_required:
         return
@@ -44,9 +46,15 @@ def _verify_slack(request: Request, body: bytes, ts: str | None, sig: str | None
 
 
 # Helper functions to reduce code duplication
-def _make_http_request(url: str, method: str = "POST", json_data: Dict[str, Any] | None = None, timeout: int = 30) -> Dict[str, Any]:
+def _make_http_request(
+    url: str,
+    method: str = "POST",
+    json_data: dict[str, Any] | None = None,
+    timeout: int = 30,
+) -> dict[str, Any]:
     """Make HTTP request with consistent error handling."""
     import httpx
+
     try:
         with httpx.Client(timeout=timeout) as client:
             if method == "POST":
@@ -59,7 +67,7 @@ def _make_http_request(url: str, method: str = "POST", json_data: Dict[str, Any]
         raise HTTPException(status_code=502, detail=str(exc))
 
 
-def _get_pending_approvals(session, limit: int = 10) -> List[Approval]:
+def _get_pending_approvals(session, limit: int = 10) -> list[Approval]:
     """Get pending approvals from database."""
     return (
         session.query(Approval)
@@ -71,17 +79,17 @@ def _get_pending_approvals(session, limit: int = 10) -> List[Approval]:
 
 
 # Command Handlers
-def _handle_signals(text: str) -> Dict[str, Any]:
+def _handle_signals(text: str) -> dict[str, Any]:
     """Handle 'signals' command."""
     parts = text.split()
-    kinds: List[str]
+    kinds: list[str]
     if len(parts) > 1:
         kinds = [parts[1]]
     else:
         kinds = ["stale_pr", "wip_limit_exceeded", "pr_without_review"]
 
     SessionLocal = get_sessionmaker()
-    out: List[str] = []
+    out: list[str] = []
     with SessionLocal() as session:
         for kind in kinds:
             try:
@@ -98,7 +106,7 @@ def _handle_signals(text: str) -> Dict[str, Any]:
     return {"ok": True, "message": " | ".join(out)}
 
 
-def _handle_approvals_list(text: str) -> Dict[str, Any]:
+def _handle_approvals_list(text: str) -> dict[str, Any]:
     """Handle 'approvals' command (list pending)."""
     SessionLocal = get_sessionmaker()
     with SessionLocal() as session:
@@ -109,7 +117,7 @@ def _handle_approvals_list(text: str) -> Dict[str, Any]:
         return {"ok": True, "message": "; ".join(items)}
 
 
-def _handle_approvals_post(text: str) -> Dict[str, Any]:
+def _handle_approvals_post(text: str) -> dict[str, Any]:
     """Handle 'approvals post' command."""
     from ....services.slack_client import SlackClient
 
@@ -162,11 +170,13 @@ def _handle_approvals_post(text: str) -> Dict[str, Any]:
         return {"ok": True, "posted": res}
 
 
-def _handle_approve_decline(text: str) -> Dict[str, Any]:
+def _handle_approve_decline(text: str) -> dict[str, Any]:
     """Handle 'approve <id>' or 'decline <id>' commands."""
     parts = text.split()
     if len(parts) != 2 or not parts[1].isdigit():
-        raise HTTPException(status_code=400, detail="usage: approve <id> | decline <id>")
+        raise HTTPException(
+            status_code=400, detail="usage: approve <id> | decline <id>"
+        )
     approval_id = int(parts[1])
     decision = "approve" if parts[0] == "approve" else "decline"
     res = approvals_decide(approval_id, {"decision": decision, "reason": "slack"})
@@ -181,11 +191,11 @@ async def commands(
     request: Request,
     x_slack_request_timestamp: str | None = Header(default=None),
     x_slack_signature: str | None = Header(default=None),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     raw = await request.body()
     _verify_slack(request, raw, x_slack_request_timestamp, x_slack_signature)
     content_type = request.headers.get("content-type", "")
-    payload: Dict[str, Any]
+    payload: dict[str, Any]
     if "application/json" in content_type:
         try:
             payload = json.loads(raw.decode() or "{}")
@@ -238,7 +248,9 @@ async def commands(
         SessionLocal = get_sessionmaker()
         with SessionLocal() as session:
             try:
-                stale = _evaluate_rule(session, {"kind": "stale_pr", "older_than_hours": 48})
+                stale = _evaluate_rule(
+                    session, {"kind": "stale_pr", "older_than_hours": 48}
+                )
                 no_review = _evaluate_rule(
                     session, {"kind": "pr_without_review", "older_than_hours": 12}
                 )
@@ -254,12 +266,18 @@ async def commands(
                 from ....services.slack_client import SlackClient
 
                 blocks = [
-                    {"type": "header", "text": {"type": "plain_text", "text": "Triage"}},
+                    {
+                        "type": "header",
+                        "text": {"type": "plain_text", "text": "Triage"},
+                    },
                     {
                         "type": "section",
                         "fields": [
                             {"type": "mrkdwn", "text": f"*Stale PRs:* {len(stale)}"},
-                            {"type": "mrkdwn", "text": f"*No Review:* {len(no_review)}"},
+                            {
+                                "type": "mrkdwn",
+                                "text": f"*No Review:* {len(no_review)}",
+                            },
                         ],
                     },
                 ]
@@ -283,7 +301,9 @@ async def commands(
                             },
                         }
                     )
-                res = SlackClient().post_blocks(text="Triage", blocks=blocks, channel=channel)
+                res = SlackClient().post_blocks(
+                    text="Triage", blocks=blocks, channel=channel
+                )
                 return {"ok": True, "posted": res}
             return {"ok": True, "message": msg}
 
@@ -340,7 +360,9 @@ async def commands(
         query = text[len("agent ") :].strip()
         if not query:
             return {"ok": False, "message": "usage: agent <query>"}
-        r = _make_http_request("http://localhost:8000/v1/agent/run", json_data={"query": query}, timeout=30)
+        r = _make_http_request(
+            "http://localhost:8000/v1/agent/run", json_data={"query": query}, timeout=30
+        )
         plan = r.get("plan") or []
         result = r.get("result") or {}
         msg = f"agent plan:{[p.get('tool') for p in plan]}"
@@ -349,8 +371,10 @@ async def commands(
         return {"ok": True, "message": msg}
 
     if text.startswith("incident start"):
-        title = text[len("incident start"):].strip() or "Untitled Incident"
-        inc = _make_http_request("http://localhost:8000/v1/incidents", json_data={"title": title}, timeout=10)
+        title = text[len("incident start") :].strip() or "Untitled Incident"
+        inc = _make_http_request(
+            "http://localhost:8000/v1/incidents", json_data={"title": title}, timeout=10
+        )
         return {"ok": True, "message": f"incident #{inc.get('id')} started: {title}"}
 
     if text.startswith("incident note "):
@@ -359,7 +383,11 @@ async def commands(
             return {"ok": False, "message": "usage: incident note <id> <text>"}
         inc_id = int(parts[2])
         note = parts[3]
-        _make_http_request(f"http://localhost:8000/v1/incidents/{inc_id}/note", json_data={"text": note}, timeout=10)
+        _make_http_request(
+            f"http://localhost:8000/v1/incidents/{inc_id}/note",
+            json_data={"text": note},
+            timeout=10,
+        )
         return {"ok": True, "message": f"noted on incident #{inc_id}"}
 
     if text.startswith("incident post"):
@@ -382,7 +410,7 @@ async def commands(
             )
         from ....services.slack_client import SlackClient
 
-        blocks: List[Dict[str, Any]] = [
+        blocks: list[dict[str, Any]] = [
             {
                 "type": "header",
                 "text": {
@@ -411,7 +439,9 @@ async def commands(
                     },
                 }
             )
-        res = SlackClient().post_blocks(text=f"Incident #{inc_id}", blocks=blocks, channel=channel)
+        res = SlackClient().post_blocks(
+            text=f"Incident #{inc_id}", blocks=blocks, channel=channel
+        )
         return {"ok": True, "posted": res}
 
     if text.startswith("incident close "):
@@ -419,7 +449,9 @@ async def commands(
         if len(parts) < 3 or not parts[2].isdigit():
             return {"ok": False, "message": "usage: incident close <id>"}
         inc_id = int(parts[2])
-        _make_http_request(f"http://localhost:8000/v1/incidents/{inc_id}/close", timeout=10)
+        _make_http_request(
+            f"http://localhost:8000/v1/incidents/{inc_id}/close", timeout=10
+        )
         return {"ok": True, "message": f"incident #{inc_id} closed"}
 
     if text.startswith("incident sev "):
@@ -429,13 +461,21 @@ async def commands(
             return {"ok": False, "message": "usage: incident sev <id> <S0|S1|S2|S3>"}
         inc_id = int(parts[2])
         sev = parts[3]
-        _make_http_request(f"http://localhost:8000/v1/incidents/{inc_id}/severity", json_data={"severity": sev}, timeout=10)
+        _make_http_request(
+            f"http://localhost:8000/v1/incidents/{inc_id}/severity",
+            json_data={"severity": sev},
+            timeout=10,
+        )
         return {"ok": True, "message": f"incident #{inc_id} severity -> {sev}"}
 
     if text.startswith("onboarding plan "):
         # usage: onboarding plan <title>
-        title = text[len("onboarding plan "):].strip() or "New Hire Plan"
-        plan = _make_http_request("http://localhost:8000/v1/onboarding/plans", json_data={"title": title}, timeout=10)
+        title = text[len("onboarding plan ") :].strip() or "New Hire Plan"
+        plan = _make_http_request(
+            "http://localhost:8000/v1/onboarding/plans",
+            json_data={"title": title},
+            timeout=10,
+        )
         return {"ok": True, "message": f"onboarding plan #{plan.get('id')} created"}
 
     if text.startswith("onboarding task "):
@@ -445,15 +485,23 @@ async def commands(
             return {"ok": False, "message": "usage: onboarding task <plan_id> <title>"}
         pid = int(parts[2])
         t = parts[3]
-        _make_http_request(f"http://localhost:8000/v1/onboarding/plans/{pid}/tasks", json_data={"title": t}, timeout=10)
+        _make_http_request(
+            f"http://localhost:8000/v1/onboarding/plans/{pid}/tasks",
+            json_data={"title": t},
+            timeout=10,
+        )
         return {"ok": True, "message": f"task added to plan #{pid}"}
 
     if text.startswith("okr new "):
         # usage: okr new <title>
-        title = text[len("okr new "):].strip()
+        title = text[len("okr new ") :].strip()
         if not title:
             return {"ok": False, "message": "usage: okr new <title>"}
-        obj = _make_http_request("http://localhost:8000/v1/okr/objectives", json_data={"title": title}, timeout=10)
+        obj = _make_http_request(
+            "http://localhost:8000/v1/okr/objectives",
+            json_data={"title": title},
+            timeout=10,
+        )
         return {"ok": True, "message": f"objective #{obj.get('id')} created"}
 
     if text.startswith("okr kr "):
@@ -463,12 +511,20 @@ async def commands(
             return {"ok": False, "message": "usage: okr kr <objective_id> <title>"}
         oid = int(parts[2])
         krt = parts[3]
-        _make_http_request(f"http://localhost:8000/v1/okr/objectives/{oid}/krs", json_data={"title": krt}, timeout=10)
+        _make_http_request(
+            f"http://localhost:8000/v1/okr/objectives/{oid}/krs",
+            json_data={"title": krt},
+            timeout=10,
+        )
         return {"ok": True, "message": f"kr added to objective #{oid}"}
 
     if text.strip().startswith("agent label-missing-ticket"):
         # Trigger agent flow to propose labeling PRs without ticket links
-        r = _make_http_request("http://localhost:8000/v1/agent/run", json_data={"query": "label missing ticket PRs"}, timeout=30)
+        r = _make_http_request(
+            "http://localhost:8000/v1/agent/run",
+            json_data={"query": "label missing ticket PRs"},
+            timeout=30,
+        )
         prop = r.get("proposed") or {}
         action_id = prop.get("action_id")
         candidates = r.get("candidates")
@@ -480,7 +536,11 @@ async def commands(
         }
 
     if text.strip().startswith("agent create-missing-ticket-issues"):
-        r = _make_http_request("http://localhost:8000/v1/agent/run", json_data={"query": "create issues for missing ticket links"}, timeout=30)
+        r = _make_http_request(
+            "http://localhost:8000/v1/agent/run",
+            json_data={"query": "create issues for missing ticket links"},
+            timeout=30,
+        )
         prop = r.get("proposed") or {}
         action_id = prop.get("action_id")
         candidates = r.get("candidates")
@@ -497,7 +557,10 @@ async def commands(
         reviewer = parts[2] if len(parts) > 2 else None
         older = int(parts[3]) if len(parts) > 3 and parts[3].isdigit() else 12
         if not reviewer:
-            return {"ok": False, "message": "usage: agent assign-reviewers <reviewer> [older_than_hours]"}
+            return {
+                "ok": False,
+                "message": "usage: agent assign-reviewers <reviewer> [older_than_hours]",
+            }
         rules = [{"kind": "pr_without_review", "older_than_hours": older}]
         SessionLocal = get_sessionmaker()
         with SessionLocal() as session:
@@ -519,11 +582,17 @@ async def commands(
 
     if text.startswith("agent triage post"):
         parts = text.split()
-        channel = parts[3] if len(parts) > 3 and parts[2] == "post" and parts[3].startswith("#") else None
+        channel = (
+            parts[3]
+            if len(parts) > 3 and parts[2] == "post" and parts[3].startswith("#")
+            else None
+        )
         SessionLocal = get_sessionmaker()
         with SessionLocal() as session:
             try:
-                stale = _evaluate_rule(session, {"kind": "stale_pr", "older_than_hours": 48})
+                stale = _evaluate_rule(
+                    session, {"kind": "stale_pr", "older_than_hours": 48}
+                )
                 no_review = _evaluate_rule(
                     session, {"kind": "pr_without_review", "older_than_hours": 12}
                 )
@@ -531,7 +600,7 @@ async def commands(
                 return {"ok": False, "message": f"error: {exc.detail}"}
         from ....services.slack_client import SlackClient
 
-        blocks: List[Dict[str, Any]] = [
+        blocks: list[dict[str, Any]] = [
             {"type": "header", "text": {"type": "plain_text", "text": "Agent Triage"}},
         ]
         if stale:
@@ -557,7 +626,10 @@ async def commands(
                             "elements": [
                                 {
                                     "type": "button",
-                                    "text": {"type": "plain_text", "text": "Propose Nudge"},
+                                    "text": {
+                                        "type": "plain_text",
+                                        "text": "Propose Nudge",
+                                    },
                                     "value": f"propose:nudge:{subj}",
                                 }
                             ],
@@ -587,14 +659,19 @@ async def commands(
                             "elements": [
                                 {
                                     "type": "button",
-                                    "text": {"type": "plain_text", "text": "Propose Nudge"},
+                                    "text": {
+                                        "type": "plain_text",
+                                        "text": "Propose Nudge",
+                                    },
                                     "value": f"propose:nudge:{subj}",
                                 }
                             ],
                         },
                     ]
                 )
-        res = SlackClient().post_blocks(text="Agent Triage", blocks=blocks, channel=channel)
+        res = SlackClient().post_blocks(
+            text="Agent Triage", blocks=blocks, channel=channel
+        )
         return {"ok": True, "posted": res}
 
     if text.startswith("agent ask ") or text.startswith("agent ask post"):
@@ -610,17 +687,27 @@ async def commands(
             query = " ".join(parts[2:])
         query = query.strip()
         if not query:
-            return {"ok": False, "message": "usage: agent ask <query> | agent ask post [channel] <query>"}
+            return {
+                "ok": False,
+                "message": "usage: agent ask <query> | agent ask post [channel] <query>",
+            }
         # Use existing ask pathway to get results
-        data = _make_http_request("http://localhost:8000/v1/rag/search", json_data={"q": query, "top_k": 3}, timeout=15)
+        data = _make_http_request(
+            "http://localhost:8000/v1/rag/search",
+            json_data={"q": query, "top_k": 3},
+            timeout=15,
+        )
         results = data.get("results") or []
         if not results:
             return {"ok": True, "message": "No results"}
         from ....services.slack_client import SlackClient
 
-        blocks: List[Dict[str, Any]] = [
+        blocks: list[dict[str, Any]] = [
             {"type": "header", "text": {"type": "plain_text", "text": "Agent Ask"}},
-            {"type": "section", "text": {"type": "mrkdwn", "text": f"*Query:* {query}"}},
+            {
+                "type": "section",
+                "text": {"type": "mrkdwn", "text": f"*Query:* {query}"},
+            },
         ]
         for r in results[:3]:
             title = r.get("id") or r.get("parent_id") or "doc"
@@ -630,7 +717,10 @@ async def commands(
                 [
                     {
                         "type": "section",
-                        "text": {"type": "mrkdwn", "text": f"*{title}*\n{snippet[:300]}"},
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": f"*{title}*\n{snippet[:300]}",
+                        },
                     },
                     {
                         "type": "actions",
@@ -643,13 +733,20 @@ async def commands(
                             {
                                 "type": "button",
                                 "text": {"type": "plain_text", "text": "Open"},
-                                "url": target if isinstance(target, str) and target.startswith("http") else None,
+                                "url": (
+                                    target
+                                    if isinstance(target, str)
+                                    and target.startswith("http")
+                                    else None
+                                ),
                             },
                         ],
                     },
                 ]
             )
-        res = SlackClient().post_blocks(text="Agent Ask", blocks=blocks, channel=channel)
+        res = SlackClient().post_blocks(
+            text="Agent Ask", blocks=blocks, channel=channel
+        )
         return {"ok": True, "posted": res}
 
     # ask: query RAG and summarize top results
@@ -669,19 +766,18 @@ async def commands(
         query = query.strip()
         if not query:
             raise HTTPException(
-                status_code=400, detail="usage: ask <query> | ask post [channel] <query>"
+                status_code=400,
+                detail="usage: ask <query> | ask post [channel] <query>",
             )
 
         # call RAG through gateway proxy
         try:
             import httpx
 
-            from ....core.config import get_settings
-
-            gateway_base = ""  # same service
             with httpx.Client(timeout=15) as client:
                 resp = client.post(
-                    f"http://localhost:8000/v1/rag/search", json={"q": query, "top_k": 3}
+                    "http://localhost:8000/v1/rag/search",
+                    json={"q": query, "top_k": 3},
                 )
                 # When running inside container, localhost resolves; if behind proxy, router handles it
                 if resp.status_code >= 400:
@@ -712,7 +808,10 @@ async def commands(
 
             blocks = [
                 {"type": "header", "text": {"type": "plain_text", "text": "Ask"}},
-                {"type": "section", "text": {"type": "mrkdwn", "text": f"*Query:* {query}"}},
+                {
+                    "type": "section",
+                    "text": {"type": "mrkdwn", "text": f"*Query:* {query}"},
+                },
             ]
             for r in results[:3]:
                 title = r.get("id") or r.get("parent_id") or "doc"
@@ -742,11 +841,11 @@ async def interactions(
     request: Request,
     x_slack_request_timestamp: str | None = Header(default=None),
     x_slack_signature: str | None = Header(default=None),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     raw = await request.body()
     _verify_slack(request, raw, x_slack_request_timestamp, x_slack_signature)
     content_type = request.headers.get("content-type", "")
-    payload: Dict[str, Any]
+    payload: dict[str, Any]
     if "application/json" in content_type:
         try:
             payload = json.loads(raw.decode() or "{}")

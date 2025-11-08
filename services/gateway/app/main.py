@@ -10,17 +10,17 @@ from starlette.middleware.cors import CORSMiddleware
 from .api.v1.routers.agent import router as agent_router
 from .api.v1.routers.approvals import router as approvals_router
 from .api.v1.routers.auth import router as auth_router
+from .api.v1.routers.evals import router as evals_router
 from .api.v1.routers.health import router as health_router
 from .api.v1.routers.identities import router as identities_router
+from .api.v1.routers.incidents import router as incidents_router
 from .api.v1.routers.metrics import router as metrics_router
+from .api.v1.routers.okr import router as okr_router
+from .api.v1.routers.onboarding import router as onboarding_router
 from .api.v1.routers.policy import router as policy_router
 from .api.v1.routers.projects import router as projects_router
 from .api.v1.routers.rag import router as rag_router
 from .api.v1.routers.reports import router as reports_router
-from .api.v1.routers.evals import router as evals_router
-from .api.v1.routers.incidents import router as incidents_router
-from .api.v1.routers.onboarding import router as onboarding_router
-from .api.v1.routers.okr import router as okr_router
 from .api.v1.routers.signals import router as signals_router
 from .api.v1.routers.slack import router as slack_router
 from .api.v1.routers.webhooks import router as webhooks_router
@@ -32,10 +32,10 @@ from .db import get_engine, get_sessionmaker
 from .middleware.logging import RequestLoggingMiddleware
 from .services.signal_runner import maybe_start_evaluator
 from .services.workflow_runner import (
-    maybe_start_workflow_runner,
-    maybe_stop_workflow_runner,
     maybe_start_retention,
+    maybe_start_workflow_runner,
     maybe_stop_retention,
+    maybe_stop_workflow_runner,
 )
 
 
@@ -55,7 +55,10 @@ def create_app() -> FastAPI:
 
     # Rate limiting setup
     if settings.rate_limit_enabled:
-        limiter = Limiter(key_func=get_remote_address, default_limits=[f"{settings.rate_limit_per_min}/minute"])
+        limiter = Limiter(
+            key_func=get_remote_address,
+            default_limits=[f"{settings.rate_limit_per_min}/minute"],
+        )
         app.state.limiter = limiter
         app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
         logger.info("rate_limiting.enabled", limit_per_min=settings.rate_limit_per_min)
@@ -99,7 +102,9 @@ def create_app() -> FastAPI:
         )
 
     @app.exception_handler(Exception)
-    async def general_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    async def general_exception_handler(
+        request: Request, exc: Exception
+    ) -> JSONResponse:
         """Handle all unhandled exceptions."""
         logger.error(
             "request.unhandled_exception",
@@ -138,7 +143,9 @@ def create_app() -> FastAPI:
 
     # Tracing (optional)
     if settings.otel_enabled:
-        add_tracing(app, app_name="gateway", endpoint=settings.otel_exporter_otlp_endpoint)
+        add_tracing(
+            app, app_name="gateway", endpoint=settings.otel_exporter_otlp_endpoint
+        )
 
     @app.on_event("startup")
     def on_startup() -> None:  # noqa: D401

@@ -1,12 +1,11 @@
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
 
 class ProjectBase(BaseModel):
-    key: Optional[str] = Field(None, min_length=1, max_length=64)
-    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    key: str | None = Field(None, min_length=1, max_length=64)
+    name: str | None = Field(None, min_length=1, max_length=255)
 
 
 class ProjectCreate(ProjectBase):

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 # Global metrics registry populated during app startup in observability.add_prometheus
-metrics: Dict[str, Any] = {}
+metrics: dict[str, Any] = {}

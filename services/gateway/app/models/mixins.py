@@ -1,7 +1,6 @@
 """Model mixins for common patterns."""
 
 from datetime import UTC, datetime
-from typing import Optional
 
 from sqlalchemy import DateTime
 from sqlalchemy.orm import Mapped, mapped_column
@@ -30,7 +29,7 @@ class SoftDeleteMixin:
         active_records = session.query(MyModel).filter(MyModel.deleted_at == None).all()
     """
 
-    deleted_at: Mapped[Optional[datetime]] = mapped_column(
+    deleted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, default=None, index=True
     )
 
@@ -57,7 +56,10 @@ class TimestampMixin:
     """
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC), index=True
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        index=True,
     )
 
     updated_at: Mapped[datetime] = mapped_column(

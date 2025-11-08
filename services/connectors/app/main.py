@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Set
-
+import base64
 import os
+import re
 import time
+from typing import Any
+
 import httpx
 from fastapi import FastAPI, HTTPException
-import base64
-import re
 
 
 def create_app() -> FastAPI:
@@ -16,14 +16,13 @@ def create_app() -> FastAPI:
     gateway_url = os.getenv("GATEWAY_URL", "http://gateway:8000").rstrip("/")
 
     @app.get("/health")
-    def health() -> Dict[str, Any]:
+    def health() -> dict[str, Any]:
         return {"status": "ok"}
 
     @app.post("/ingest/docs")
-    def ingest_docs(payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Accepts { docs: [{id, content, meta}], chunk_size?, overlap? } and forwards to RAG bulk index via gateway.
-        """
-        docs: List[Dict[str, Any]] = payload.get("docs") or []
+    def ingest_docs(payload: dict[str, Any]) -> dict[str, Any]:
+        """Accepts { docs: [{id, content, meta}], chunk_size?, overlap? } and forwards to RAG bulk index via gateway."""
+        docs: list[dict[str, Any]] = payload.get("docs") or []
         if not isinstance(docs, list) or not docs:
             raise HTTPException(status_code=400, detail="docs required")
         chunk_size = int(payload.get("chunk_size", 800))
@@ -38,9 +37,8 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=502, detail=str(exc))
 
     @app.post("/ingest/doc")
-    def ingest_doc(payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Accepts single { id, content, meta } and forwards to RAG index via gateway.
-        """
+    def ingest_doc(payload: dict[str, Any]) -> dict[str, Any]:
+        """Accepts single { id, content, meta } and forwards to RAG index via gateway."""
         if not payload.get("id") or not payload.get("content"):
             raise HTTPException(status_code=400, detail="id and content required")
         try:
@@ -58,22 +56,27 @@ def create_app() -> FastAPI:
 
     # --- Crawlers ---
     @app.post("/crawl/confluence")
-    def crawl_confluence(payload: Dict[str, Any]) -> Dict[str, Any]:
+    def crawl_confluence(payload: dict[str, Any]) -> dict[str, Any]:
         """Crawl Confluence pages by IDs and forward as docs.
 
         payload: { base_url: str, page_ids: ["123","456"], chunk_size?, overlap? }
         Auth via env: CONFLUENCE_EMAIL, CONFLUENCE_TOKEN
         """
         base_url = (payload.get("base_url") or "").rstrip("/")
-        page_ids: List[str] = payload.get("page_ids") or []
+        page_ids: list[str] = payload.get("page_ids") or []
         if not base_url or not page_ids:
-            raise HTTPException(status_code=400, detail="base_url and page_ids required")
+            raise HTTPException(
+                status_code=400, detail="base_url and page_ids required"
+            )
         email = os.getenv("CONFLUENCE_EMAIL")
         token = os.getenv("CONFLUENCE_TOKEN")
         if not email or not token:
-            raise HTTPException(status_code=400, detail="CONFLUENCE_EMAIL/CONFLUENCE_TOKEN not set")
-        docs: List[Dict[str, Any]] = []
+            raise HTTPException(
+                status_code=400, detail="CONFLUENCE_EMAIL/CONFLUENCE_TOKEN not set"
+            )
+        docs: list[dict[str, Any]] = []
         auth = (email, token)
+
         # Basic retry/backoff
         def _get(client: httpx.Client, url: str, **kwargs):
             backoff = 0.5
@@ -88,17 +91,27 @@ def create_app() -> FastAPI:
                 except httpx.HTTPError:
                     time.sleep(backoff)
                     backoff *= 2
-            raise HTTPException(status_code=502, detail=f"GET failed after retries: {url}")
+            raise HTTPException(
+                status_code=502, detail=f"GET failed after retries: {url}"
+            )
 
         since = payload.get("if_modified_since")  # RFC1123 string optional
         headers = {"If-Modified-Since": since} if since else {}
         with httpx.Client(timeout=20, headers=headers) as client:
             for pid in page_ids:
                 try:
-                    resp = _get(client, f"{base_url}/wiki/api/v2/pages/{pid}?body-format=storage", auth=auth)
+                    resp = _get(
+                        client,
+                        f"{base_url}/wiki/api/v2/pages/{pid}?body-format=storage",
+                        auth=auth,
+                    )
                     if resp.status_code == 404:
                         # fallback to older API
-                        resp = _get(client, f"{base_url}/rest/api/content/{pid}?expand=body.storage", auth=auth)
+                        resp = _get(
+                            client,
+                            f"{base_url}/rest/api/content/{pid}?expand=body.storage",
+                            auth=auth,
+                        )
                     if resp.status_code == 304:
                         continue
                     resp.raise_for_status()
@@ -114,16 +127,24 @@ def create_app() -> FastAPI:
                         or ""
                     )
                     content = _strip_markup(storage)
-                    url = data.get("_links", {}).get("webui") or data.get("_links", {}).get("self")
+                    url = data.get("_links", {}).get("webui") or data.get(
+                        "_links", {}
+                    ).get("self")
                     if url and url.startswith("/"):
                         url = base_url + url
                     doc_id = f"confluence:{pid}"
-                    docs.append({
-                        "id": doc_id,
-                        "content": f"{title}\n\n{content}",
-                        "meta": {"source": "confluence", "url": url, "title": title},
-                    })
-                except httpx.HTTPError as exc:
+                    docs.append(
+                        {
+                            "id": doc_id,
+                            "content": f"{title}\n\n{content}",
+                            "meta": {
+                                "source": "confluence",
+                                "url": url,
+                                "title": title,
+                            },
+                        }
+                    )
+                except httpx.HTTPError:
                     # skip problematic page
                     continue
         if not docs:
@@ -133,7 +154,7 @@ def create_app() -> FastAPI:
         return ingest_docs({"docs": docs, "chunk_size": chunk_size, "overlap": overlap})
 
     @app.post("/crawl/github")
-    def crawl_github(payload: Dict[str, Any]) -> Dict[str, Any]:
+    def crawl_github(payload: dict[str, Any]) -> dict[str, Any]:
         """Crawl GitHub repo files and forward as docs.
 
         payload: { owner, repo, ref?, include_paths?: ["docs/","README.md"], exts?: [".md", ".txt"], chunk_size?, overlap? }
@@ -144,12 +165,12 @@ def create_app() -> FastAPI:
         if not owner or not repo:
             raise HTTPException(status_code=400, detail="owner and repo required")
         ref = payload.get("ref") or "main"
-        include_paths: List[str] = payload.get("include_paths") or []
-        exts: Set[str] = set(payload.get("exts") or [".md", ".txt", ".rst"])
+        include_paths: list[str] = payload.get("include_paths") or []
+        exts: set[str] = set(payload.get("exts") or [".md", ".txt", ".rst"])
         headers = {}
         if os.getenv("GH_TOKEN"):
             headers["Authorization"] = f"Bearer {os.getenv('GH_TOKEN')}"
-        docs: List[Dict[str, Any]] = []
+        docs: list[dict[str, Any]] = []
         # Delta: If-Modified-Since / ETag support
         since = payload.get("if_modified_since")  # RFC1123
         etag = payload.get("etag")
@@ -171,11 +192,16 @@ def create_app() -> FastAPI:
                 except httpx.HTTPError:
                     time.sleep(backoff)
                     backoff *= 2
-            raise HTTPException(status_code=502, detail=f"GET failed after retries: {url}")
+            raise HTTPException(
+                status_code=502, detail=f"GET failed after retries: {url}"
+            )
 
         with httpx.Client(timeout=30, headers=headers) as client:
             # Get tree
-            r = _get(client, f"https://api.github.com/repos/{owner}/{repo}/git/trees/{ref}?recursive=1")
+            r = _get(
+                client,
+                f"https://api.github.com/repos/{owner}/{repo}/git/trees/{ref}?recursive=1",
+            )
             r.raise_for_status()
             tree = r.json().get("tree", [])
             for node in tree:
@@ -187,7 +213,10 @@ def create_app() -> FastAPI:
                 if exts and not any(path.lower().endswith(e) for e in exts):
                     continue
                 try:
-                    c = _get(client, f"https://api.github.com/repos/{owner}/{repo}/contents/{path}?ref={ref}")
+                    c = _get(
+                        client,
+                        f"https://api.github.com/repos/{owner}/{repo}/contents/{path}?ref={ref}",
+                    )
                     if c.status_code == 304:
                         continue
                     c.raise_for_status()
@@ -241,7 +270,13 @@ def create_app() -> FastAPI:
                     repo = os.getenv("CRAWL_GH_REPO")
                     if owner and repo:
                         try:
-                            crawl_github({"owner": owner, "repo": repo, "include_paths": ["docs/","README.md"]})
+                            crawl_github(
+                                {
+                                    "owner": owner,
+                                    "repo": repo,
+                                    "include_paths": ["docs/", "README.md"],
+                                }
+                            )
                         except Exception:
                             pass
                 finally:
@@ -257,5 +292,3 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
-
-
