@@ -25,6 +25,18 @@ async def github_webhook(
     x_hub_signature_256: str | None = Header(None, alias="X-Hub-Signature-256"),
     x_github_delivery: str | None = Header(None, alias="X-GitHub-Delivery"),
 ) -> dict:
+    """
+    GitHub webhook handler for all event types.
+
+    Supported events include:
+    - pull_request: PR lifecycle (opened, merged, closed, etc.)
+    - push: Code pushes and commits
+    - issues: Issue lifecycle (opened, closed, labeled, assigned, etc.)
+    - workflow_run: GitHub Actions CI/CD runs
+    - Any other GitHub webhook event
+
+    See: https://docs.github.com/en/webhooks/webhook-events-and-payloads
+    """
     body = await request.body()
 
     # Idempotency: skip if we have this delivery id already

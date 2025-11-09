@@ -244,6 +244,162 @@ class TestGitHubWebhook:
         assert "42" in event.payload or 42 in json.loads(event.payload)
 
 
+class TestGitHubIssuesWebhook:
+    """Tests for GitHub Issues events via POST /webhooks/github endpoint."""
+
+    def test_github_issues_opened_event(self, client: TestClient, db_session: Session):
+        """Test GitHub issues 'opened' event."""
+        from services.gateway.app.models.events import EventRaw
+
+        # Clean events
+        db_session.query(EventRaw).delete()
+        db_session.commit()
+
+        payload = {
+            "action": "opened",
+            "issue": {
+                "number": 42,
+                "title": "Add authentication feature",
+                "state": "open",
+                "labels": [{"name": "feature"}],
+                "assignee": {"login": "alice"}
+            },
+            "repository": {
+                "name": "em-agent",
+                "owner": {"login": "evanhourigan"}
+            }
+        }
+        headers = {
+            "X-GitHub-Event": "issues",
+            "X-GitHub-Delivery": "issues-opened-123"
+        }
+
+        response = client.post(
+            "/webhooks/github",
+            json=payload,
+            headers=headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "ok"
+        assert "id" in data
+
+        # Verify event was stored
+        event = db_session.query(EventRaw).filter_by(delivery_id="issues-opened-123").first()
+        assert event is not None
+        assert event.source == "github"
+        assert event.event_type == "issues"
+        assert event.delivery_id == "issues-opened-123"
+
+        # Verify payload contains issue data
+        assert "42" in event.payload or 42 in json.loads(event.payload).get("issue", {}).get("number", 0)
+        assert "authentication" in event.payload.lower()
+
+    def test_github_issues_closed_event(self, client: TestClient, db_session: Session):
+        """Test GitHub issues 'closed' event."""
+        from services.gateway.app.models.events import EventRaw
+
+        db_session.query(EventRaw).delete()
+        db_session.commit()
+
+        payload = {
+            "action": "closed",
+            "issue": {
+                "number": 42,
+                "title": "Add authentication feature",
+                "state": "closed"
+            },
+            "repository": {
+                "name": "em-agent",
+                "owner": {"login": "evanhourigan"}
+            }
+        }
+        headers = {
+            "X-GitHub-Event": "issues",
+            "X-GitHub-Delivery": "issues-closed-123"
+        }
+
+        response = client.post(
+            "/webhooks/github",
+            json=payload,
+            headers=headers
+        )
+        assert response.status_code == 200
+
+        event = db_session.query(EventRaw).filter_by(delivery_id="issues-closed-123").first()
+        assert event is not None
+        assert event.event_type == "issues"
+
+        # Verify action is in payload
+        payload_data = json.loads(event.payload)
+        assert payload_data["action"] == "closed"
+        assert payload_data["issue"]["state"] == "closed"
+
+    def test_github_issues_labeled_event(self, client: TestClient, db_session: Session):
+        """Test GitHub issues 'labeled' event."""
+        from services.gateway.app.models.events import EventRaw
+
+        db_session.query(EventRaw).delete()
+        db_session.commit()
+
+        payload = {
+            "action": "labeled",
+            "issue": {
+                "number": 42,
+                "title": "Fix login bug",
+                "labels": [{"name": "bug"}, {"name": "priority-high"}]
+            },
+            "label": {"name": "bug"}
+        }
+        headers = {
+            "X-GitHub-Event": "issues",
+            "X-GitHub-Delivery": "issues-labeled-123"
+        }
+
+        response = client.post(
+            "/webhooks/github",
+            json=payload,
+            headers=headers
+        )
+        assert response.status_code == 200
+
+        event = db_session.query(EventRaw).filter_by(delivery_id="issues-labeled-123").first()
+        assert event is not None
+        assert event.event_type == "issues"
+        assert "bug" in event.payload
+
+    def test_github_issues_assigned_event(self, client: TestClient, db_session: Session):
+        """Test GitHub issues 'assigned' event."""
+        from services.gateway.app.models.events import EventRaw
+
+        db_session.query(EventRaw).delete()
+        db_session.commit()
+
+        payload = {
+            "action": "assigned",
+            "issue": {
+                "number": 42,
+                "assignee": {"login": "alice"}
+            },
+            "assignee": {"login": "alice"}
+        }
+        headers = {
+            "X-GitHub-Event": "issues",
+            "X-GitHub-Delivery": "issues-assigned-123"
+        }
+
+        response = client.post(
+            "/webhooks/github",
+            json=payload,
+            headers=headers
+        )
+        assert response.status_code == 200
+
+        event = db_session.query(EventRaw).filter_by(delivery_id="issues-assigned-123").first()
+        assert event is not None
+        assert "alice" in event.payload
+
+
 class TestJiraWebhook:
     """Tests for POST /webhooks/jira endpoint."""
 
