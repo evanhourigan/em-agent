@@ -251,6 +251,110 @@ def create_app() -> FastAPI:
         overlap = int(payload.get("overlap", 100))
         return ingest_docs({"docs": docs, "chunk_size": chunk_size, "overlap": overlap})
 
+    @app.post("/crawl/shortcut")
+    def crawl_shortcut(payload: dict[str, Any]) -> dict[str, Any]:
+        """Crawl Shortcut stories and forward as docs for RAG indexing.
+
+        payload: { workspace_slug?, state_ids?: ["500000001"], iteration_id?, chunk_size?, overlap? }
+        Auth via env: SHORTCUT_API_TOKEN
+
+        This crawls stories from Shortcut (formerly Clubhouse) for knowledge base indexing.
+        Useful for searching past decisions, epics, requirements, etc.
+        """
+        api_token = os.getenv("SHORTCUT_API_TOKEN")
+        if not api_token:
+            raise HTTPException(status_code=400, detail="SHORTCUT_API_TOKEN not set")
+
+        # Shortcut API v3
+        base_url = "https://api.app.shortcut.com/api/v3"
+        headers = {"Shortcut-Token": api_token, "Content-Type": "application/json"}
+
+        # Filter options
+        state_ids = payload.get("state_ids") or []  # Filter by workflow state
+        iteration_id = payload.get("iteration_id")  # Filter by iteration/sprint
+
+        docs: list[dict[str, Any]] = []
+
+        def _get(client: httpx.Client, url: str, **kwargs):
+            """Retry helper with exponential backoff"""
+            backoff = 0.5
+            for _ in range(4):
+                try:
+                    r = client.get(url, **kwargs)
+                    if r.status_code in (429, 500, 502, 503, 504):
+                        time.sleep(backoff)
+                        backoff *= 2
+                        continue
+                    return r
+                except httpx.HTTPError:
+                    time.sleep(backoff)
+                    backoff *= 2
+            raise HTTPException(status_code=502, detail=f"GET failed: {url}")
+
+        with httpx.Client(timeout=30, headers=headers) as client:
+            # Search stories with filters
+            search_payload: dict[str, Any] = {"page_size": 25}
+            if state_ids:
+                search_payload["workflow_state_ids"] = state_ids
+            if iteration_id:
+                search_payload["iteration_ids"] = [iteration_id]
+
+            try:
+                # Shortcut Search API
+                resp = client.post(
+                    f"{base_url}/search/stories", json=search_payload, headers=headers
+                )
+                resp.raise_for_status()
+                data = resp.json()
+
+                stories = data.get("data", [])
+                for story in stories:
+                    story_id = story.get("id")
+                    name = story.get("name", "Untitled")
+                    description = story.get("description", "")
+                    story_type = story.get("story_type", "feature")
+                    state = story.get("workflow_state_id")
+                    url = story.get("app_url", "")
+
+                    # Combine title and description for indexing
+                    content = f"# {name}\n\n{description}"
+
+                    # Add comments if available
+                    comments = story.get("comments", [])
+                    if comments:
+                        content += "\n\n## Comments\n\n"
+                        for comment in comments:
+                            author = comment.get("author_id", "Unknown")
+                            text = comment.get("text", "")
+                            content += f"**{author}**: {text}\n\n"
+
+                    doc_id = f"shortcut:story:{story_id}"
+                    docs.append(
+                        {
+                            "id": doc_id,
+                            "content": _strip_markup(content),
+                            "meta": {
+                                "source": "shortcut",
+                                "url": url,
+                                "title": name,
+                                "story_type": story_type,
+                                "state": str(state),
+                            },
+                        }
+                    )
+
+            except httpx.HTTPError as exc:
+                raise HTTPException(
+                    status_code=502, detail=f"Shortcut API error: {exc}"
+                )
+
+        if not docs:
+            return {"indexed": 0}
+
+        chunk_size = int(payload.get("chunk_size", 800))
+        overlap = int(payload.get("overlap", 100))
+        return ingest_docs({"docs": docs, "chunk_size": chunk_size, "overlap": overlap})
+
     # Optional simple scheduler for periodic crawls
     import threading
 

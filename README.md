@@ -9,7 +9,7 @@
 [![Issues](https://img.shields.io/github/issues/evanhourigan/em-agent)](https://github.com/evanhourigan/em-agent/issues)
 [![Last Commit](https://img.shields.io/github/last-commit/evanhourigan/em-agent)](https://github.com/evanhourigan/em-agent/commits/main)
 
-[Architecture](./ARCHITECTURE.md) • [Releases](./docs/releases/)
+[Architecture](./ARCHITECTURE.md) • [Architecture Deep Dive](./docs/ARCHITECTURE_DEEP_DIVE.md) • [Releases](./docs/releases/)
 
 An AI-assisted "Chief of Staff" for engineering. Plugs into your stack, surfaces risks, automates toil, and produces trustworthy operating metrics—while keeping humans in control.
 

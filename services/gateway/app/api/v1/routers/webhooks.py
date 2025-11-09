@@ -118,3 +118,87 @@ async def jira_webhook(
     except Exception:
         pass
     return {"status": "ok", "id": evt.id}
+
+
+@router.post("/shortcut")
+async def shortcut_webhook(
+    request: Request,
+    session: Session = Depends(get_db_session),
+    x_shortcut_signature: str | None = Header(None, alias="X-Shortcut-Signature"),
+) -> dict:
+    """
+    Shortcut webhook handler.
+
+    Handles story updates, creation, deletion, etc.
+    See: https://developer.shortcut.com/api/webhooks
+
+    Shortcut sends:
+    - X-Shortcut-Signature: HMAC-SHA256 signature (optional verification)
+    - Payload with actions: story-create, story-update, story-delete, etc.
+    """
+    body = await request.body()
+
+    # Parse payload to extract event info
+    import json
+
+    try:
+        payload_json = json.loads(body)
+        action = payload_json.get("action", "unknown")
+        story_id = payload_json.get("id") or payload_json.get("primary_id", "")
+        # Use action + story_id as delivery_id for idempotency
+        delivery = f"shortcut-{action}-{story_id}"
+    except Exception:
+        # If parsing fails, use a timestamp-based ID
+        import time
+
+        delivery = f"shortcut-{int(time.time() * 1000)}"
+        action = "unknown"
+
+    # Idempotency check
+    if delivery:
+        exists = session.execute(
+            select(EventRaw).where(
+                EventRaw.source == "shortcut", EventRaw.delivery_id == delivery
+            )
+        ).scalar_one_or_none()
+        if exists:
+            return {"status": "duplicate", "id": exists.id}
+
+    # Signature verification (optional)
+    secret = request.app.state.__dict__.get("shortcut_webhook_secret")
+    if secret and x_shortcut_signature:
+        expected = _hmac_sha256(secret, body)
+        if not hmac.compare_digest(expected, x_shortcut_signature):
+            raise HTTPException(status_code=401, detail="invalid signature")
+
+    # Store event
+    evt = EventRaw(
+        source="shortcut",
+        event_type=action,
+        delivery_id=delivery,
+        signature=x_shortcut_signature,
+        headers=dict(request.headers),
+        payload=body.decode("utf-8", errors="replace"),
+    )
+    session.add(evt)
+    session.commit()
+
+    # Publish to event bus
+    try:
+        import asyncio
+
+        asyncio.create_task(
+            get_event_bus().publish_json(
+                subject="events.shortcut",
+                payload={
+                    "id": evt.id,
+                    "event_type": evt.event_type,
+                    "delivery_id": evt.delivery_id,
+                    "action": action,
+                },
+            )
+        )
+    except Exception:
+        pass
+
+    return {"status": "ok", "id": evt.id}
