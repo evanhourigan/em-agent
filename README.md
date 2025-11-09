@@ -70,7 +70,7 @@ curl -sS -X POST http://localhost:8000/v1/slack/commands \
 
 **Core Platform (Phases 0-6): Production Ready**
 - ✅ Phase 0: Gateway, Postgres, logging/metrics, observability
-- ✅ Phase 1: Webhook ingestion (GitHub PRs/Issues, Jira, Shortcut), projects, identity mapping
+- ✅ Phase 1: Webhook ingestion (GitHub PRs/Issues, Jira, Shortcut, Linear), projects, identity mapping
 - ✅ Phase 2: dbt metrics models, DORA API endpoints (lead time, deploy freq, CFR, MTTR)
 - ✅ Phase 3: Signal evaluation, policy engine (OPA), approvals & workflows
 - ✅ Phase 4: RAG service (TF-IDF/pgvector), connectors (GitHub/Confluence), event bus (NATS), workers (Celery + Temporal)
@@ -491,6 +491,7 @@ Webhooks (intake stubs)
 See integration guides:
 - [GitHub Issues Integration](./docs/GITHUB_ISSUES_INTEGRATION.md)
 - [Shortcut Integration](./docs/SHORTCUT_INTEGRATION.md)
+- [Linear Integration](./docs/LINEAR_INTEGRATION.md)
 
 ```bash
 # GitHub PR event
@@ -518,6 +519,12 @@ curl -sS -X POST http://localhost:8000/webhooks/shortcut \
   -H 'X-Shortcut-Signature: sha256=...' \
   -H 'content-type: application/json' \
   -d '{"action":"story-create","id":"123","name":"Feature story"}'
+
+# Linear
+curl -sS -X POST http://localhost:8000/webhooks/linear \
+  -H 'Linear-Signature: sha256=...' \
+  -H 'content-type: application/json' \
+  -d '{"action":"create","type":"Issue","data":{"id":"abc-123","identifier":"ENG-42","title":"Add feature"}}'
 ````
 
 ### MCP Tools (Phase 4)

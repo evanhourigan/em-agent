@@ -214,3 +214,97 @@ async def shortcut_webhook(
         pass
 
     return {"status": "ok", "id": evt.id}
+
+
+@router.post("/linear")
+async def linear_webhook(
+    request: Request,
+    session: Session = Depends(get_db_session),
+    linear_signature: str | None = Header(None, alias="Linear-Signature"),
+) -> dict:
+    """
+    Linear webhook handler.
+
+    Handles issue updates, creation, deletion, comments, projects, etc.
+    See: https://developers.linear.app/docs/graphql/webhooks
+
+    Linear sends:
+    - Linear-Signature: HMAC-SHA256 signature (optional verification)
+    - Payload with: action, data, type, url, createdAt
+    - Types: Issue, Comment, Project, Cycle, etc.
+    - Actions: create, update, remove
+    """
+    body = await request.body()
+
+    # Parse payload to extract event info
+    import json
+
+    try:
+        payload_json = json.loads(body)
+        action = payload_json.get("action", "unknown")
+        event_type = payload_json.get("type", "unknown")
+
+        # Extract ID from data object
+        data = payload_json.get("data", {})
+        entity_id = data.get("id", "")
+
+        # Use type + action + entity_id as delivery_id for idempotency
+        # Example: "linear-Issue-create-abc-123"
+        delivery = f"linear-{event_type}-{action}-{entity_id}"
+    except Exception:
+        # If parsing fails, use a timestamp-based ID
+        import time
+
+        delivery = f"linear-{int(time.time() * 1000)}"
+        action = "unknown"
+        event_type = "unknown"
+
+    # Idempotency check
+    if delivery:
+        exists = session.execute(
+            select(EventRaw).where(
+                EventRaw.source == "linear", EventRaw.delivery_id == delivery
+            )
+        ).scalar_one_or_none()
+        if exists:
+            return {"status": "duplicate", "id": exists.id}
+
+    # Signature verification (optional)
+    secret = request.app.state.__dict__.get("linear_webhook_secret")
+    if secret and linear_signature:
+        expected = _hmac_sha256(secret, body)
+        if not hmac.compare_digest(expected, linear_signature):
+            raise HTTPException(status_code=401, detail="invalid signature")
+
+    # Store event
+    evt = EventRaw(
+        source="linear",
+        event_type=f"{event_type}:{action}",  # e.g., "Issue:create"
+        delivery_id=delivery,
+        signature=linear_signature,
+        headers=dict(request.headers),
+        payload=body.decode("utf-8", errors="replace"),
+    )
+    session.add(evt)
+    session.commit()
+
+    # Publish to event bus
+    try:
+        import asyncio
+
+        asyncio.create_task(
+            get_event_bus().publish_json(
+                subject="events.linear",
+                payload={
+                    "id": evt.id,
+                    "event_type": evt.event_type,
+                    "delivery_id": evt.delivery_id,
+                    "action": action,
+                    "type": event_type,
+                },
+            )
+        )
+    except Exception:
+        pass
+
+    return {"status": "ok", "id": evt.id}

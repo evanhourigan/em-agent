@@ -534,3 +534,207 @@ class TestJiraWebhook:
         event = db_session.query(EventRaw).filter_by(delivery_id="jira-sig-test").first()
         assert event is not None
         assert event.signature is None  # Jira webhooks don't have signatures
+
+
+class TestLinearWebhook:
+    """Tests for POST /webhooks/linear endpoint."""
+
+    def test_linear_webhook_issue_create(self, client: TestClient, db_session: Session):
+        """Test Linear issue create event."""
+        from services.gateway.app.models.events import EventRaw
+
+        # Clean events
+        db_session.query(EventRaw).delete()
+        db_session.commit()
+
+        payload = {
+            "action": "create",
+            "type": "Issue",
+            "data": {
+                "id": "abc-123",
+                "identifier": "ENG-42",
+                "title": "Add authentication",
+                "description": "Implement OAuth2 flow",
+                "state": {"id": "state-123", "name": "In Progress"},
+                "team": {"id": "team-123", "name": "Engineering"},
+                "assignee": {"id": "user-123", "name": "Alice"}
+            },
+            "url": "https://linear.app/issue/ENG-42",
+            "createdAt": "2025-11-09T10:00:00.000Z"
+        }
+        headers = {"Linear-Signature": "sha256=test"}
+
+        response = client.post(
+            "/webhooks/linear",
+            json=payload,
+            headers=headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "ok"
+        assert "id" in data
+
+        # Verify event was stored
+        event = db_session.query(EventRaw).filter_by(source="linear").first()
+        assert event is not None
+        assert event.source == "linear"
+        assert event.event_type == "Issue:create"
+        assert "linear-Issue-create-abc-123" in event.delivery_id
+
+        # Verify payload contains issue data
+        assert "ENG-42" in event.payload
+        assert "authentication" in event.payload.lower()
+
+    def test_linear_webhook_issue_update(self, client: TestClient, db_session: Session):
+        """Test Linear issue update event."""
+        from services.gateway.app.models.events import EventRaw
+
+        db_session.query(EventRaw).delete()
+        db_session.commit()
+
+        payload = {
+            "action": "update",
+            "type": "Issue",
+            "data": {
+                "id": "def-456",
+                "identifier": "ENG-43",
+                "title": "Fix bug in login",
+                "state": {"name": "Done"}
+            },
+            "url": "https://linear.app/issue/ENG-43"
+        }
+
+        response = client.post(
+            "/webhooks/linear",
+            json=payload
+        )
+        assert response.status_code == 200
+
+        event = db_session.query(EventRaw).filter_by(source="linear").first()
+        assert event is not None
+        assert event.event_type == "Issue:update"
+        assert "Done" in event.payload
+
+    def test_linear_webhook_comment_create(self, client: TestClient, db_session: Session):
+        """Test Linear comment create event."""
+        from services.gateway.app.models.events import EventRaw
+
+        db_session.query(EventRaw).delete()
+        db_session.commit()
+
+        payload = {
+            "action": "create",
+            "type": "Comment",
+            "data": {
+                "id": "comment-789",
+                "body": "This looks good!",
+                "issue": {"id": "issue-123", "identifier": "ENG-42"}
+            }
+        }
+
+        response = client.post(
+            "/webhooks/linear",
+            json=payload
+        )
+        assert response.status_code == 200
+
+        event = db_session.query(EventRaw).filter_by(source="linear").first()
+        assert event is not None
+        assert event.event_type == "Comment:create"
+        assert "looks good" in event.payload.lower()
+
+    def test_linear_webhook_duplicate_delivery(self, client: TestClient, db_session: Session):
+        """Test that duplicate Linear webhook deliveries are rejected."""
+        from services.gateway.app.models.events import EventRaw
+
+        # Clean and create existing event
+        db_session.query(EventRaw).delete()
+        payload_data = json.dumps({
+            "action": "create",
+            "type": "Issue",
+            "data": {"id": "duplicate-123"}
+        })
+        existing = EventRaw(
+            source="linear",
+            event_type="Issue:create",
+            delivery_id="linear-Issue-create-duplicate-123",
+            payload=payload_data
+        )
+        db_session.add(existing)
+        db_session.commit()
+        existing_id = existing.id
+
+        # Try to send duplicate
+        payload = {
+            "action": "create",
+            "type": "Issue",
+            "data": {"id": "duplicate-123"}
+        }
+
+        response = client.post(
+            "/webhooks/linear",
+            json=payload
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "duplicate"
+        assert data["id"] == existing_id
+
+        # Verify no new event was created
+        count = db_session.query(EventRaw).filter_by(
+            delivery_id="linear-Issue-create-duplicate-123"
+        ).count()
+        assert count == 1
+
+    def test_linear_webhook_without_data(self, client: TestClient, db_session: Session):
+        """Test Linear webhook with malformed payload uses fallback delivery_id."""
+        from services.gateway.app.models.events import EventRaw
+
+        db_session.query(EventRaw).delete()
+        db_session.commit()
+
+        # Malformed payload (no data field)
+        payload = {"action": "create"}
+
+        response = client.post(
+            "/webhooks/linear",
+            json=payload
+        )
+        assert response.status_code == 200
+
+        # Should create event with timestamp-based delivery_id
+        event = db_session.query(EventRaw).filter_by(source="linear").first()
+        assert event is not None
+        assert event.delivery_id.startswith("linear-")
+        assert event.event_type == "unknown:create"  # Type is unknown, but action is parsed
+
+    def test_linear_webhook_stores_payload(self, client: TestClient, db_session: Session):
+        """Test that Linear webhook stores the full payload."""
+        from services.gateway.app.models.events import EventRaw
+
+        db_session.query(EventRaw).delete()
+        db_session.commit()
+
+        payload = {
+            "action": "update",
+            "type": "Issue",
+            "data": {
+                "id": "payload-test",
+                "identifier": "ENG-99",
+                "title": "Test payload storage",
+                "priority": 1
+            }
+        }
+
+        response = client.post(
+            "/webhooks/linear",
+            json=payload
+        )
+        assert response.status_code == 200
+
+        event = db_session.query(EventRaw).filter_by(source="linear").first()
+        assert event is not None
+        assert event.payload is not None
+        # Payload should contain our test data
+        assert "ENG-99" in event.payload
+        assert "payload-test" in event.payload

@@ -355,6 +355,166 @@ def create_app() -> FastAPI:
         overlap = int(payload.get("overlap", 100))
         return ingest_docs({"docs": docs, "chunk_size": chunk_size, "overlap": overlap})
 
+    @app.post("/crawl/linear")
+    def crawl_linear(payload: dict[str, Any]) -> dict[str, Any]:
+        """Crawl Linear issues and forward as docs for RAG indexing.
+
+        payload: { team_id?, state_ids?: ["started","completed"], limit?: 50, chunk_size?, overlap? }
+        Auth via env: LINEAR_API_KEY
+
+        This crawls issues from Linear for knowledge base indexing.
+        Useful for searching past decisions, requirements, discussions, etc.
+        """
+        api_key = os.getenv("LINEAR_API_KEY")
+        if not api_key:
+            raise HTTPException(status_code=400, detail="LINEAR_API_KEY not set")
+
+        # Linear GraphQL API
+        graphql_url = "https://api.linear.app/graphql"
+        headers = {"Authorization": api_key, "Content-Type": "application/json"}
+
+        # Filter options
+        team_id = payload.get("team_id")  # Filter by team
+        state_ids = payload.get("state_ids") or []  # Filter by state (started, completed, etc.)
+        limit = int(payload.get("limit", 50))  # Max issues to fetch
+
+        docs: list[dict[str, Any]] = []
+
+        def _post(client: httpx.Client, url: str, **kwargs):
+            """Retry helper with exponential backoff"""
+            backoff = 0.5
+            for _ in range(4):
+                try:
+                    r = client.post(url, **kwargs)
+                    if r.status_code in (429, 500, 502, 503, 504):
+                        time.sleep(backoff)
+                        backoff *= 2
+                        continue
+                    return r
+                except httpx.HTTPError:
+                    time.sleep(backoff)
+                    backoff *= 2
+            raise HTTPException(status_code=502, detail=f"POST failed: {url}")
+
+        with httpx.Client(timeout=30, headers=headers) as client:
+            # Build GraphQL query with filters
+            # Linear uses GraphQL for all queries
+            filters = []
+            if team_id:
+                filters.append(f'team: {{ id: {{ eq: "{team_id}" }} }}')
+            if state_ids:
+                state_filter = ", ".join([f'"{s}"' for s in state_ids])
+                filters.append(f"state: {{ name: {{ in: [{state_filter}] }} }}")
+
+            filter_clause = ", ".join(filters) if filters else ""
+            filter_arg = f"filter: {{ {filter_clause} }}" if filter_clause else ""
+
+            query = f"""
+            query {{
+              issues({filter_arg}, first: {limit}) {{
+                nodes {{
+                  id
+                  identifier
+                  title
+                  description
+                  state {{
+                    name
+                  }}
+                  priority
+                  url
+                  createdAt
+                  updatedAt
+                  team {{
+                    name
+                  }}
+                  assignee {{
+                    name
+                  }}
+                  comments {{
+                    nodes {{
+                      body
+                      user {{
+                        name
+                      }}
+                      createdAt
+                    }}
+                  }}
+                }}
+              }}
+            }}
+            """
+
+            try:
+                # Execute GraphQL query
+                resp = _post(client, graphql_url, json={"query": query}, headers=headers)
+                resp.raise_for_status()
+                data = resp.json()
+
+                # Check for GraphQL errors
+                if "errors" in data:
+                    error_msg = "; ".join([e.get("message", "") for e in data["errors"]])
+                    raise HTTPException(
+                        status_code=502, detail=f"Linear GraphQL error: {error_msg}"
+                    )
+
+                issues = data.get("data", {}).get("issues", {}).get("nodes", [])
+                for issue in issues:
+                    issue_id = issue.get("id", "")
+                    identifier = issue.get("identifier", "")
+                    title = issue.get("title", "Untitled")
+                    description = issue.get("description", "")
+                    state = issue.get("state", {}).get("name", "unknown")
+                    priority = issue.get("priority", 0)
+                    url = issue.get("url", "")
+                    team = issue.get("team", {}).get("name", "")
+                    assignee = issue.get("assignee", {}).get("name", "")
+
+                    # Combine title and description for indexing
+                    content = f"# {identifier}: {title}\n\n{description}"
+
+                    # Add metadata
+                    content += f"\n\n**Team:** {team}\n**State:** {state}\n**Priority:** {priority}"
+                    if assignee:
+                        content += f"\n**Assignee:** {assignee}"
+
+                    # Add comments if available
+                    comments = issue.get("comments", {}).get("nodes", [])
+                    if comments:
+                        content += "\n\n## Comments\n\n"
+                        for comment in comments:
+                            user = comment.get("user", {}).get("name", "Unknown")
+                            body = comment.get("body", "")
+                            content += f"**{user}**: {body}\n\n"
+
+                    doc_id = f"linear:issue:{issue_id}"
+                    docs.append(
+                        {
+                            "id": doc_id,
+                            "content": _strip_markup(content),
+                            "meta": {
+                                "source": "linear",
+                                "url": url,
+                                "title": f"{identifier}: {title}",
+                                "identifier": identifier,
+                                "state": state,
+                                "team": team,
+                                "priority": str(priority),
+                            },
+                        }
+                    )
+
+            except httpx.HTTPError as exc:
+                raise HTTPException(
+                    status_code=502, detail=f"Linear API error: {exc}"
+                )
+
+        if not docs:
+            return {"indexed": 0}
+
+        chunk_size = int(payload.get("chunk_size", 800))
+        overlap = int(payload.get("overlap", 100))
+        return ingest_docs({"docs": docs, "chunk_size": chunk_size, "overlap": overlap})
+
     # Optional simple scheduler for periodic crawls
     import threading
 
