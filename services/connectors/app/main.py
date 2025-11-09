@@ -515,6 +515,135 @@ def create_app() -> FastAPI:
         overlap = int(payload.get("overlap", 100))
         return ingest_docs({"docs": docs, "chunk_size": chunk_size, "overlap": overlap})
 
+    @app.post("/crawl/pagerduty")
+    def crawl_pagerduty(payload: dict[str, Any]) -> dict[str, Any]:
+        """Crawl PagerDuty incidents and forward as docs for RAG indexing.
+
+        payload: { statuses?: ["triggered","acknowledged","resolved"], limit?: 100, chunk_size?, overlap? }
+        Auth via env: PAGERDUTY_API_TOKEN
+
+        This crawls incidents from PagerDuty for knowledge base indexing.
+        Useful for searching past incidents, post-mortems, resolution patterns, etc.
+        """
+        api_token = os.getenv("PAGERDUTY_API_TOKEN")
+        if not api_token:
+            raise HTTPException(status_code=400, detail="PAGERDUTY_API_TOKEN not set")
+
+        # PagerDuty REST API v2
+        base_url = "https://api.pagerduty.com"
+        headers = {
+            "Authorization": f"Token token={api_token}",
+            "Accept": "application/vnd.pagerduty+json;version=2",
+            "Content-Type": "application/json",
+        }
+
+        # Filter options
+        statuses = payload.get("statuses") or ["triggered", "acknowledged", "resolved"]
+        limit = int(payload.get("limit", 100))  # Max incidents to fetch
+
+        docs: list[dict[str, Any]] = []
+
+        def _get(client: httpx.Client, url: str, **kwargs):
+            """Retry helper with exponential backoff"""
+            backoff = 0.5
+            for _ in range(4):
+                try:
+                    r = client.get(url, **kwargs)
+                    if r.status_code in (429, 500, 502, 503, 504):
+                        time.sleep(backoff)
+                        backoff *= 2
+                        continue
+                    return r
+                except httpx.HTTPError:
+                    time.sleep(backoff)
+                    backoff *= 2
+            raise HTTPException(status_code=502, detail=f"GET failed: {url}")
+
+        with httpx.Client(timeout=30, headers=headers) as client:
+            # Build query parameters
+            params = {"statuses[]": statuses, "limit": min(limit, 100)}  # API max is 100
+
+            try:
+                # Fetch incidents
+                resp = _get(client, f"{base_url}/incidents", params=params)
+                resp.raise_for_status()
+                data = resp.json()
+
+                incidents = data.get("incidents", [])
+                for incident in incidents:
+                    incident_id = incident.get("id", "")
+                    incident_number = incident.get("incident_number", 0)
+                    title = incident.get("title", "Untitled incident")
+                    description = incident.get("description", "")
+                    status = incident.get("status", "unknown")
+                    urgency = incident.get("urgency", "unknown")
+                    created_at = incident.get("created_at", "")
+                    html_url = incident.get("html_url", "")
+
+                    # Get service info
+                    service = incident.get("service", {})
+                    service_name = service.get("summary", "Unknown service")
+
+                    # Get assignment info
+                    assignments = incident.get("assignments", [])
+                    assignees = [a.get("assignee", {}).get("summary", "") for a in assignments]
+
+                    # Combine title and description for indexing
+                    content = f"# Incident #{incident_number}: {title}\n\n{description}"
+
+                    # Add metadata
+                    content += f"\n\n**Service:** {service_name}\n**Status:** {status}\n**Urgency:** {urgency}"
+                    if assignees:
+                        content += f"\n**Assigned to:** {', '.join(assignees)}"
+                    content += f"\n**Created:** {created_at}"
+
+                    # Fetch incident notes (for post-mortem content)
+                    try:
+                        notes_resp = _get(
+                            client, f"{base_url}/incidents/{incident_id}/notes"
+                        )
+                        if notes_resp.status_code == 200:
+                            notes_data = notes_resp.json()
+                            notes = notes_data.get("notes", [])
+                            if notes:
+                                content += "\n\n## Notes\n\n"
+                                for note in notes:
+                                    note_content = note.get("content", "")
+                                    note_user = note.get("user", {}).get("summary", "Unknown")
+                                    content += f"**{note_user}**: {note_content}\n\n"
+                    except Exception:
+                        # Skip notes if they fail to fetch
+                        pass
+
+                    doc_id = f"pagerduty:incident:{incident_id}"
+                    docs.append(
+                        {
+                            "id": doc_id,
+                            "content": _strip_markup(content),
+                            "meta": {
+                                "source": "pagerduty",
+                                "url": html_url,
+                                "title": f"Incident #{incident_number}: {title}",
+                                "incident_number": str(incident_number),
+                                "status": status,
+                                "urgency": urgency,
+                                "service": service_name,
+                            },
+                        }
+                    )
+
+            except httpx.HTTPError as exc:
+                raise HTTPException(
+                    status_code=502, detail=f"PagerDuty API error: {exc}"
+                )
+
+        if not docs:
+            return {"indexed": 0}
+
+        chunk_size = int(payload.get("chunk_size", 800))
+        overlap = int(payload.get("overlap", 100))
+        return ingest_docs({"docs": docs, "chunk_size": chunk_size, "overlap": overlap})
+
     # Optional simple scheduler for periodic crawls
     import threading
 

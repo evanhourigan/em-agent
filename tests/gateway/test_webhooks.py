@@ -738,3 +738,218 @@ class TestLinearWebhook:
         # Payload should contain our test data
         assert "ENG-99" in event.payload
         assert "payload-test" in event.payload
+
+
+class TestPagerDutyWebhook:
+    """Tests for POST /webhooks/pagerduty endpoint."""
+
+    def test_pagerduty_webhook_incident_triggered(self, client: TestClient, db_session: Session):
+        """Test PagerDuty incident.triggered event."""
+        from services.gateway.app.models.events import EventRaw
+
+        # Clean events
+        db_session.query(EventRaw).delete()
+        db_session.commit()
+
+        payload = {
+            "event": {
+                "id": "event-123",
+                "event_type": "incident.triggered",
+                "resource_type": "incident",
+                "occurred_at": "2025-11-09T10:00:00Z",
+                "data": {
+                    "id": "P123ABC",
+                    "incident_number": 42,
+                    "title": "Database high CPU usage",
+                    "status": "triggered",
+                    "urgency": "high",
+                    "service": {
+                        "summary": "Production Database"
+                    }
+                }
+            }
+        }
+        headers = {"X-PagerDuty-Signature": "sha256=test"}
+
+        response = client.post(
+            "/webhooks/pagerduty",
+            json=payload,
+            headers=headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "ok"
+        assert "id" in data
+
+        # Verify event was stored
+        event = db_session.query(EventRaw).filter_by(source="pagerduty").first()
+        assert event is not None
+        assert event.source == "pagerduty"
+        assert event.event_type == "incident.triggered"
+        assert "pagerduty-incident.triggered-P123ABC" in event.delivery_id
+
+        # Verify payload contains incident data
+        assert "P123ABC" in event.payload
+        assert "Database" in event.payload
+
+    def test_pagerduty_webhook_incident_resolved(self, client: TestClient, db_session: Session):
+        """Test PagerDuty incident.resolved event."""
+        from services.gateway.app.models.events import EventRaw
+
+        db_session.query(EventRaw).delete()
+        db_session.commit()
+
+        payload = {
+            "event": {
+                "event_type": "incident.resolved",
+                "data": {
+                    "id": "P456DEF",
+                    "incident_number": 43,
+                    "title": "API latency resolved",
+                    "status": "resolved"
+                }
+            }
+        }
+
+        response = client.post(
+            "/webhooks/pagerduty",
+            json=payload
+        )
+        assert response.status_code == 200
+
+        event = db_session.query(EventRaw).filter_by(source="pagerduty").first()
+        assert event is not None
+        assert event.event_type == "incident.resolved"
+        assert "resolved" in event.payload
+
+    def test_pagerduty_webhook_incident_acknowledged(self, client: TestClient, db_session: Session):
+        """Test PagerDuty incident.acknowledged event."""
+        from services.gateway.app.models.events import EventRaw
+
+        db_session.query(EventRaw).delete()
+        db_session.commit()
+
+        payload = {
+            "event": {
+                "event_type": "incident.acknowledged",
+                "data": {
+                    "id": "P789GHI",
+                    "incident_number": 44,
+                    "title": "Memory leak detected",
+                    "assignments": [
+                        {"assignee": {"summary": "Alice (On-Call)"}}
+                    ]
+                }
+            }
+        }
+
+        response = client.post(
+            "/webhooks/pagerduty",
+            json=payload
+        )
+        assert response.status_code == 200
+
+        event = db_session.query(EventRaw).filter_by(source="pagerduty").first()
+        assert event is not None
+        assert event.event_type == "incident.acknowledged"
+        assert "Alice" in event.payload
+
+    def test_pagerduty_webhook_duplicate_delivery(self, client: TestClient, db_session: Session):
+        """Test that duplicate PagerDuty webhook deliveries are rejected."""
+        from services.gateway.app.models.events import EventRaw
+
+        # Clean and create existing event
+        db_session.query(EventRaw).delete()
+        payload_data = json.dumps({
+            "event": {
+                "event_type": "incident.triggered",
+                "data": {"id": "PDUPLICATE"}
+            }
+        })
+        existing = EventRaw(
+            source="pagerduty",
+            event_type="incident.triggered",
+            delivery_id="pagerduty-incident.triggered-PDUPLICATE",
+            payload=payload_data
+        )
+        db_session.add(existing)
+        db_session.commit()
+        existing_id = existing.id
+
+        # Try to send duplicate
+        payload = {
+            "event": {
+                "event_type": "incident.triggered",
+                "data": {"id": "PDUPLICATE"}
+            }
+        }
+
+        response = client.post(
+            "/webhooks/pagerduty",
+            json=payload
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "duplicate"
+        assert data["id"] == existing_id
+
+        # Verify no new event was created
+        count = db_session.query(EventRaw).filter_by(
+            delivery_id="pagerduty-incident.triggered-PDUPLICATE"
+        ).count()
+        assert count == 1
+
+    def test_pagerduty_webhook_without_event_data(self, client: TestClient, db_session: Session):
+        """Test PagerDuty webhook with malformed payload uses fallback delivery_id."""
+        from services.gateway.app.models.events import EventRaw
+
+        db_session.query(EventRaw).delete()
+        db_session.commit()
+
+        # Malformed payload (no event field)
+        payload = {"something": "else"}
+
+        response = client.post(
+            "/webhooks/pagerduty",
+            json=payload
+        )
+        assert response.status_code == 200
+
+        # Should create event with timestamp-based delivery_id
+        event = db_session.query(EventRaw).filter_by(source="pagerduty").first()
+        assert event is not None
+        assert event.delivery_id.startswith("pagerduty-")
+        assert event.event_type == "unknown"
+
+    def test_pagerduty_webhook_stores_payload(self, client: TestClient, db_session: Session):
+        """Test that PagerDuty webhook stores the full payload."""
+        from services.gateway.app.models.events import EventRaw
+
+        db_session.query(EventRaw).delete()
+        db_session.commit()
+
+        payload = {
+            "event": {
+                "event_type": "incident.escalated",
+                "data": {
+                    "id": "PTEST999",
+                    "incident_number": 999,
+                    "title": "Test payload storage",
+                    "urgency": "high",
+                    "priority": {"summary": "P1"}
+                }
+            }
+        }
+
+        response = client.post(
+            "/webhooks/pagerduty",
+            json=payload
+        )
+        assert response.status_code == 200
+
+        event = db_session.query(EventRaw).filter_by(source="pagerduty").first()
+        assert event is not None
+        assert event.payload is not None
+        # Payload should contain our test data
+        assert "PTEST999" in event.payload
+        assert "999" in event.payload or 999 in json.loads(event.payload).get("event", {}).get("data", {}).get("incident_number", 0)

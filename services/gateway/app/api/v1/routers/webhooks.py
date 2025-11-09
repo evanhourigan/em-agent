@@ -308,3 +308,94 @@ async def linear_webhook(
         pass
 
     return {"status": "ok", "id": evt.id}
+
+
+@router.post("/pagerduty")
+async def pagerduty_webhook(
+    request: Request,
+    session: Session = Depends(get_db_session),
+    x_pagerduty_signature: str | None = Header(None, alias="X-PagerDuty-Signature"),
+) -> dict:
+    """
+    PagerDuty webhook handler.
+
+    Handles incident events, on-call changes, etc.
+    See: https://developer.pagerduty.com/docs/webhooks/v3-overview/
+
+    PagerDuty sends:
+    - X-PagerDuty-Signature: HMAC-SHA256 signature (optional verification)
+    - Payload with: event (nested object with type, occurred_at, data)
+    - Event types: incident.triggered, incident.acknowledged, incident.resolved, etc.
+    """
+    body = await request.body()
+
+    # Parse payload to extract event info
+    import json
+
+    try:
+        payload_json = json.loads(body)
+        # PagerDuty v3 webhook format
+        event = payload_json.get("event", {})
+        event_type = event.get("event_type", "unknown")
+
+        # Extract incident data
+        data = event.get("data", {})
+        incident_id = data.get("id", "")
+
+        # Use event_type + incident_id as delivery_id for idempotency
+        # Example: "pagerduty-incident.triggered-PXXXXXX"
+        delivery = f"pagerduty-{event_type}-{incident_id}"
+    except Exception:
+        # If parsing fails, use a timestamp-based ID
+        import time
+
+        delivery = f"pagerduty-{int(time.time() * 1000)}"
+        event_type = "unknown"
+
+    # Idempotency check
+    if delivery:
+        exists = session.execute(
+            select(EventRaw).where(
+                EventRaw.source == "pagerduty", EventRaw.delivery_id == delivery
+            )
+        ).scalar_one_or_none()
+        if exists:
+            return {"status": "duplicate", "id": exists.id}
+
+    # Signature verification (optional)
+    secret = request.app.state.__dict__.get("pagerduty_webhook_secret")
+    if secret and x_pagerduty_signature:
+        expected = _hmac_sha256(secret, body)
+        if not hmac.compare_digest(expected, x_pagerduty_signature):
+            raise HTTPException(status_code=401, detail="invalid signature")
+
+    # Store event
+    evt = EventRaw(
+        source="pagerduty",
+        event_type=event_type,
+        delivery_id=delivery,
+        signature=x_pagerduty_signature,
+        headers=dict(request.headers),
+        payload=body.decode("utf-8", errors="replace"),
+    )
+    session.add(evt)
+    session.commit()
+
+    # Publish to event bus
+    try:
+        import asyncio
+
+        asyncio.create_task(
+            get_event_bus().publish_json(
+                subject="events.pagerduty",
+                payload={
+                    "id": evt.id,
+                    "event_type": evt.event_type,
+                    "delivery_id": evt.delivery_id,
+                },
+            )
+        )
+    except Exception:
+        pass
+
+    return {"status": "ok", "id": evt.id}
