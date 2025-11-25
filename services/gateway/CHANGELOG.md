@@ -7,10 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### To Be Released in v0.7.0
-- CircleCI integration for CI/CD pipeline tracking
-- Jenkins integration for build and deployment tracking
-- GitLab CI integration for pipeline events
+### To Be Released in v0.8.0
+- Kubernetes integration for pod/deployment events
+- ArgoCD integration for GitOps deployments
+- AWS ECS integration for container deployments
+- Heroku integration for platform deployments
+
+## [0.7.0] - 2025-11-25
+
+### Added - Phase 3: CI/CD Platform Diversity
+- CircleCI webhook handler (POST /webhooks/circleci)
+  - Workflow-completed and job-completed events
+  - Ping/pong webhook verification
+  - Circleci-Signature header support
+- Jenkins webhook handler (POST /webhooks/jenkins)
+  - Build completion events (SUCCESS, FAILURE, UNSTABLE)
+  - Job status updates and pipeline events
+  - Generic webhook trigger plugin support
+- GitLab CI webhook handler (POST /webhooks/gitlab)
+  - Pipeline Hook, Job Hook, Deployment Hook
+  - X-Gitlab-Event and X-Gitlab-Token headers
+  - Push and Merge Request events
+
+### Changed
+- Updated deployment_frequency.sql for multi-platform tracking
+  - Added CTEs for GitHub Actions, CircleCI, Jenkins, GitLab
+  - Per-platform breakdown in metrics output
+  - Unified deployment counting across all CI/CD systems
+- Enabled feature flags:
+  - integrations_circleci_enabled = True
+  - integrations_jenkins_enabled = True
+  - integrations_gitlab_enabled = True
 
 ## [0.6.0] - 2025-11-25
 
