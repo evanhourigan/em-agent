@@ -738,3 +738,279 @@ async def sentry_webhook(
         pass
 
     return {"status": "ok", "id": evt.id}
+
+
+@router.post("/circleci")
+async def circleci_webhook(
+    request: Request,
+    session: Session = Depends(get_db_session),
+    circleci_signature: str | None = Header(None, alias="Circleci-Signature"),
+) -> dict:
+    """
+    CircleCI webhook handler for pipeline and workflow events.
+
+    Supports:
+    - workflow-completed: Pipeline workflow completion
+    - job-completed: Individual job completion
+    - ping: Webhook verification
+
+    See: https://circleci.com/docs/webhooks/
+    """
+    settings = get_settings()
+    if not settings.integrations_circleci_enabled:
+        raise HTTPException(status_code=503, detail="CircleCI integration is disabled")
+
+    body = await request.body()
+
+    # Parse payload to extract event info
+    import json
+    import time
+
+    try:
+        payload_json = json.loads(body)
+
+        # CircleCI webhook format
+        event_type = payload_json.get("type", "unknown")  # workflow-completed, job-completed, ping
+
+        # Handle ping events
+        if event_type == "ping":
+            return {"status": "ok", "message": "pong"}
+
+        # Extract workflow/job info
+        workflow = payload_json.get("workflow", {})
+        pipeline = payload_json.get("pipeline", {})
+        
+        workflow_id = workflow.get("id") or pipeline.get("id")
+        
+        # Use workflow_id for delivery_id
+        delivery = f"circleci-{workflow_id}" if workflow_id else f"circleci-{int(time.time() * 1000)}"
+    except Exception:
+        delivery = f"circleci-{int(time.time() * 1000)}"
+        event_type = "unknown"
+
+    # Idempotency check
+    if delivery:
+        exists = session.execute(
+            select(EventRaw).where(
+                EventRaw.source == "circleci", EventRaw.delivery_id == delivery
+            )
+        ).scalar_one_or_none()
+        if exists:
+            return {"status": "ok", "id": exists.id}
+
+    # Store event
+    evt = EventRaw(
+        source="circleci",
+        event_type=event_type,
+        delivery_id=delivery,
+        signature=circleci_signature,
+        headers=dict(request.headers),
+        payload=body.decode("utf-8", errors="replace"),
+    )
+    session.add(evt)
+    session.commit()
+
+    # Publish to event bus
+    try:
+        import asyncio
+
+        asyncio.create_task(
+            get_event_bus().publish_json(
+                subject="events.circleci",
+                payload={
+                    "id": evt.id,
+                    "event_type": evt.event_type,
+                    "delivery_id": evt.delivery_id,
+                },
+            )
+        )
+    except Exception:
+        pass
+
+    return {"status": "ok", "id": evt.id}
+
+
+@router.post("/jenkins")
+async def jenkins_webhook(
+    request: Request,
+    session: Session = Depends(get_db_session),
+) -> dict:
+    """
+    Jenkins webhook handler for build and job events.
+
+    Supports:
+    - Build completion events
+    - Job status updates
+    - Pipeline events
+
+    See: https://plugins.jenkins.io/generic-webhook-trigger/
+    """
+    settings = get_settings()
+    if not settings.integrations_jenkins_enabled:
+        raise HTTPException(status_code=503, detail="Jenkins integration is disabled")
+
+    body = await request.body()
+
+    # Parse payload to extract event info
+    import json
+    import time
+
+    try:
+        payload_json = json.loads(body)
+
+        # Jenkins webhook format (varies by plugin)
+        # Common fields: build, name, url, status, result
+        build_info = payload_json.get("build", {})
+        build_number = build_info.get("number") or payload_json.get("number")
+        job_name = payload_json.get("name") or build_info.get("full_url", "").split("/")[-2]
+        
+        # Event type based on status/result
+        result = payload_json.get("result") or build_info.get("status", "unknown")
+        event_type = f"build_{result.lower()}" if result else "build_unknown"
+        
+        # Use job_name + build_number for delivery_id
+        if job_name and build_number:
+            delivery = f"jenkins-{job_name}-{build_number}"
+        else:
+            delivery = f"jenkins-{int(time.time() * 1000)}"
+    except Exception:
+        delivery = f"jenkins-{int(time.time() * 1000)}"
+        event_type = "build_unknown"
+
+    # Idempotency check
+    if delivery:
+        exists = session.execute(
+            select(EventRaw).where(
+                EventRaw.source == "jenkins", EventRaw.delivery_id == delivery
+            )
+        ).scalar_one_or_none()
+        if exists:
+            return {"status": "ok", "id": exists.id}
+
+    # Store event
+    evt = EventRaw(
+        source="jenkins",
+        event_type=event_type,
+        delivery_id=delivery,
+        signature=None,
+        headers=dict(request.headers),
+        payload=body.decode("utf-8", errors="replace"),
+    )
+    session.add(evt)
+    session.commit()
+
+    # Publish to event bus
+    try:
+        import asyncio
+
+        asyncio.create_task(
+            get_event_bus().publish_json(
+                subject="events.jenkins",
+                payload={
+                    "id": evt.id,
+                    "event_type": evt.event_type,
+                    "delivery_id": evt.delivery_id,
+                },
+            )
+        )
+    except Exception:
+        pass
+
+    return {"status": "ok", "id": evt.id}
+
+
+@router.post("/gitlab")
+async def gitlab_webhook(
+    request: Request,
+    session: Session = Depends(get_db_session),
+    x_gitlab_event: str | None = Header(None, alias="X-Gitlab-Event"),
+    x_gitlab_token: str | None = Header(None, alias="X-Gitlab-Token"),
+) -> dict:
+    """
+    GitLab webhook handler for pipeline, job, and deployment events.
+
+    Supports:
+    - Pipeline Hook: Pipeline status events
+    - Job Hook: Job completion events
+    - Deployment Hook: Deployment events
+    - Push Hook: Code push events
+    - Merge Request Hook: MR events
+
+    See: https://docs.gitlab.com/ee/user/project/integrations/webhooks.html
+    """
+    settings = get_settings()
+    if not settings.integrations_gitlab_enabled:
+        raise HTTPException(status_code=503, detail="GitLab integration is disabled")
+
+    body = await request.body()
+
+    # Parse payload to extract event info
+    import json
+    import time
+
+    try:
+        payload_json = json.loads(body)
+
+        # GitLab webhook format
+        object_kind = payload_json.get("object_kind", "unknown")  # pipeline, build, deployment, etc.
+        
+        # Extract ID based on object kind
+        if object_kind == "pipeline":
+            event_id = payload_json.get("object_attributes", {}).get("id")
+            event_type = f"pipeline_{payload_json.get('object_attributes', {}).get('status', 'unknown')}"
+        elif object_kind == "build":
+            event_id = payload_json.get("build_id")
+            event_type = f"job_{payload_json.get('build_status', 'unknown')}"
+        elif object_kind == "deployment":
+            event_id = payload_json.get("deployment_id")
+            event_type = f"deployment_{payload_json.get('status', 'unknown')}"
+        else:
+            event_id = payload_json.get("id") or payload_json.get("object_attributes", {}).get("id")
+            event_type = object_kind
+
+        # Use event_id for delivery_id
+        delivery = f"gitlab-{event_id}" if event_id else f"gitlab-{int(time.time() * 1000)}"
+    except Exception:
+        delivery = f"gitlab-{int(time.time() * 1000)}"
+        event_type = "unknown"
+
+    # Idempotency check
+    if delivery:
+        exists = session.execute(
+            select(EventRaw).where(
+                EventRaw.source == "gitlab", EventRaw.delivery_id == delivery
+            )
+        ).scalar_one_or_none()
+        if exists:
+            return {"status": "ok", "id": exists.id}
+
+    # Store event
+    evt = EventRaw(
+        source="gitlab",
+        event_type=event_type,
+        delivery_id=delivery,
+        signature=None,
+        headers=dict(request.headers),
+        payload=body.decode("utf-8", errors="replace"),
+    )
+    session.add(evt)
+    session.commit()
+
+    # Publish to event bus
+    try:
+        import asyncio
+
+        asyncio.create_task(
+            get_event_bus().publish_json(
+                subject="events.gitlab",
+                payload={
+                    "id": evt.id,
+                    "event_type": evt.event_type,
+                    "delivery_id": evt.delivery_id,
+                },
+            )
+        )
+    except Exception:
+        pass
+
+    return {"status": "ok", "id": evt.id}

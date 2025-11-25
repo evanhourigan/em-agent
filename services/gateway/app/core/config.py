@@ -68,9 +68,9 @@ class Settings(BaseSettings):
     integrations_github_actions_enabled: bool = True  # Enabled in v0.5.0
     integrations_datadog_enabled: bool = True  # Enabled in v0.6.0
     integrations_sentry_enabled: bool = True  # Enabled in v0.6.0
-    integrations_circleci_enabled: bool = False
-    integrations_jenkins_enabled: bool = False
-    integrations_gitlab_enabled: bool = False
+    integrations_circleci_enabled: bool = True  # Enabled in v0.7.0
+    integrations_jenkins_enabled: bool = True  # Enabled in v0.7.0
+    integrations_gitlab_enabled: bool = True  # Enabled in v0.7.0
     integrations_argocd_enabled: bool = False
     integrations_kubernetes_enabled: bool = False
     integrations_ecs_enabled: bool = False
