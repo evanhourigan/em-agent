@@ -7,10 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### To Be Released in v0.5.0
-- GitHub Actions workflow_run event tracking
-- Updated dbt metrics for accurate deployment frequency
-- Bi-directional Slack notifications
+### To Be Released in v0.6.0
+- Datadog integration for metrics and APM traces
+- Sentry integration for error tracking and releases
+- Change Failure Rate metric calculation
+
+## [0.5.0] - 2025-11-24
+
+### Added - Phase 1: Core DORA Metrics
+- GitHub Actions workflow_run event tracking via existing webhook
+- Automatic Slack notifications for deployment workflows
+  - Filters workflows containing "deploy" or "production"
+  - Rich formatting with emojis, duration, workflow URL
+  - Async delivery via SlackClient.post_deployment_notification()
+- START_HERE_AFTER_COMPACTION.md quick reference guide
+
+### Changed
+- Updated deployment_frequency.sql to use workflow_run events instead of releases
+- Updated dora_lead_time.sql to calculate PR merge → deployment time
+- Fixed JSON operators in SQL queries (-> vs ->>)
+
+### Fixed
+- SQL query type casting for JSON comparisons in dbt models
 
 ## [0.4.1] - 2025-11-19
 
