@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ....core.config import get_settings
 from ....models.events import EventRaw
 from ....services.event_bus import get_event_bus
 from ...deps import get_db_session
@@ -548,6 +549,184 @@ async def slack_webhook(
         asyncio.create_task(
             get_event_bus().publish_json(
                 subject="events.slack",
+                payload={
+                    "id": evt.id,
+                    "event_type": evt.event_type,
+                    "delivery_id": evt.delivery_id,
+                },
+            )
+        )
+    except Exception:
+        pass
+
+    return {"status": "ok", "id": evt.id}
+
+@router.post("/datadog")
+async def datadog_webhook(
+    request: Request,
+    session: Session = Depends(get_db_session),
+) -> dict:
+    """
+    Datadog webhook handler for monitors, events, and metrics.
+
+    Supports:
+    - Monitor alerts (triggered, recovered, no data)
+    - Events (deployments, config changes, incidents)
+    - Custom webhooks
+    - APM trace alerts
+
+    See: https://docs.datadoghq.com/integrations/webhooks/
+    """
+    settings = get_settings()
+    if not settings.integrations_datadog_enabled:
+        raise HTTPException(status_code=503, detail="Datadog integration is disabled")
+
+    body = await request.body()
+
+    # Parse payload to extract event info
+    import json
+    import time
+
+    try:
+        payload_json = json.loads(body)
+
+        # Datadog sends different structures for monitors vs events
+        # Monitor alerts have 'alert_id', events have 'event_id'
+        event_id = payload_json.get("id") or payload_json.get("alert_id") or payload_json.get("event_id")
+        event_type = payload_json.get("event_type", "alert")  # alert, event, metric, etc.
+
+        # Extract alert/monitor info if present
+        if "alert_type" in payload_json:
+            event_type = f"monitor_{payload_json['alert_type']}"  # e.g., monitor_error, monitor_warning
+
+        # Use event_id or timestamp for delivery_id
+        delivery = f"datadog-{event_id}" if event_id else f"datadog-{int(time.time() * 1000)}"
+    except Exception:
+        delivery = f"datadog-{int(time.time() * 1000)}"
+        event_type = "unknown"
+
+    # Idempotency check
+    if delivery:
+        exists = session.execute(
+            select(EventRaw).where(
+                EventRaw.source == "datadog", EventRaw.delivery_id == delivery
+            )
+        ).scalar_one_or_none()
+        if exists:
+            return {"status": "ok", "id": exists.id}
+
+    # Store event
+    evt = EventRaw(
+        source="datadog",
+        event_type=event_type,
+        delivery_id=delivery,
+        signature=None,  # Datadog doesn't use signature verification
+        headers=dict(request.headers),
+        payload=body.decode("utf-8", errors="replace"),
+    )
+    session.add(evt)
+    session.commit()
+
+    # Publish to event bus
+    try:
+        import asyncio
+
+        asyncio.create_task(
+            get_event_bus().publish_json(
+                subject="events.datadog",
+                payload={
+                    "id": evt.id,
+                    "event_type": evt.event_type,
+                    "delivery_id": evt.delivery_id,
+                },
+            )
+        )
+    except Exception:
+        pass
+
+    return {"status": "ok", "id": evt.id}
+
+
+@router.post("/sentry")
+async def sentry_webhook(
+    request: Request,
+    session: Session = Depends(get_db_session),
+    sentry_hook_resource: str | None = Header(None, alias="Sentry-Hook-Resource"),
+) -> dict:
+    """
+    Sentry webhook handler for errors, issues, and releases.
+
+    Supports:
+    - issue.created
+    - issue.resolved
+    - issue.assigned
+    - issue.ignored
+    - event.alert
+    - event.created
+
+    See: https://docs.sentry.io/product/integrations/integration-platform/webhooks/
+    """
+    settings = get_settings()
+    if not settings.integrations_sentry_enabled:
+        raise HTTPException(status_code=503, detail="Sentry integration is disabled")
+
+    body = await request.body()
+
+    # Parse payload to extract event info
+    import json
+    import time
+
+    try:
+        payload_json = json.loads(body)
+
+        # Sentry webhook format
+        action = payload_json.get("action", "unknown")  # e.g., created, resolved, assigned
+        resource = sentry_hook_resource or "unknown"  # issue, event, installation
+
+        # Extract issue/event ID for idempotency
+        data = payload_json.get("data", {})
+        issue_id = data.get("issue", {}).get("id") if isinstance(data.get("issue"), dict) else None
+        event_id = data.get("event", {}).get("event_id") if isinstance(data.get("event"), dict) else None
+
+        # Construct event type
+        event_type = f"{resource}.{action}"  # e.g., issue.created, event.alert
+
+        # Use issue_id or event_id for delivery_id
+        unique_id = issue_id or event_id or int(time.time() * 1000)
+        delivery = f"sentry-{resource}-{unique_id}"
+    except Exception:
+        delivery = f"sentry-{int(time.time() * 1000)}"
+        event_type = "unknown"
+
+    # Idempotency check
+    if delivery:
+        exists = session.execute(
+            select(EventRaw).where(
+                EventRaw.source == "sentry", EventRaw.delivery_id == delivery
+            )
+        ).scalar_one_or_none()
+        if exists:
+            return {"status": "ok", "id": exists.id}
+
+    # Store event
+    evt = EventRaw(
+        source="sentry",
+        event_type=event_type,
+        delivery_id=delivery,
+        signature=None,  # Sentry uses separate signature header if needed
+        headers=dict(request.headers),
+        payload=body.decode("utf-8", errors="replace"),
+    )
+    session.add(evt)
+    session.commit()
+
+    # Publish to event bus
+    try:
+        import asyncio
+
+        asyncio.create_task(
+            get_event_bus().publish_json(
+                subject="events.sentry",
                 payload={
                     "id": evt.id,
                     "event_type": evt.event_type,

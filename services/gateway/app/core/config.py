@@ -65,9 +65,9 @@ class Settings(BaseSettings):
     integrations_slack_enabled: bool = True
 
     # New integrations (default disabled for gradual rollout)
-    integrations_github_actions_enabled: bool = False
-    integrations_datadog_enabled: bool = False
-    integrations_sentry_enabled: bool = False
+    integrations_github_actions_enabled: bool = True  # Enabled in v0.5.0
+    integrations_datadog_enabled: bool = True  # Enabled in v0.6.0
+    integrations_sentry_enabled: bool = True  # Enabled in v0.6.0
     integrations_circleci_enabled: bool = False
     integrations_jenkins_enabled: bool = False
     integrations_gitlab_enabled: bool = False
