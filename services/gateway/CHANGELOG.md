@@ -7,10 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### To Be Released in v0.9.0
-- Codecov integration for code coverage tracking
-- SonarQube integration for code quality metrics
-- Enhanced Slack notifications with deployment context
+### To Be Released in v1.0.0 - DORA COMPLETE!
+- Production hardening and optimization
+- Comprehensive documentation updates
+- Security review and improvements
+- Performance benchmarking
+
+## [0.9.0] - 2025-11-25
+
+### Added - Phase 5: Code Quality Tracking
+- Codecov webhook handler (POST /webhooks/codecov)
+  - Coverage upload events and notifications
+  - Coverage change tracking
+- SonarQube webhook handler (POST /webhooks/sonarqube)
+  - Quality Gate status changes
+  - X-Sonar-Webhook-HMAC-SHA256 support
+- code_quality_metrics.sql dbt model
+  - Weekly coverage and quality trends
+  - Multi-source aggregation (Codecov + SonarQube)
+
+### Changed
+- Enabled feature flags:
+  - integrations_codecov_enabled = True
+  - integrations_sonarqube_enabled = True
+
+### Milestone
+- 🎉 **18 INTEGRATIONS ACHIEVED** (95% of target 19)
+- All 4 DORA metrics operational with multi-platform support
 
 ## [0.8.0] - 2025-11-25
 
