@@ -8,7 +8,7 @@ class Settings(BaseSettings):
 
     env: str = "development"
     app_name: str = "EM Agent Gateway"
-    app_version: str = "0.9.0"  # Read from VERSION file in production
+    app_version: str = "1.0.0"  # Read from VERSION file in production
 
     # CORS Configuration
     # In development: ["*"] is acceptable for convenience
