@@ -102,7 +102,10 @@ async def github_webhook(
                 conclusion = workflow_run.get("conclusion", "unknown")
 
                 # Filter for deployment workflows
-                if "deploy" in workflow_name.lower() or "production" in workflow_name.lower():
+                if (
+                    "deploy" in workflow_name.lower()
+                    or "production" in workflow_name.lower()
+                ):
                     repo = payload_json.get("repository", {})
                     repo_name = repo.get("full_name", "unknown")
 
@@ -112,9 +115,15 @@ async def github_webhook(
                     updated_at_str = workflow_run.get("updated_at")
                     if created_at_str and updated_at_str:
                         try:
-                            created_at = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
-                            updated_at = datetime.fromisoformat(updated_at_str.replace("Z", "+00:00"))
-                            duration_seconds = int((updated_at - created_at).total_seconds())
+                            created_at = datetime.fromisoformat(
+                                created_at_str.replace("Z", "+00:00")
+                            )
+                            updated_at = datetime.fromisoformat(
+                                updated_at_str.replace("Z", "+00:00")
+                            )
+                            duration_seconds = int(
+                                (updated_at - created_at).total_seconds()
+                            )
                         except Exception:
                             pass
 
@@ -460,7 +469,9 @@ async def pagerduty_webhook(
 async def slack_webhook(
     request: Request,
     session: Session = Depends(get_db_session),
-    x_slack_request_timestamp: str | None = Header(None, alias="X-Slack-Request-Timestamp"),
+    x_slack_request_timestamp: str | None = Header(
+        None, alias="X-Slack-Request-Timestamp"
+    ),
     x_slack_signature: str | None = Header(None, alias="X-Slack-Signature"),
 ) -> dict:
     """
@@ -501,7 +512,9 @@ async def slack_webhook(
 
         # Use event_id as delivery_id for idempotency
         # Slack's event_id is globally unique
-        delivery = f"slack-{event_id}" if event_id else f"slack-{int(time.time() * 1000)}"
+        delivery = (
+            f"slack-{event_id}" if event_id else f"slack-{int(time.time() * 1000)}"
+        )
     except Exception:
         # If parsing fails, use a timestamp-based ID
         delivery = f"slack-{int(time.time() * 1000)}"
@@ -522,11 +535,12 @@ async def slack_webhook(
     if secret and x_slack_signature and x_slack_request_timestamp:
         # Slack signature verification
         sig_basestring = f"v0:{x_slack_request_timestamp}:{body.decode('utf-8')}"
-        expected = "v0=" + hmac.new(
-            secret.encode("utf-8"),
-            sig_basestring.encode("utf-8"),
-            hashlib.sha256
-        ).hexdigest()
+        expected = (
+            "v0="
+            + hmac.new(
+                secret.encode("utf-8"), sig_basestring.encode("utf-8"), hashlib.sha256
+            ).hexdigest()
+        )
         if not hmac.compare_digest(expected, x_slack_signature):
             raise HTTPException(status_code=401, detail="invalid signature")
 
@@ -561,6 +575,7 @@ async def slack_webhook(
 
     return {"status": "ok", "id": evt.id}
 
+
 @router.post("/datadog")
 async def datadog_webhook(
     request: Request,
@@ -592,15 +607,23 @@ async def datadog_webhook(
 
         # Datadog sends different structures for monitors vs events
         # Monitor alerts have 'alert_id', events have 'event_id'
-        event_id = payload_json.get("id") or payload_json.get("alert_id") or payload_json.get("event_id")
-        event_type = payload_json.get("event_type", "alert")  # alert, event, metric, etc.
+        event_id = (
+            payload_json.get("id")
+            or payload_json.get("alert_id")
+            or payload_json.get("event_id")
+        )
+        event_type = payload_json.get(
+            "event_type", "alert"
+        )  # alert, event, metric, etc.
 
         # Extract alert/monitor info if present
         if "alert_type" in payload_json:
             event_type = f"monitor_{payload_json['alert_type']}"  # e.g., monitor_error, monitor_warning
 
         # Use event_id or timestamp for delivery_id
-        delivery = f"datadog-{event_id}" if event_id else f"datadog-{int(time.time() * 1000)}"
+        delivery = (
+            f"datadog-{event_id}" if event_id else f"datadog-{int(time.time() * 1000)}"
+        )
     except Exception:
         delivery = f"datadog-{int(time.time() * 1000)}"
         event_type = "unknown"
@@ -680,13 +703,23 @@ async def sentry_webhook(
         payload_json = json.loads(body)
 
         # Sentry webhook format
-        action = payload_json.get("action", "unknown")  # e.g., created, resolved, assigned
+        action = payload_json.get(
+            "action", "unknown"
+        )  # e.g., created, resolved, assigned
         resource = sentry_hook_resource or "unknown"  # issue, event, installation
 
         # Extract issue/event ID for idempotency
         data = payload_json.get("data", {})
-        issue_id = data.get("issue", {}).get("id") if isinstance(data.get("issue"), dict) else None
-        event_id = data.get("event", {}).get("event_id") if isinstance(data.get("event"), dict) else None
+        issue_id = (
+            data.get("issue", {}).get("id")
+            if isinstance(data.get("issue"), dict)
+            else None
+        )
+        event_id = (
+            data.get("event", {}).get("event_id")
+            if isinstance(data.get("event"), dict)
+            else None
+        )
 
         # Construct event type
         event_type = f"{resource}.{action}"  # e.g., issue.created, event.alert
@@ -770,7 +803,9 @@ async def circleci_webhook(
         payload_json = json.loads(body)
 
         # CircleCI webhook format
-        event_type = payload_json.get("type", "unknown")  # workflow-completed, job-completed, ping
+        event_type = payload_json.get(
+            "type", "unknown"
+        )  # workflow-completed, job-completed, ping
 
         # Handle ping events
         if event_type == "ping":
@@ -779,11 +814,15 @@ async def circleci_webhook(
         # Extract workflow/job info
         workflow = payload_json.get("workflow", {})
         pipeline = payload_json.get("pipeline", {})
-        
+
         workflow_id = workflow.get("id") or pipeline.get("id")
-        
+
         # Use workflow_id for delivery_id
-        delivery = f"circleci-{workflow_id}" if workflow_id else f"circleci-{int(time.time() * 1000)}"
+        delivery = (
+            f"circleci-{workflow_id}"
+            if workflow_id
+            else f"circleci-{int(time.time() * 1000)}"
+        )
     except Exception:
         delivery = f"circleci-{int(time.time() * 1000)}"
         event_type = "unknown"
@@ -862,12 +901,14 @@ async def jenkins_webhook(
         # Common fields: build, name, url, status, result
         build_info = payload_json.get("build", {})
         build_number = build_info.get("number") or payload_json.get("number")
-        job_name = payload_json.get("name") or build_info.get("full_url", "").split("/")[-2]
-        
+        job_name = (
+            payload_json.get("name") or build_info.get("full_url", "").split("/")[-2]
+        )
+
         # Event type based on status/result
         result = payload_json.get("result") or build_info.get("status", "unknown")
         event_type = f"build_{result.lower()}" if result else "build_unknown"
-        
+
         # Use job_name + build_number for delivery_id
         if job_name and build_number:
             delivery = f"jenkins-{job_name}-{build_number}"
@@ -952,8 +993,10 @@ async def gitlab_webhook(
         payload_json = json.loads(body)
 
         # GitLab webhook format
-        object_kind = payload_json.get("object_kind", "unknown")  # pipeline, build, deployment, etc.
-        
+        object_kind = payload_json.get(
+            "object_kind", "unknown"
+        )  # pipeline, build, deployment, etc.
+
         # Extract ID based on object kind
         if object_kind == "pipeline":
             event_id = payload_json.get("object_attributes", {}).get("id")
@@ -965,11 +1008,15 @@ async def gitlab_webhook(
             event_id = payload_json.get("deployment_id")
             event_type = f"deployment_{payload_json.get('status', 'unknown')}"
         else:
-            event_id = payload_json.get("id") or payload_json.get("object_attributes", {}).get("id")
+            event_id = payload_json.get("id") or payload_json.get(
+                "object_attributes", {}
+            ).get("id")
             event_type = object_kind
 
         # Use event_id for delivery_id
-        delivery = f"gitlab-{event_id}" if event_id else f"gitlab-{int(time.time() * 1000)}"
+        delivery = (
+            f"gitlab-{event_id}" if event_id else f"gitlab-{int(time.time() * 1000)}"
+        )
     except Exception:
         delivery = f"gitlab-{int(time.time() * 1000)}"
         event_type = "unknown"
@@ -1035,7 +1082,9 @@ async def kubernetes_webhook(
     """
     settings = get_settings()
     if not settings.integrations_kubernetes_enabled:
-        raise HTTPException(status_code=503, detail="Kubernetes integration is disabled")
+        raise HTTPException(
+            status_code=503, detail="Kubernetes integration is disabled"
+        )
 
     body = await request.body()
 
@@ -1049,7 +1098,7 @@ async def kubernetes_webhook(
         # Kubernetes event format
         # Can be admission review or event object
         kind = payload_json.get("kind", "unknown")
-        
+
         if kind == "AdmissionReview":
             # Admission webhook format
             req = payload_json.get("request", {})
@@ -1143,14 +1192,13 @@ async def argocd_webhook(
         # ArgoCD notification format
         app = payload_json.get("app", {}) or payload_json.get("application", {})
         app_name = app.get("metadata", {}).get("name") or app.get("name")
-        
+
         # Event type from sync status
         status = app.get("status", {})
         sync_status = status.get("sync", {}).get("status", "unknown")
-        health_status = status.get("health", {}).get("status", "unknown")
-        
+
         event_type = f"sync_{sync_status.lower()}"
-        
+
         # Use app name + timestamp for delivery_id (ArgoCD doesn't have unique event IDs)
         delivery = f"argocd-{app_name}-{int(time.time() * 1000)}"
     except Exception:
@@ -1220,15 +1268,17 @@ async def ecs_webhook(
         # AWS EventBridge format
         detail_type = payload_json.get("detail-type", "unknown")
         detail = payload_json.get("detail", {})
-        
+
         # Extract event info
         if "ECS Task State Change" in detail_type:
             task_arn = detail.get("taskArn", "")
             last_status = detail.get("lastStatus", "unknown")
-            desired_status = detail.get("desiredStatus", "unknown")
             event_type = f"task_{last_status.lower()}"
             event_id = task_arn.split("/")[-1] if task_arn else None
-        elif "ECS Service Action" in detail_type or "ECS Deployment State Change" in detail_type:
+        elif (
+            "ECS Service Action" in detail_type
+            or "ECS Deployment State Change" in detail_type
+        ):
             event_type = detail.get("eventName", "deployment").lower()
             event_id = detail.get("deploymentId") or payload_json.get("id")
         else:
@@ -1316,16 +1366,22 @@ async def heroku_webhook(
         # Heroku webhook format
         action = payload_json.get("action", "unknown")  # create, update, destroy
         resource = payload_json.get("resource", "unknown")  # release, build, dyno, etc.
-        
+
         data = payload_json.get("data", {})
         event_id = data.get("id") or heroku_webhook_id
-        
+
         event_type = f"{resource}_{action}"
 
         # Use event_id or webhook_id for delivery_id
-        delivery = f"heroku-{event_id}" if event_id else f"heroku-{int(time.time() * 1000)}"
+        delivery = (
+            f"heroku-{event_id}" if event_id else f"heroku-{int(time.time() * 1000)}"
+        )
     except Exception:
-        delivery = f"heroku-{heroku_webhook_id}" if heroku_webhook_id else f"heroku-{int(time.time() * 1000)}"
+        delivery = (
+            f"heroku-{heroku_webhook_id}"
+            if heroku_webhook_id
+            else f"heroku-{int(time.time() * 1000)}"
+        )
         event_type = "unknown"
 
     # Idempotency check
@@ -1401,17 +1457,18 @@ async def codecov_webhook(
 
         # Codecov webhook format
         event_type = payload_json.get("event", "unknown")  # coverage, status, etc.
-        
+
         # Extract coverage info
         commit = payload_json.get("commit", {})
-        repo = payload_json.get("repo", {})
-        coverage = payload_json.get("coverage", {})
-        
+
         commit_sha = commit.get("commitid") or commit.get("sha")
-        repo_name = repo.get("name")
-        
+
         # Use commit_sha for delivery_id
-        delivery = f"codecov-{commit_sha}-{event_type}" if commit_sha else f"codecov-{int(time.time() * 1000)}"
+        delivery = (
+            f"codecov-{commit_sha}-{event_type}"
+            if commit_sha
+            else f"codecov-{int(time.time() * 1000)}"
+        )
     except Exception:
         delivery = f"codecov-{int(time.time() * 1000)}"
         event_type = "unknown"
@@ -1462,7 +1519,9 @@ async def codecov_webhook(
 async def sonarqube_webhook(
     request: Request,
     session: Session = Depends(get_db_session),
-    x_sonar_webhook_hmac: str | None = Header(None, alias="X-Sonar-Webhook-HMAC-SHA256"),
+    x_sonar_webhook_hmac: str | None = Header(
+        None, alias="X-Sonar-Webhook-HMAC-SHA256"
+    ),
 ) -> dict:
     """
     SonarQube webhook handler for code quality events.
@@ -1491,18 +1550,25 @@ async def sonarqube_webhook(
         # SonarQube webhook format
         project = payload_json.get("project", {})
         quality_gate = payload_json.get("qualityGate", {})
-        
+
         project_key = project.get("key")
         qg_status = quality_gate.get("status", "unknown")  # OK, ERROR, WARN
-        
+
         # Event type based on quality gate status
         event_type = f"quality_gate_{qg_status.lower()}"
-        
+
         # Extract task info for idempotency
-        task_id = payload_json.get("taskId") or payload_json.get("serverUrl", "").split("task?id=")[-1]
-        
+        task_id = (
+            payload_json.get("taskId")
+            or payload_json.get("serverUrl", "").split("task?id=")[-1]
+        )
+
         # Use task_id or project_key for delivery_id
-        delivery = f"sonarqube-{task_id}" if task_id else f"sonarqube-{project_key}-{int(time.time() * 1000)}"
+        delivery = (
+            f"sonarqube-{task_id}"
+            if task_id
+            else f"sonarqube-{project_key}-{int(time.time() * 1000)}"
+        )
     except Exception:
         delivery = f"sonarqube-{int(time.time() * 1000)}"
         event_type = "unknown"

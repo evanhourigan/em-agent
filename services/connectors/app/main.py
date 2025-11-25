@@ -375,7 +375,9 @@ def create_app() -> FastAPI:
 
         # Filter options
         team_id = payload.get("team_id")  # Filter by team
-        state_ids = payload.get("state_ids") or []  # Filter by state (started, completed, etc.)
+        state_ids = (
+            payload.get("state_ids") or []
+        )  # Filter by state (started, completed, etc.)
         limit = int(payload.get("limit", 50))  # Max issues to fetch
 
         docs: list[dict[str, Any]] = []
@@ -446,13 +448,17 @@ def create_app() -> FastAPI:
 
             try:
                 # Execute GraphQL query
-                resp = _post(client, graphql_url, json={"query": query}, headers=headers)
+                resp = _post(
+                    client, graphql_url, json={"query": query}, headers=headers
+                )
                 resp.raise_for_status()
                 data = resp.json()
 
                 # Check for GraphQL errors
                 if "errors" in data:
-                    error_msg = "; ".join([e.get("message", "") for e in data["errors"]])
+                    error_msg = "; ".join(
+                        [e.get("message", "") for e in data["errors"]]
+                    )
                     raise HTTPException(
                         status_code=502, detail=f"Linear GraphQL error: {error_msg}"
                     )
@@ -504,9 +510,7 @@ def create_app() -> FastAPI:
                     )
 
             except httpx.HTTPError as exc:
-                raise HTTPException(
-                    status_code=502, detail=f"Linear API error: {exc}"
-                )
+                raise HTTPException(status_code=502, detail=f"Linear API error: {exc}")
 
         if not docs:
             return {"indexed": 0}
@@ -561,7 +565,10 @@ def create_app() -> FastAPI:
 
         with httpx.Client(timeout=30, headers=headers) as client:
             # Build query parameters
-            params = {"statuses[]": statuses, "limit": min(limit, 100)}  # API max is 100
+            params = {
+                "statuses[]": statuses,
+                "limit": min(limit, 100),
+            }  # API max is 100
 
             try:
                 # Fetch incidents
@@ -586,7 +593,9 @@ def create_app() -> FastAPI:
 
                     # Get assignment info
                     assignments = incident.get("assignments", [])
-                    assignees = [a.get("assignee", {}).get("summary", "") for a in assignments]
+                    assignees = [
+                        a.get("assignee", {}).get("summary", "") for a in assignments
+                    ]
 
                     # Combine title and description for indexing
                     content = f"# Incident #{incident_number}: {title}\n\n{description}"
@@ -609,7 +618,9 @@ def create_app() -> FastAPI:
                                 content += "\n\n## Notes\n\n"
                                 for note in notes:
                                     note_content = note.get("content", "")
-                                    note_user = note.get("user", {}).get("summary", "Unknown")
+                                    note_user = note.get("user", {}).get(
+                                        "summary", "Unknown"
+                                    )
                                     content += f"**{note_user}**: {note_content}\n\n"
                     except Exception:
                         # Skip notes if they fail to fetch
