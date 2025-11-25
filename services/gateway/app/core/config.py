@@ -8,7 +8,7 @@ class Settings(BaseSettings):
 
     env: str = "development"
     app_name: str = "EM Agent Gateway"
-    app_version: str = "0.1.0"
+    app_version: str = "0.4.1"  # Read from VERSION file in production
 
     # CORS Configuration
     # In development: ["*"] is acceptable for convenience
@@ -54,6 +54,32 @@ class Settings(BaseSettings):
     jwt_access_token_expire_minutes: int = 60  # 1 hour
     jwt_refresh_token_expire_days: int = 7  # 7 days
     auth_enabled: bool = False  # Feature flag to enable/disable auth
+
+    # Integration Feature Flags (v0.5.0+)
+    # Core integrations (already in production)
+    integrations_github_enabled: bool = True
+    integrations_jira_enabled: bool = True
+    integrations_shortcut_enabled: bool = True
+    integrations_linear_enabled: bool = True
+    integrations_pagerduty_enabled: bool = True
+    integrations_slack_enabled: bool = True
+
+    # New integrations (default disabled for gradual rollout)
+    integrations_github_actions_enabled: bool = False
+    integrations_datadog_enabled: bool = False
+    integrations_sentry_enabled: bool = False
+    integrations_circleci_enabled: bool = False
+    integrations_jenkins_enabled: bool = False
+    integrations_gitlab_enabled: bool = False
+    integrations_argocd_enabled: bool = False
+    integrations_kubernetes_enabled: bool = False
+    integrations_ecs_enabled: bool = False
+    integrations_heroku_enabled: bool = False
+    integrations_codecov_enabled: bool = False
+    integrations_sonarqube_enabled: bool = False
+    integrations_newrelic_enabled: bool = False
+    integrations_prometheus_enabled: bool = False
+    integrations_cloudwatch_enabled: bool = False
 
 
 @lru_cache(maxsize=1)

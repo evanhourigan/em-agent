@@ -399,3 +399,109 @@ async def pagerduty_webhook(
         pass
 
     return {"status": "ok", "id": evt.id}
+
+
+@router.post("/slack")
+async def slack_webhook(
+    request: Request,
+    session: Session = Depends(get_db_session),
+    x_slack_request_timestamp: str | None = Header(None, alias="X-Slack-Request-Timestamp"),
+    x_slack_signature: str | None = Header(None, alias="X-Slack-Signature"),
+) -> dict:
+    """
+    Slack Events API webhook handler.
+
+    Handles Slack events including:
+    - message.channels: Messages posted to channels
+    - reaction_added/reaction_removed: Emoji reactions
+    - app_mention: Bot mentions
+    - member_joined_channel: User joins channel
+    - file_shared: File uploads
+    - Any other Slack event
+
+    See: https://api.slack.com/events-api
+
+    Slack sends:
+    - X-Slack-Request-Timestamp: Request timestamp for signature verification
+    - X-Slack-Signature: HMAC-SHA256 signature (optional verification)
+    - Payload with: type, event, team_id, event_id, etc.
+    """
+    body = await request.body()
+
+    # Parse payload to extract event info
+    import json
+    import time
+
+    try:
+        payload_json = json.loads(body)
+
+        # Handle URL verification challenge
+        if payload_json.get("type") == "url_verification":
+            return {"challenge": payload_json.get("challenge")}
+
+        # Extract event info
+        event = payload_json.get("event", {})
+        event_type = event.get("type", "unknown")
+        event_id = payload_json.get("event_id", "")
+
+        # Use event_id as delivery_id for idempotency
+        # Slack's event_id is globally unique
+        delivery = f"slack-{event_id}" if event_id else f"slack-{int(time.time() * 1000)}"
+    except Exception:
+        # If parsing fails, use a timestamp-based ID
+        delivery = f"slack-{int(time.time() * 1000)}"
+        event_type = "unknown"
+
+    # Idempotency check
+    if delivery:
+        exists = session.execute(
+            select(EventRaw).where(
+                EventRaw.source == "slack", EventRaw.delivery_id == delivery
+            )
+        ).scalar_one_or_none()
+        if exists:
+            return {"status": "ok", "id": exists.id}
+
+    # Signature verification (optional)
+    secret = request.app.state.__dict__.get("slack_webhook_secret")
+    if secret and x_slack_signature and x_slack_request_timestamp:
+        # Slack signature verification
+        sig_basestring = f"v0:{x_slack_request_timestamp}:{body.decode('utf-8')}"
+        expected = "v0=" + hmac.new(
+            secret.encode("utf-8"),
+            sig_basestring.encode("utf-8"),
+            hashlib.sha256
+        ).hexdigest()
+        if not hmac.compare_digest(expected, x_slack_signature):
+            raise HTTPException(status_code=401, detail="invalid signature")
+
+    # Store event
+    evt = EventRaw(
+        source="slack",
+        event_type=event_type,
+        delivery_id=delivery,
+        signature=x_slack_signature,
+        headers=dict(request.headers),
+        payload=body.decode("utf-8", errors="replace"),
+    )
+    session.add(evt)
+    session.commit()
+
+    # Publish to event bus
+    try:
+        import asyncio
+
+        asyncio.create_task(
+            get_event_bus().publish_json(
+                subject="events.slack",
+                payload={
+                    "id": evt.id,
+                    "event_type": evt.event_type,
+                    "delivery_id": evt.delivery_id,
+                },
+            )
+        )
+    except Exception:
+        pass
+
+    return {"status": "ok", "id": evt.id}

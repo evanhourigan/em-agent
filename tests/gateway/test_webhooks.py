@@ -953,3 +953,211 @@ class TestPagerDutyWebhook:
         # Payload should contain our test data
         assert "PTEST999" in event.payload
         assert "999" in event.payload or 999 in json.loads(event.payload).get("event", {}).get("data", {}).get("incident_number", 0)
+
+
+class TestSlackWebhook:
+    """Tests for POST /webhooks/slack endpoint."""
+
+    def test_slack_url_verification(self, client: TestClient):
+        """Test Slack URL verification challenge."""
+        payload = {
+            "type": "url_verification",
+            "challenge": "test_challenge_string_12345",
+            "token": "deprecated_verification_token"
+        }
+
+        response = client.post("/webhooks/slack", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["challenge"] == "test_challenge_string_12345"
+
+    def test_slack_webhook_message_event(self, client: TestClient, db_session: Session):
+        """Test Slack message event."""
+        from services.gateway.app.models.events import EventRaw
+
+        # Clean events
+        db_session.query(EventRaw).delete()
+        db_session.commit()
+
+        payload = {
+            "token": "deprecated_token",
+            "team_id": "T123ABC",
+            "api_app_id": "A123ABC",
+            "event": {
+                "type": "message",
+                "channel": "C123ABC",
+                "user": "U123ABC",
+                "text": "Hello, world!",
+                "ts": "1234567890.123456"
+            },
+            "type": "event_callback",
+            "event_id": "Ev123ABC456",
+            "event_time": 1234567890
+        }
+        headers = {
+            "X-Slack-Request-Timestamp": "1234567890",
+            "X-Slack-Signature": "v0=test_signature"
+        }
+
+        response = client.post(
+            "/webhooks/slack",
+            json=payload,
+            headers=headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "ok"
+        assert "id" in data
+
+        # Verify event was stored
+        event = db_session.query(EventRaw).filter_by(source="slack").first()
+        assert event is not None
+        assert event.source == "slack"
+        assert event.event_type == "message"
+        assert "slack-Ev123ABC456" in event.delivery_id
+
+        # Verify payload contains message data
+        assert "Hello, world!" in event.payload
+        assert "C123ABC" in event.payload
+
+    def test_slack_webhook_reaction_added(self, client: TestClient, db_session: Session):
+        """Test Slack reaction_added event."""
+        from services.gateway.app.models.events import EventRaw
+
+        db_session.query(EventRaw).delete()
+        db_session.commit()
+
+        payload = {
+            "token": "deprecated_token",
+            "team_id": "T123ABC",
+            "api_app_id": "A123ABC",
+            "event": {
+                "type": "reaction_added",
+                "user": "U123ABC",
+                "reaction": "thumbsup",
+                "item": {
+                    "type": "message",
+                    "channel": "C123ABC",
+                    "ts": "1234567890.123456"
+                },
+                "event_ts": "1234567891.000001"
+            },
+            "type": "event_callback",
+            "event_id": "Ev789XYZ123",
+            "event_time": 1234567891
+        }
+
+        response = client.post("/webhooks/slack", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "ok"
+
+        event = db_session.query(EventRaw).filter_by(source="slack").first()
+        assert event is not None
+        assert event.event_type == "reaction_added"
+        assert "thumbsup" in event.payload
+
+    def test_slack_webhook_app_mention(self, client: TestClient, db_session: Session):
+        """Test Slack app_mention event."""
+        from services.gateway.app.models.events import EventRaw
+
+        db_session.query(EventRaw).delete()
+        db_session.commit()
+
+        payload = {
+            "token": "deprecated_token",
+            "team_id": "T123ABC",
+            "api_app_id": "A123ABC",
+            "event": {
+                "type": "app_mention",
+                "user": "U123ABC",
+                "text": "<@U987ZYX> help me debug this issue",
+                "ts": "1234567892.123456",
+                "channel": "C123ABC",
+                "event_ts": "1234567892.123456"
+            },
+            "type": "event_callback",
+            "event_id": "Ev456DEF789",
+            "event_time": 1234567892
+        }
+
+        response = client.post("/webhooks/slack", json=payload)
+        assert response.status_code == 200
+
+        event = db_session.query(EventRaw).filter_by(source="slack").first()
+        assert event is not None
+        assert event.event_type == "app_mention"
+        assert "help me debug" in event.payload
+
+    def test_slack_webhook_idempotency(self, client: TestClient, db_session: Session):
+        """Test that duplicate Slack events are handled idempotently."""
+        from services.gateway.app.models.events import EventRaw
+
+        db_session.query(EventRaw).delete()
+        db_session.commit()
+
+        payload = {
+            "token": "deprecated_token",
+            "team_id": "T123ABC",
+            "api_app_id": "A123ABC",
+            "event": {
+                "type": "message",
+                "channel": "C123ABC",
+                "user": "U123ABC",
+                "text": "Duplicate test message",
+                "ts": "1234567893.123456"
+            },
+            "type": "event_callback",
+            "event_id": "Ev999DUPLICATE",
+            "event_time": 1234567893
+        }
+
+        # Send first event
+        response1 = client.post("/webhooks/slack", json=payload)
+        assert response1.status_code == 200
+        data1 = response1.json()
+        first_id = data1["id"]
+
+        # Send duplicate event
+        response2 = client.post("/webhooks/slack", json=payload)
+        assert response2.status_code == 200
+        data2 = response2.json()
+
+        # Should return same ID
+        assert data2["id"] == first_id
+
+        # Verify only one event was stored
+        events = db_session.query(EventRaw).filter_by(source="slack").all()
+        assert len(events) == 1
+
+    def test_slack_webhook_member_joined_channel(self, client: TestClient, db_session: Session):
+        """Test Slack member_joined_channel event."""
+        from services.gateway.app.models.events import EventRaw
+
+        db_session.query(EventRaw).delete()
+        db_session.commit()
+
+        payload = {
+            "token": "deprecated_token",
+            "team_id": "T123ABC",
+            "api_app_id": "A123ABC",
+            "event": {
+                "type": "member_joined_channel",
+                "user": "U123ABC",
+                "channel": "C123ABC",
+                "channel_type": "C",
+                "team": "T123ABC",
+                "inviter": "U456DEF"
+            },
+            "type": "event_callback",
+            "event_id": "Ev111JOIN222",
+            "event_time": 1234567894
+        }
+
+        response = client.post("/webhooks/slack", json=payload)
+        assert response.status_code == 200
+
+        event = db_session.query(EventRaw).filter_by(source="slack").first()
+        assert event is not None
+        assert event.event_type == "member_joined_channel"
+        assert event.payload is not None
