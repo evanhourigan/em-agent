@@ -7,11 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### To Be Released in v0.8.0
-- Kubernetes integration for pod/deployment events
-- ArgoCD integration for GitOps deployments
-- AWS ECS integration for container deployments
-- Heroku integration for platform deployments
+### To Be Released in v0.9.0
+- Codecov integration for code coverage tracking
+- SonarQube integration for code quality metrics
+- Enhanced Slack notifications with deployment context
+
+## [0.8.0] - 2025-11-25
+
+### Added - Phase 4: Deployment Platform Coverage
+- Kubernetes webhook handler (POST /webhooks/kubernetes)
+  - Deployment, Pod, ReplicaSet events
+  - Admission webhook and event object formats
+- ArgoCD webhook handler (POST /webhooks/argocd)
+  - Application sync events (Synced, OutOfSync, Degraded)
+  - Health status updates for GitOps deployments
+- AWS ECS webhook handler (POST /webhooks/ecs)
+  - Task state changes via EventBridge
+  - Service deployment events
+  - Container instance state tracking
+- Heroku webhook handler (POST /webhooks/heroku)
+  - Release and build events
+  - Dyno state changes
+  - Heroku-Webhook-Id header support
+
+### Changed
+- Updated deployment_frequency.sql with 8 platform CTEs
+  - Added Kubernetes, ArgoCD, ECS, Heroku
+  - Per-platform breakdown for all deployment methods
+  - Unified CI/CD and deployment platform tracking
+- Enabled feature flags:
+  - integrations_kubernetes_enabled = True
+  - integrations_argocd_enabled = True
+  - integrations_ecs_enabled = True
+  - integrations_heroku_enabled = True
 
 ## [0.7.0] - 2025-11-25
 
