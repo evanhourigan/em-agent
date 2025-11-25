@@ -71,10 +71,10 @@ class Settings(BaseSettings):
     integrations_circleci_enabled: bool = True  # Enabled in v0.7.0
     integrations_jenkins_enabled: bool = True  # Enabled in v0.7.0
     integrations_gitlab_enabled: bool = True  # Enabled in v0.7.0
-    integrations_argocd_enabled: bool = False
-    integrations_kubernetes_enabled: bool = False
-    integrations_ecs_enabled: bool = False
-    integrations_heroku_enabled: bool = False
+    integrations_argocd_enabled: bool = True  # Enabled in v0.8.0
+    integrations_kubernetes_enabled: bool = True  # Enabled in v0.8.0
+    integrations_ecs_enabled: bool = True  # Enabled in v0.8.0
+    integrations_heroku_enabled: bool = True  # Enabled in v0.8.0
     integrations_codecov_enabled: bool = False
     integrations_sonarqube_enabled: bool = False
     integrations_newrelic_enabled: bool = False

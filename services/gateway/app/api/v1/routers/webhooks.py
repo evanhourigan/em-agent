@@ -1014,3 +1014,357 @@ async def gitlab_webhook(
         pass
 
     return {"status": "ok", "id": evt.id}
+
+
+@router.post("/kubernetes")
+async def kubernetes_webhook(
+    request: Request,
+    session: Session = Depends(get_db_session),
+) -> dict:
+    """
+    Kubernetes webhook handler for pod and deployment events.
+
+    Supports:
+    - Deployment events (created, updated, deleted)
+    - Pod events (running, succeeded, failed)
+    - ReplicaSet events
+    - Service events
+
+    Can be configured as Kubernetes admission webhook or event handler.
+    See: https://kubernetes.io/docs/reference/access-authn-authz/webhook/
+    """
+    settings = get_settings()
+    if not settings.integrations_kubernetes_enabled:
+        raise HTTPException(status_code=503, detail="Kubernetes integration is disabled")
+
+    body = await request.body()
+
+    # Parse payload to extract event info
+    import json
+    import time
+
+    try:
+        payload_json = json.loads(body)
+
+        # Kubernetes event format
+        # Can be admission review or event object
+        kind = payload_json.get("kind", "unknown")
+        
+        if kind == "AdmissionReview":
+            # Admission webhook format
+            req = payload_json.get("request", {})
+            obj = req.get("object", {})
+            event_type = f"{req.get('operation', 'unknown').lower()}_{obj.get('kind', 'unknown').lower()}"
+            event_id = req.get("uid")
+        else:
+            # Event object format
+            obj = payload_json.get("object", {}) or payload_json
+            metadata = obj.get("metadata", {})
+            event_type = f"{payload_json.get('type', 'unknown').lower()}_{obj.get('kind', 'unknown').lower()}"
+            event_id = metadata.get("uid") or metadata.get("name")
+
+        # Use event_id for delivery_id
+        delivery = f"k8s-{event_id}" if event_id else f"k8s-{int(time.time() * 1000)}"
+    except Exception:
+        delivery = f"k8s-{int(time.time() * 1000)}"
+        event_type = "unknown"
+
+    # Idempotency check
+    if delivery:
+        exists = session.execute(
+            select(EventRaw).where(
+                EventRaw.source == "kubernetes", EventRaw.delivery_id == delivery
+            )
+        ).scalar_one_or_none()
+        if exists:
+            return {"status": "ok", "id": exists.id}
+
+    # Store event
+    evt = EventRaw(
+        source="kubernetes",
+        event_type=event_type,
+        delivery_id=delivery,
+        signature=None,
+        headers=dict(request.headers),
+        payload=body.decode("utf-8", errors="replace"),
+    )
+    session.add(evt)
+    session.commit()
+
+    # Publish to event bus
+    try:
+        import asyncio
+
+        asyncio.create_task(
+            get_event_bus().publish_json(
+                subject="events.kubernetes",
+                payload={
+                    "id": evt.id,
+                    "event_type": evt.event_type,
+                    "delivery_id": evt.delivery_id,
+                },
+            )
+        )
+    except Exception:
+        pass
+
+    return {"status": "ok", "id": evt.id}
+
+
+@router.post("/argocd")
+async def argocd_webhook(
+    request: Request,
+    session: Session = Depends(get_db_session),
+) -> dict:
+    """
+    ArgoCD webhook handler for GitOps deployment events.
+
+    Supports:
+    - Application sync events (Synced, OutOfSync, Degraded)
+    - Deployment status changes
+    - Health status updates
+    - Rollback events
+
+    See: https://argo-cd.readthedocs.io/en/stable/operator-manual/notifications/
+    """
+    settings = get_settings()
+    if not settings.integrations_argocd_enabled:
+        raise HTTPException(status_code=503, detail="ArgoCD integration is disabled")
+
+    body = await request.body()
+
+    # Parse payload to extract event info
+    import json
+    import time
+
+    try:
+        payload_json = json.loads(body)
+
+        # ArgoCD notification format
+        app = payload_json.get("app", {}) or payload_json.get("application", {})
+        app_name = app.get("metadata", {}).get("name") or app.get("name")
+        
+        # Event type from sync status
+        status = app.get("status", {})
+        sync_status = status.get("sync", {}).get("status", "unknown")
+        health_status = status.get("health", {}).get("status", "unknown")
+        
+        event_type = f"sync_{sync_status.lower()}"
+        
+        # Use app name + timestamp for delivery_id (ArgoCD doesn't have unique event IDs)
+        delivery = f"argocd-{app_name}-{int(time.time() * 1000)}"
+    except Exception:
+        delivery = f"argocd-{int(time.time() * 1000)}"
+        event_type = "unknown"
+
+    # Store event (no idempotency check since ArgoCD sends updates for same app)
+    evt = EventRaw(
+        source="argocd",
+        event_type=event_type,
+        delivery_id=delivery,
+        signature=None,
+        headers=dict(request.headers),
+        payload=body.decode("utf-8", errors="replace"),
+    )
+    session.add(evt)
+    session.commit()
+
+    # Publish to event bus
+    try:
+        import asyncio
+
+        asyncio.create_task(
+            get_event_bus().publish_json(
+                subject="events.argocd",
+                payload={
+                    "id": evt.id,
+                    "event_type": evt.event_type,
+                    "delivery_id": evt.delivery_id,
+                },
+            )
+        )
+    except Exception:
+        pass
+
+    return {"status": "ok", "id": evt.id}
+
+
+@router.post("/ecs")
+async def ecs_webhook(
+    request: Request,
+    session: Session = Depends(get_db_session),
+) -> dict:
+    """
+    AWS ECS webhook handler for container deployment events.
+
+    Supports ECS events via EventBridge:
+    - Task state changes (RUNNING, STOPPED)
+    - Service deployment events
+    - Container instance state changes
+
+    See: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs_eventbridge.html
+    """
+    settings = get_settings()
+    if not settings.integrations_ecs_enabled:
+        raise HTTPException(status_code=503, detail="ECS integration is disabled")
+
+    body = await request.body()
+
+    # Parse payload to extract event info
+    import json
+    import time
+
+    try:
+        payload_json = json.loads(body)
+
+        # AWS EventBridge format
+        detail_type = payload_json.get("detail-type", "unknown")
+        detail = payload_json.get("detail", {})
+        
+        # Extract event info
+        if "ECS Task State Change" in detail_type:
+            task_arn = detail.get("taskArn", "")
+            last_status = detail.get("lastStatus", "unknown")
+            desired_status = detail.get("desiredStatus", "unknown")
+            event_type = f"task_{last_status.lower()}"
+            event_id = task_arn.split("/")[-1] if task_arn else None
+        elif "ECS Service Action" in detail_type or "ECS Deployment State Change" in detail_type:
+            event_type = detail.get("eventName", "deployment").lower()
+            event_id = detail.get("deploymentId") or payload_json.get("id")
+        else:
+            event_type = detail_type.replace(" ", "_").lower()
+            event_id = payload_json.get("id")
+
+        # Use event_id for delivery_id
+        delivery = f"ecs-{event_id}" if event_id else f"ecs-{int(time.time() * 1000)}"
+    except Exception:
+        delivery = f"ecs-{int(time.time() * 1000)}"
+        event_type = "unknown"
+
+    # Idempotency check
+    if delivery:
+        exists = session.execute(
+            select(EventRaw).where(
+                EventRaw.source == "ecs", EventRaw.delivery_id == delivery
+            )
+        ).scalar_one_or_none()
+        if exists:
+            return {"status": "ok", "id": exists.id}
+
+    # Store event
+    evt = EventRaw(
+        source="ecs",
+        event_type=event_type,
+        delivery_id=delivery,
+        signature=None,
+        headers=dict(request.headers),
+        payload=body.decode("utf-8", errors="replace"),
+    )
+    session.add(evt)
+    session.commit()
+
+    # Publish to event bus
+    try:
+        import asyncio
+
+        asyncio.create_task(
+            get_event_bus().publish_json(
+                subject="events.ecs",
+                payload={
+                    "id": evt.id,
+                    "event_type": evt.event_type,
+                    "delivery_id": evt.delivery_id,
+                },
+            )
+        )
+    except Exception:
+        pass
+
+    return {"status": "ok", "id": evt.id}
+
+
+@router.post("/heroku")
+async def heroku_webhook(
+    request: Request,
+    session: Session = Depends(get_db_session),
+    heroku_webhook_id: str | None = Header(None, alias="Heroku-Webhook-Id"),
+) -> dict:
+    """
+    Heroku webhook handler for app deployment events.
+
+    Supports:
+    - App deployment events (succeeded, failed)
+    - Release events (created, updated)
+    - Dyno state changes
+    - Build events
+
+    See: https://devcenter.heroku.com/articles/app-webhooks
+    """
+    settings = get_settings()
+    if not settings.integrations_heroku_enabled:
+        raise HTTPException(status_code=503, detail="Heroku integration is disabled")
+
+    body = await request.body()
+
+    # Parse payload to extract event info
+    import json
+    import time
+
+    try:
+        payload_json = json.loads(body)
+
+        # Heroku webhook format
+        action = payload_json.get("action", "unknown")  # create, update, destroy
+        resource = payload_json.get("resource", "unknown")  # release, build, dyno, etc.
+        
+        data = payload_json.get("data", {})
+        event_id = data.get("id") or heroku_webhook_id
+        
+        event_type = f"{resource}_{action}"
+
+        # Use event_id or webhook_id for delivery_id
+        delivery = f"heroku-{event_id}" if event_id else f"heroku-{int(time.time() * 1000)}"
+    except Exception:
+        delivery = f"heroku-{heroku_webhook_id}" if heroku_webhook_id else f"heroku-{int(time.time() * 1000)}"
+        event_type = "unknown"
+
+    # Idempotency check
+    if delivery:
+        exists = session.execute(
+            select(EventRaw).where(
+                EventRaw.source == "heroku", EventRaw.delivery_id == delivery
+            )
+        ).scalar_one_or_none()
+        if exists:
+            return {"status": "ok", "id": exists.id}
+
+    # Store event
+    evt = EventRaw(
+        source="heroku",
+        event_type=event_type,
+        delivery_id=delivery,
+        signature=None,
+        headers=dict(request.headers),
+        payload=body.decode("utf-8", errors="replace"),
+    )
+    session.add(evt)
+    session.commit()
+
+    # Publish to event bus
+    try:
+        import asyncio
+
+        asyncio.create_task(
+            get_event_bus().publish_json(
+                subject="events.heroku",
+                payload={
+                    "id": evt.id,
+                    "event_type": evt.event_type,
+                    "delivery_id": evt.delivery_id,
+                },
+            )
+        )
+    except Exception:
+        pass
+
+    return {"status": "ok", "id": evt.id}

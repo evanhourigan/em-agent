@@ -63,6 +63,49 @@ gitlab_deployments AS (
       OR payload::json->'object_attributes'->>'ref' IN ('main', 'master', 'production')
     )
 ),
+kubernetes_deployments AS (
+  -- Kubernetes deployment events
+  SELECT
+    received_at,
+    'kubernetes' AS platform,
+    payload::json->'object'->'metadata'->>'name' AS workflow_name
+  FROM public.events_raw
+  WHERE source = 'kubernetes'
+    AND (
+      event_type LIKE '%deployment%'
+      OR event_type LIKE 'update_deployment'
+    )
+),
+argocd_deployments AS (
+  -- ArgoCD sync successful events
+  SELECT
+    received_at,
+    'argocd' AS platform,
+    payload::json->'app'->'metadata'->>'name' AS workflow_name
+  FROM public.events_raw
+  WHERE source = 'argocd'
+    AND event_type = 'sync_synced'
+),
+ecs_deployments AS (
+  -- AWS ECS task running events
+  SELECT
+    received_at,
+    'ecs' AS platform,
+    payload::json->'detail'->>'group' AS workflow_name
+  FROM public.events_raw
+  WHERE source = 'ecs'
+    AND event_type IN ('task_running', 'deployment')
+),
+heroku_deployments AS (
+  -- Heroku release create events
+  SELECT
+    received_at,
+    'heroku' AS platform,
+    payload::json->'data'->'app'->>'name' AS workflow_name
+  FROM public.events_raw
+  WHERE source = 'heroku'
+    AND event_type IN ('release_create', 'build_succeeded')
+),
 all_deployments AS (
   SELECT * FROM github_deployments
   UNION ALL
@@ -71,6 +114,14 @@ all_deployments AS (
   SELECT * FROM jenkins_deployments
   UNION ALL
   SELECT * FROM gitlab_deployments
+  UNION ALL
+  SELECT * FROM kubernetes_deployments
+  UNION ALL
+  SELECT * FROM argocd_deployments
+  UNION ALL
+  SELECT * FROM ecs_deployments
+  UNION ALL
+  SELECT * FROM heroku_deployments
 )
 SELECT
   date_trunc('day', received_at) AS day,
@@ -78,7 +129,11 @@ SELECT
   COUNT(*) FILTER (WHERE platform = 'github') AS github_deployments,
   COUNT(*) FILTER (WHERE platform = 'circleci') AS circleci_deployments,
   COUNT(*) FILTER (WHERE platform = 'jenkins') AS jenkins_deployments,
-  COUNT(*) FILTER (WHERE platform = 'gitlab') AS gitlab_deployments
+  COUNT(*) FILTER (WHERE platform = 'gitlab') AS gitlab_deployments,
+  COUNT(*) FILTER (WHERE platform = 'kubernetes') AS kubernetes_deployments,
+  COUNT(*) FILTER (WHERE platform = 'argocd') AS argocd_deployments,
+  COUNT(*) FILTER (WHERE platform = 'ecs') AS ecs_deployments,
+  COUNT(*) FILTER (WHERE platform = 'heroku') AS heroku_deployments
 FROM all_deployments
 GROUP BY 1
 ORDER BY 1 DESC
