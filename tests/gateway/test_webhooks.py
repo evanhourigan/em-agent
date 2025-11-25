@@ -3,6 +3,7 @@
 import hashlib
 import hmac
 import json
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
@@ -17,7 +18,9 @@ def _compute_github_signature(secret: str, body: bytes) -> str:
 class TestGitHubWebhook:
     """Tests for POST /webhooks/github endpoint."""
 
-    def test_github_webhook_basic_success(self, client: TestClient, db_session: Session):
+    def test_github_webhook_basic_success(
+        self, client: TestClient, db_session: Session
+    ):
         """Test basic GitHub webhook reception."""
         from services.gateway.app.models.events import EventRaw
 
@@ -28,27 +31,29 @@ class TestGitHubWebhook:
         payload = {"action": "opened", "pull_request": {"id": 123}}
         headers = {
             "X-GitHub-Event": "pull_request",
-            "X-GitHub-Delivery": "12345-67890-abcdef"
+            "X-GitHub-Delivery": "12345-67890-abcdef",
         }
 
-        response = client.post(
-            "/webhooks/github",
-            json=payload,
-            headers=headers
-        )
+        response = client.post("/webhooks/github", json=payload, headers=headers)
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "ok"
         assert "id" in data
 
         # Verify event was stored
-        event = db_session.query(EventRaw).filter_by(delivery_id="12345-67890-abcdef").first()
+        event = (
+            db_session.query(EventRaw)
+            .filter_by(delivery_id="12345-67890-abcdef")
+            .first()
+        )
         assert event is not None
         assert event.source == "github"
         assert event.event_type == "pull_request"
         assert event.delivery_id == "12345-67890-abcdef"
 
-    def test_github_webhook_duplicate_delivery(self, client: TestClient, db_session: Session):
+    def test_github_webhook_duplicate_delivery(
+        self, client: TestClient, db_session: Session
+    ):
         """Test that duplicate delivery IDs are rejected."""
         from services.gateway.app.models.events import EventRaw
 
@@ -58,7 +63,7 @@ class TestGitHubWebhook:
             source="github",
             event_type="pull_request",
             delivery_id="duplicate-123",
-            payload=json.dumps({"test": "data"})
+            payload=json.dumps({"test": "data"}),
         )
         db_session.add(existing)
         db_session.commit()
@@ -68,24 +73,24 @@ class TestGitHubWebhook:
         payload = {"action": "opened"}
         headers = {
             "X-GitHub-Event": "pull_request",
-            "X-GitHub-Delivery": "duplicate-123"  # Duplicate
+            "X-GitHub-Delivery": "duplicate-123",  # Duplicate
         }
 
-        response = client.post(
-            "/webhooks/github",
-            json=payload,
-            headers=headers
-        )
+        response = client.post("/webhooks/github", json=payload, headers=headers)
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "duplicate"
         assert data["id"] == existing_id
 
         # Verify no new event was created
-        count = db_session.query(EventRaw).filter_by(delivery_id="duplicate-123").count()
+        count = (
+            db_session.query(EventRaw).filter_by(delivery_id="duplicate-123").count()
+        )
         assert count == 1
 
-    def test_github_webhook_without_delivery_id(self, client: TestClient, db_session: Session):
+    def test_github_webhook_without_delivery_id(
+        self, client: TestClient, db_session: Session
+    ):
         """Test webhook without X-GitHub-Delivery header."""
         from services.gateway.app.models.events import EventRaw
 
@@ -96,11 +101,7 @@ class TestGitHubWebhook:
         payload = {"action": "opened"}
         headers = {"X-GitHub-Event": "pull_request"}
 
-        response = client.post(
-            "/webhooks/github",
-            json=payload,
-            headers=headers
-        )
+        response = client.post("/webhooks/github", json=payload, headers=headers)
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "ok"
@@ -110,7 +111,9 @@ class TestGitHubWebhook:
         assert event is not None
         assert event.delivery_id == ""
 
-    def test_github_webhook_without_event_type(self, client: TestClient, db_session: Session):
+    def test_github_webhook_without_event_type(
+        self, client: TestClient, db_session: Session
+    ):
         """Test webhook without X-GitHub-Event header."""
         from services.gateway.app.models.events import EventRaw
 
@@ -121,11 +124,7 @@ class TestGitHubWebhook:
         payload = {"action": "test"}
         headers = {"X-GitHub-Delivery": "test-123"}
 
-        response = client.post(
-            "/webhooks/github",
-            json=payload,
-            headers=headers
-        )
+        response = client.post("/webhooks/github", json=payload, headers=headers)
         assert response.status_code == 200
 
         # Event stored with "unknown" event_type
@@ -136,7 +135,9 @@ class TestGitHubWebhook:
     @pytest.mark.skip(
         reason="Signature verification requires app.state.github_webhook_secret configuration"
     )
-    def test_github_webhook_valid_signature(self, client: TestClient, db_session: Session):
+    def test_github_webhook_valid_signature(
+        self, client: TestClient, db_session: Session
+    ):
         """Test webhook with valid HMAC signature.
 
         TODO: Requires setting app.state.github_webhook_secret in test setup.
@@ -154,15 +155,11 @@ class TestGitHubWebhook:
         headers = {
             "X-GitHub-Event": "pull_request",
             "X-GitHub-Delivery": "signed-123",
-            "X-Hub-Signature-256": signature
+            "X-Hub-Signature-256": signature,
         }
 
         # Would need to configure client app state with github_webhook_secret
-        response = client.post(
-            "/webhooks/github",
-            json=payload,
-            headers=headers
-        )
+        response = client.post("/webhooks/github", json=payload, headers=headers)
         assert response.status_code == 200
 
     @pytest.mark.skip(
@@ -177,18 +174,16 @@ class TestGitHubWebhook:
         headers = {
             "X-GitHub-Event": "pull_request",
             "X-GitHub-Delivery": "invalid-sig-123",
-            "X-Hub-Signature-256": "sha256=invalid_signature_here"
+            "X-Hub-Signature-256": "sha256=invalid_signature_here",
         }
 
-        response = client.post(
-            "/webhooks/github",
-            json=payload,
-            headers=headers
-        )
+        response = client.post("/webhooks/github", json=payload, headers=headers)
         assert response.status_code == 401
         assert "invalid signature" in response.json()["detail"]
 
-    def test_github_webhook_stores_headers(self, client: TestClient, db_session: Session):
+    def test_github_webhook_stores_headers(
+        self, client: TestClient, db_session: Session
+    ):
         """Test that webhook stores request headers."""
         from services.gateway.app.models.events import EventRaw
 
@@ -199,24 +194,24 @@ class TestGitHubWebhook:
         headers = {
             "X-GitHub-Event": "push",
             "X-GitHub-Delivery": "headers-test-123",
-            "Custom-Header": "custom-value"
+            "Custom-Header": "custom-value",
         }
 
-        response = client.post(
-            "/webhooks/github",
-            json=payload,
-            headers=headers
-        )
+        response = client.post("/webhooks/github", json=payload, headers=headers)
         assert response.status_code == 200
 
-        event = db_session.query(EventRaw).filter_by(delivery_id="headers-test-123").first()
+        event = (
+            db_session.query(EventRaw).filter_by(delivery_id="headers-test-123").first()
+        )
         assert event is not None
         assert event.headers is not None
         assert isinstance(event.headers, dict)
         # Check that our custom header was stored
         assert "custom-header" in str(event.headers).lower()
 
-    def test_github_webhook_stores_payload(self, client: TestClient, db_session: Session):
+    def test_github_webhook_stores_payload(
+        self, client: TestClient, db_session: Session
+    ):
         """Test that webhook stores the full payload."""
         from services.gateway.app.models.events import EventRaw
 
@@ -226,17 +221,15 @@ class TestGitHubWebhook:
         payload = {"action": "opened", "number": 42, "title": "Test PR"}
         headers = {
             "X-GitHub-Event": "pull_request",
-            "X-GitHub-Delivery": "payload-test-123"
+            "X-GitHub-Delivery": "payload-test-123",
         }
 
-        response = client.post(
-            "/webhooks/github",
-            json=payload,
-            headers=headers
-        )
+        response = client.post("/webhooks/github", json=payload, headers=headers)
         assert response.status_code == 200
 
-        event = db_session.query(EventRaw).filter_by(delivery_id="payload-test-123").first()
+        event = (
+            db_session.query(EventRaw).filter_by(delivery_id="payload-test-123").first()
+        )
         assert event is not None
         assert event.payload is not None
         # Payload should contain our test data
@@ -262,37 +255,33 @@ class TestGitHubIssuesWebhook:
                 "title": "Add authentication feature",
                 "state": "open",
                 "labels": [{"name": "feature"}],
-                "assignee": {"login": "alice"}
+                "assignee": {"login": "alice"},
             },
-            "repository": {
-                "name": "em-agent",
-                "owner": {"login": "evanhourigan"}
-            }
+            "repository": {"name": "em-agent", "owner": {"login": "evanhourigan"}},
         }
-        headers = {
-            "X-GitHub-Event": "issues",
-            "X-GitHub-Delivery": "issues-opened-123"
-        }
+        headers = {"X-GitHub-Event": "issues", "X-GitHub-Delivery": "issues-opened-123"}
 
-        response = client.post(
-            "/webhooks/github",
-            json=payload,
-            headers=headers
-        )
+        response = client.post("/webhooks/github", json=payload, headers=headers)
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "ok"
         assert "id" in data
 
         # Verify event was stored
-        event = db_session.query(EventRaw).filter_by(delivery_id="issues-opened-123").first()
+        event = (
+            db_session.query(EventRaw)
+            .filter_by(delivery_id="issues-opened-123")
+            .first()
+        )
         assert event is not None
         assert event.source == "github"
         assert event.event_type == "issues"
         assert event.delivery_id == "issues-opened-123"
 
         # Verify payload contains issue data
-        assert "42" in event.payload or 42 in json.loads(event.payload).get("issue", {}).get("number", 0)
+        assert "42" in event.payload or 42 in json.loads(event.payload).get(
+            "issue", {}
+        ).get("number", 0)
         assert "authentication" in event.payload.lower()
 
     def test_github_issues_closed_event(self, client: TestClient, db_session: Session):
@@ -307,26 +296,20 @@ class TestGitHubIssuesWebhook:
             "issue": {
                 "number": 42,
                 "title": "Add authentication feature",
-                "state": "closed"
+                "state": "closed",
             },
-            "repository": {
-                "name": "em-agent",
-                "owner": {"login": "evanhourigan"}
-            }
+            "repository": {"name": "em-agent", "owner": {"login": "evanhourigan"}},
         }
-        headers = {
-            "X-GitHub-Event": "issues",
-            "X-GitHub-Delivery": "issues-closed-123"
-        }
+        headers = {"X-GitHub-Event": "issues", "X-GitHub-Delivery": "issues-closed-123"}
 
-        response = client.post(
-            "/webhooks/github",
-            json=payload,
-            headers=headers
-        )
+        response = client.post("/webhooks/github", json=payload, headers=headers)
         assert response.status_code == 200
 
-        event = db_session.query(EventRaw).filter_by(delivery_id="issues-closed-123").first()
+        event = (
+            db_session.query(EventRaw)
+            .filter_by(delivery_id="issues-closed-123")
+            .first()
+        )
         assert event is not None
         assert event.event_type == "issues"
 
@@ -347,28 +330,30 @@ class TestGitHubIssuesWebhook:
             "issue": {
                 "number": 42,
                 "title": "Fix login bug",
-                "labels": [{"name": "bug"}, {"name": "priority-high"}]
+                "labels": [{"name": "bug"}, {"name": "priority-high"}],
             },
-            "label": {"name": "bug"}
+            "label": {"name": "bug"},
         }
         headers = {
             "X-GitHub-Event": "issues",
-            "X-GitHub-Delivery": "issues-labeled-123"
+            "X-GitHub-Delivery": "issues-labeled-123",
         }
 
-        response = client.post(
-            "/webhooks/github",
-            json=payload,
-            headers=headers
-        )
+        response = client.post("/webhooks/github", json=payload, headers=headers)
         assert response.status_code == 200
 
-        event = db_session.query(EventRaw).filter_by(delivery_id="issues-labeled-123").first()
+        event = (
+            db_session.query(EventRaw)
+            .filter_by(delivery_id="issues-labeled-123")
+            .first()
+        )
         assert event is not None
         assert event.event_type == "issues"
         assert "bug" in event.payload
 
-    def test_github_issues_assigned_event(self, client: TestClient, db_session: Session):
+    def test_github_issues_assigned_event(
+        self, client: TestClient, db_session: Session
+    ):
         """Test GitHub issues 'assigned' event."""
         from services.gateway.app.models.events import EventRaw
 
@@ -377,25 +362,22 @@ class TestGitHubIssuesWebhook:
 
         payload = {
             "action": "assigned",
-            "issue": {
-                "number": 42,
-                "assignee": {"login": "alice"}
-            },
-            "assignee": {"login": "alice"}
+            "issue": {"number": 42, "assignee": {"login": "alice"}},
+            "assignee": {"login": "alice"},
         }
         headers = {
             "X-GitHub-Event": "issues",
-            "X-GitHub-Delivery": "issues-assigned-123"
+            "X-GitHub-Delivery": "issues-assigned-123",
         }
 
-        response = client.post(
-            "/webhooks/github",
-            json=payload,
-            headers=headers
-        )
+        response = client.post("/webhooks/github", json=payload, headers=headers)
         assert response.status_code == 200
 
-        event = db_session.query(EventRaw).filter_by(delivery_id="issues-assigned-123").first()
+        event = (
+            db_session.query(EventRaw)
+            .filter_by(delivery_id="issues-assigned-123")
+            .first()
+        )
         assert event is not None
         assert "alice" in event.payload
 
@@ -414,24 +396,24 @@ class TestJiraWebhook:
         payload = {"webhookEvent": "jira:issue_created", "issue": {"id": "10000"}}
         headers = {"X-Atlassian-Webhook-Identifier": "jira-webhook-123"}
 
-        response = client.post(
-            "/webhooks/jira",
-            json=payload,
-            headers=headers
-        )
+        response = client.post("/webhooks/jira", json=payload, headers=headers)
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "ok"
         assert "id" in data
 
         # Verify event was stored
-        event = db_session.query(EventRaw).filter_by(delivery_id="jira-webhook-123").first()
+        event = (
+            db_session.query(EventRaw).filter_by(delivery_id="jira-webhook-123").first()
+        )
         assert event is not None
         assert event.source == "jira"
         assert event.event_type == "unknown"  # Jira doesn't extract event_type
         assert event.delivery_id == "jira-webhook-123"
 
-    def test_jira_webhook_duplicate_delivery(self, client: TestClient, db_session: Session):
+    def test_jira_webhook_duplicate_delivery(
+        self, client: TestClient, db_session: Session
+    ):
         """Test that duplicate Jira webhook identifiers are rejected."""
         from services.gateway.app.models.events import EventRaw
 
@@ -441,7 +423,7 @@ class TestJiraWebhook:
             source="jira",
             event_type="unknown",
             delivery_id="jira-duplicate-456",
-            payload=json.dumps({"test": "data"})
+            payload=json.dumps({"test": "data"}),
         )
         db_session.add(existing)
         db_session.commit()
@@ -451,21 +433,23 @@ class TestJiraWebhook:
         payload = {"webhookEvent": "jira:issue_updated"}
         headers = {"X-Atlassian-Webhook-Identifier": "jira-duplicate-456"}
 
-        response = client.post(
-            "/webhooks/jira",
-            json=payload,
-            headers=headers
-        )
+        response = client.post("/webhooks/jira", json=payload, headers=headers)
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "duplicate"
         assert data["id"] == existing_id
 
         # Verify no new event was created
-        count = db_session.query(EventRaw).filter_by(delivery_id="jira-duplicate-456").count()
+        count = (
+            db_session.query(EventRaw)
+            .filter_by(delivery_id="jira-duplicate-456")
+            .count()
+        )
         assert count == 1
 
-    def test_jira_webhook_without_identifier(self, client: TestClient, db_session: Session):
+    def test_jira_webhook_without_identifier(
+        self, client: TestClient, db_session: Session
+    ):
         """Test Jira webhook without X-Atlassian-Webhook-Identifier header."""
         from services.gateway.app.models.events import EventRaw
 
@@ -475,10 +459,7 @@ class TestJiraWebhook:
 
         payload = {"webhookEvent": "jira:issue_created"}
 
-        response = client.post(
-            "/webhooks/jira",
-            json=payload
-        )
+        response = client.post("/webhooks/jira", json=payload)
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "ok"
@@ -497,24 +478,26 @@ class TestJiraWebhook:
 
         payload = {
             "webhookEvent": "jira:issue_created",
-            "issue": {"id": "10001", "key": "PROJ-123"}
+            "issue": {"id": "10001", "key": "PROJ-123"},
         }
         headers = {"X-Atlassian-Webhook-Identifier": "jira-payload-test"}
 
-        response = client.post(
-            "/webhooks/jira",
-            json=payload,
-            headers=headers
-        )
+        response = client.post("/webhooks/jira", json=payload, headers=headers)
         assert response.status_code == 200
 
-        event = db_session.query(EventRaw).filter_by(delivery_id="jira-payload-test").first()
+        event = (
+            db_session.query(EventRaw)
+            .filter_by(delivery_id="jira-payload-test")
+            .first()
+        )
         assert event is not None
         assert event.payload is not None
         # Payload should contain our test data
         assert "PROJ-123" in event.payload
 
-    def test_jira_webhook_no_signature_field(self, client: TestClient, db_session: Session):
+    def test_jira_webhook_no_signature_field(
+        self, client: TestClient, db_session: Session
+    ):
         """Test that Jira webhooks have null signature."""
         from services.gateway.app.models.events import EventRaw
 
@@ -524,14 +507,12 @@ class TestJiraWebhook:
         payload = {"test": "data"}
         headers = {"X-Atlassian-Webhook-Identifier": "jira-sig-test"}
 
-        response = client.post(
-            "/webhooks/jira",
-            json=payload,
-            headers=headers
-        )
+        response = client.post("/webhooks/jira", json=payload, headers=headers)
         assert response.status_code == 200
 
-        event = db_session.query(EventRaw).filter_by(delivery_id="jira-sig-test").first()
+        event = (
+            db_session.query(EventRaw).filter_by(delivery_id="jira-sig-test").first()
+        )
         assert event is not None
         assert event.signature is None  # Jira webhooks don't have signatures
 
@@ -557,18 +538,14 @@ class TestLinearWebhook:
                 "description": "Implement OAuth2 flow",
                 "state": {"id": "state-123", "name": "In Progress"},
                 "team": {"id": "team-123", "name": "Engineering"},
-                "assignee": {"id": "user-123", "name": "Alice"}
+                "assignee": {"id": "user-123", "name": "Alice"},
             },
             "url": "https://linear.app/issue/ENG-42",
-            "createdAt": "2025-11-09T10:00:00.000Z"
+            "createdAt": "2025-11-09T10:00:00.000Z",
         }
         headers = {"Linear-Signature": "sha256=test"}
 
-        response = client.post(
-            "/webhooks/linear",
-            json=payload,
-            headers=headers
-        )
+        response = client.post("/webhooks/linear", json=payload, headers=headers)
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "ok"
@@ -599,15 +576,12 @@ class TestLinearWebhook:
                 "id": "def-456",
                 "identifier": "ENG-43",
                 "title": "Fix bug in login",
-                "state": {"name": "Done"}
+                "state": {"name": "Done"},
             },
-            "url": "https://linear.app/issue/ENG-43"
+            "url": "https://linear.app/issue/ENG-43",
         }
 
-        response = client.post(
-            "/webhooks/linear",
-            json=payload
-        )
+        response = client.post("/webhooks/linear", json=payload)
         assert response.status_code == 200
 
         event = db_session.query(EventRaw).filter_by(source="linear").first()
@@ -615,7 +589,9 @@ class TestLinearWebhook:
         assert event.event_type == "Issue:update"
         assert "Done" in event.payload
 
-    def test_linear_webhook_comment_create(self, client: TestClient, db_session: Session):
+    def test_linear_webhook_comment_create(
+        self, client: TestClient, db_session: Session
+    ):
         """Test Linear comment create event."""
         from services.gateway.app.models.events import EventRaw
 
@@ -628,14 +604,11 @@ class TestLinearWebhook:
             "data": {
                 "id": "comment-789",
                 "body": "This looks good!",
-                "issue": {"id": "issue-123", "identifier": "ENG-42"}
-            }
+                "issue": {"id": "issue-123", "identifier": "ENG-42"},
+            },
         }
 
-        response = client.post(
-            "/webhooks/linear",
-            json=payload
-        )
+        response = client.post("/webhooks/linear", json=payload)
         assert response.status_code == 200
 
         event = db_session.query(EventRaw).filter_by(source="linear").first()
@@ -643,47 +616,42 @@ class TestLinearWebhook:
         assert event.event_type == "Comment:create"
         assert "looks good" in event.payload.lower()
 
-    def test_linear_webhook_duplicate_delivery(self, client: TestClient, db_session: Session):
+    def test_linear_webhook_duplicate_delivery(
+        self, client: TestClient, db_session: Session
+    ):
         """Test that duplicate Linear webhook deliveries are rejected."""
         from services.gateway.app.models.events import EventRaw
 
         # Clean and create existing event
         db_session.query(EventRaw).delete()
-        payload_data = json.dumps({
-            "action": "create",
-            "type": "Issue",
-            "data": {"id": "duplicate-123"}
-        })
+        payload_data = json.dumps(
+            {"action": "create", "type": "Issue", "data": {"id": "duplicate-123"}}
+        )
         existing = EventRaw(
             source="linear",
             event_type="Issue:create",
             delivery_id="linear-Issue-create-duplicate-123",
-            payload=payload_data
+            payload=payload_data,
         )
         db_session.add(existing)
         db_session.commit()
         existing_id = existing.id
 
         # Try to send duplicate
-        payload = {
-            "action": "create",
-            "type": "Issue",
-            "data": {"id": "duplicate-123"}
-        }
+        payload = {"action": "create", "type": "Issue", "data": {"id": "duplicate-123"}}
 
-        response = client.post(
-            "/webhooks/linear",
-            json=payload
-        )
+        response = client.post("/webhooks/linear", json=payload)
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "duplicate"
         assert data["id"] == existing_id
 
         # Verify no new event was created
-        count = db_session.query(EventRaw).filter_by(
-            delivery_id="linear-Issue-create-duplicate-123"
-        ).count()
+        count = (
+            db_session.query(EventRaw)
+            .filter_by(delivery_id="linear-Issue-create-duplicate-123")
+            .count()
+        )
         assert count == 1
 
     def test_linear_webhook_without_data(self, client: TestClient, db_session: Session):
@@ -696,19 +664,20 @@ class TestLinearWebhook:
         # Malformed payload (no data field)
         payload = {"action": "create"}
 
-        response = client.post(
-            "/webhooks/linear",
-            json=payload
-        )
+        response = client.post("/webhooks/linear", json=payload)
         assert response.status_code == 200
 
         # Should create event with timestamp-based delivery_id
         event = db_session.query(EventRaw).filter_by(source="linear").first()
         assert event is not None
         assert event.delivery_id.startswith("linear-")
-        assert event.event_type == "unknown:create"  # Type is unknown, but action is parsed
+        assert (
+            event.event_type == "unknown:create"
+        )  # Type is unknown, but action is parsed
 
-    def test_linear_webhook_stores_payload(self, client: TestClient, db_session: Session):
+    def test_linear_webhook_stores_payload(
+        self, client: TestClient, db_session: Session
+    ):
         """Test that Linear webhook stores the full payload."""
         from services.gateway.app.models.events import EventRaw
 
@@ -722,14 +691,11 @@ class TestLinearWebhook:
                 "id": "payload-test",
                 "identifier": "ENG-99",
                 "title": "Test payload storage",
-                "priority": 1
-            }
+                "priority": 1,
+            },
         }
 
-        response = client.post(
-            "/webhooks/linear",
-            json=payload
-        )
+        response = client.post("/webhooks/linear", json=payload)
         assert response.status_code == 200
 
         event = db_session.query(EventRaw).filter_by(source="linear").first()
@@ -743,7 +709,9 @@ class TestLinearWebhook:
 class TestPagerDutyWebhook:
     """Tests for POST /webhooks/pagerduty endpoint."""
 
-    def test_pagerduty_webhook_incident_triggered(self, client: TestClient, db_session: Session):
+    def test_pagerduty_webhook_incident_triggered(
+        self, client: TestClient, db_session: Session
+    ):
         """Test PagerDuty incident.triggered event."""
         from services.gateway.app.models.events import EventRaw
 
@@ -763,19 +731,13 @@ class TestPagerDutyWebhook:
                     "title": "Database high CPU usage",
                     "status": "triggered",
                     "urgency": "high",
-                    "service": {
-                        "summary": "Production Database"
-                    }
-                }
+                    "service": {"summary": "Production Database"},
+                },
             }
         }
         headers = {"X-PagerDuty-Signature": "sha256=test"}
 
-        response = client.post(
-            "/webhooks/pagerduty",
-            json=payload,
-            headers=headers
-        )
+        response = client.post("/webhooks/pagerduty", json=payload, headers=headers)
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "ok"
@@ -792,7 +754,9 @@ class TestPagerDutyWebhook:
         assert "P123ABC" in event.payload
         assert "Database" in event.payload
 
-    def test_pagerduty_webhook_incident_resolved(self, client: TestClient, db_session: Session):
+    def test_pagerduty_webhook_incident_resolved(
+        self, client: TestClient, db_session: Session
+    ):
         """Test PagerDuty incident.resolved event."""
         from services.gateway.app.models.events import EventRaw
 
@@ -806,15 +770,12 @@ class TestPagerDutyWebhook:
                     "id": "P456DEF",
                     "incident_number": 43,
                     "title": "API latency resolved",
-                    "status": "resolved"
-                }
+                    "status": "resolved",
+                },
             }
         }
 
-        response = client.post(
-            "/webhooks/pagerduty",
-            json=payload
-        )
+        response = client.post("/webhooks/pagerduty", json=payload)
         assert response.status_code == 200
 
         event = db_session.query(EventRaw).filter_by(source="pagerduty").first()
@@ -822,7 +783,9 @@ class TestPagerDutyWebhook:
         assert event.event_type == "incident.resolved"
         assert "resolved" in event.payload
 
-    def test_pagerduty_webhook_incident_acknowledged(self, client: TestClient, db_session: Session):
+    def test_pagerduty_webhook_incident_acknowledged(
+        self, client: TestClient, db_session: Session
+    ):
         """Test PagerDuty incident.acknowledged event."""
         from services.gateway.app.models.events import EventRaw
 
@@ -836,17 +799,12 @@ class TestPagerDutyWebhook:
                     "id": "P789GHI",
                     "incident_number": 44,
                     "title": "Memory leak detected",
-                    "assignments": [
-                        {"assignee": {"summary": "Alice (On-Call)"}}
-                    ]
-                }
+                    "assignments": [{"assignee": {"summary": "Alice (On-Call)"}}],
+                },
             }
         }
 
-        response = client.post(
-            "/webhooks/pagerduty",
-            json=payload
-        )
+        response = client.post("/webhooks/pagerduty", json=payload)
         assert response.status_code == 200
 
         event = db_session.query(EventRaw).filter_by(source="pagerduty").first()
@@ -854,23 +812,27 @@ class TestPagerDutyWebhook:
         assert event.event_type == "incident.acknowledged"
         assert "Alice" in event.payload
 
-    def test_pagerduty_webhook_duplicate_delivery(self, client: TestClient, db_session: Session):
+    def test_pagerduty_webhook_duplicate_delivery(
+        self, client: TestClient, db_session: Session
+    ):
         """Test that duplicate PagerDuty webhook deliveries are rejected."""
         from services.gateway.app.models.events import EventRaw
 
         # Clean and create existing event
         db_session.query(EventRaw).delete()
-        payload_data = json.dumps({
-            "event": {
-                "event_type": "incident.triggered",
-                "data": {"id": "PDUPLICATE"}
+        payload_data = json.dumps(
+            {
+                "event": {
+                    "event_type": "incident.triggered",
+                    "data": {"id": "PDUPLICATE"},
+                }
             }
-        })
+        )
         existing = EventRaw(
             source="pagerduty",
             event_type="incident.triggered",
             delivery_id="pagerduty-incident.triggered-PDUPLICATE",
-            payload=payload_data
+            payload=payload_data,
         )
         db_session.add(existing)
         db_session.commit()
@@ -878,28 +840,26 @@ class TestPagerDutyWebhook:
 
         # Try to send duplicate
         payload = {
-            "event": {
-                "event_type": "incident.triggered",
-                "data": {"id": "PDUPLICATE"}
-            }
+            "event": {"event_type": "incident.triggered", "data": {"id": "PDUPLICATE"}}
         }
 
-        response = client.post(
-            "/webhooks/pagerduty",
-            json=payload
-        )
+        response = client.post("/webhooks/pagerduty", json=payload)
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "duplicate"
         assert data["id"] == existing_id
 
         # Verify no new event was created
-        count = db_session.query(EventRaw).filter_by(
-            delivery_id="pagerduty-incident.triggered-PDUPLICATE"
-        ).count()
+        count = (
+            db_session.query(EventRaw)
+            .filter_by(delivery_id="pagerduty-incident.triggered-PDUPLICATE")
+            .count()
+        )
         assert count == 1
 
-    def test_pagerduty_webhook_without_event_data(self, client: TestClient, db_session: Session):
+    def test_pagerduty_webhook_without_event_data(
+        self, client: TestClient, db_session: Session
+    ):
         """Test PagerDuty webhook with malformed payload uses fallback delivery_id."""
         from services.gateway.app.models.events import EventRaw
 
@@ -909,10 +869,7 @@ class TestPagerDutyWebhook:
         # Malformed payload (no event field)
         payload = {"something": "else"}
 
-        response = client.post(
-            "/webhooks/pagerduty",
-            json=payload
-        )
+        response = client.post("/webhooks/pagerduty", json=payload)
         assert response.status_code == 200
 
         # Should create event with timestamp-based delivery_id
@@ -921,7 +878,9 @@ class TestPagerDutyWebhook:
         assert event.delivery_id.startswith("pagerduty-")
         assert event.event_type == "unknown"
 
-    def test_pagerduty_webhook_stores_payload(self, client: TestClient, db_session: Session):
+    def test_pagerduty_webhook_stores_payload(
+        self, client: TestClient, db_session: Session
+    ):
         """Test that PagerDuty webhook stores the full payload."""
         from services.gateway.app.models.events import EventRaw
 
@@ -936,15 +895,12 @@ class TestPagerDutyWebhook:
                     "incident_number": 999,
                     "title": "Test payload storage",
                     "urgency": "high",
-                    "priority": {"summary": "P1"}
-                }
+                    "priority": {"summary": "P1"},
+                },
             }
         }
 
-        response = client.post(
-            "/webhooks/pagerduty",
-            json=payload
-        )
+        response = client.post("/webhooks/pagerduty", json=payload)
         assert response.status_code == 200
 
         event = db_session.query(EventRaw).filter_by(source="pagerduty").first()
@@ -952,7 +908,9 @@ class TestPagerDutyWebhook:
         assert event.payload is not None
         # Payload should contain our test data
         assert "PTEST999" in event.payload
-        assert "999" in event.payload or 999 in json.loads(event.payload).get("event", {}).get("data", {}).get("incident_number", 0)
+        assert "999" in event.payload or 999 in json.loads(event.payload).get(
+            "event", {}
+        ).get("data", {}).get("incident_number", 0)
 
 
 class TestSlackWebhook:
@@ -963,7 +921,7 @@ class TestSlackWebhook:
         payload = {
             "type": "url_verification",
             "challenge": "test_challenge_string_12345",
-            "token": "deprecated_verification_token"
+            "token": "deprecated_verification_token",
         }
 
         response = client.post("/webhooks/slack", json=payload)
@@ -988,22 +946,18 @@ class TestSlackWebhook:
                 "channel": "C123ABC",
                 "user": "U123ABC",
                 "text": "Hello, world!",
-                "ts": "1234567890.123456"
+                "ts": "1234567890.123456",
             },
             "type": "event_callback",
             "event_id": "Ev123ABC456",
-            "event_time": 1234567890
+            "event_time": 1234567890,
         }
         headers = {
             "X-Slack-Request-Timestamp": "1234567890",
-            "X-Slack-Signature": "v0=test_signature"
+            "X-Slack-Signature": "v0=test_signature",
         }
 
-        response = client.post(
-            "/webhooks/slack",
-            json=payload,
-            headers=headers
-        )
+        response = client.post("/webhooks/slack", json=payload, headers=headers)
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "ok"
@@ -1020,7 +974,9 @@ class TestSlackWebhook:
         assert "Hello, world!" in event.payload
         assert "C123ABC" in event.payload
 
-    def test_slack_webhook_reaction_added(self, client: TestClient, db_session: Session):
+    def test_slack_webhook_reaction_added(
+        self, client: TestClient, db_session: Session
+    ):
         """Test Slack reaction_added event."""
         from services.gateway.app.models.events import EventRaw
 
@@ -1038,13 +994,13 @@ class TestSlackWebhook:
                 "item": {
                     "type": "message",
                     "channel": "C123ABC",
-                    "ts": "1234567890.123456"
+                    "ts": "1234567890.123456",
                 },
-                "event_ts": "1234567891.000001"
+                "event_ts": "1234567891.000001",
             },
             "type": "event_callback",
             "event_id": "Ev789XYZ123",
-            "event_time": 1234567891
+            "event_time": 1234567891,
         }
 
         response = client.post("/webhooks/slack", json=payload)
@@ -1074,11 +1030,11 @@ class TestSlackWebhook:
                 "text": "<@U987ZYX> help me debug this issue",
                 "ts": "1234567892.123456",
                 "channel": "C123ABC",
-                "event_ts": "1234567892.123456"
+                "event_ts": "1234567892.123456",
             },
             "type": "event_callback",
             "event_id": "Ev456DEF789",
-            "event_time": 1234567892
+            "event_time": 1234567892,
         }
 
         response = client.post("/webhooks/slack", json=payload)
@@ -1105,11 +1061,11 @@ class TestSlackWebhook:
                 "channel": "C123ABC",
                 "user": "U123ABC",
                 "text": "Duplicate test message",
-                "ts": "1234567893.123456"
+                "ts": "1234567893.123456",
             },
             "type": "event_callback",
             "event_id": "Ev999DUPLICATE",
-            "event_time": 1234567893
+            "event_time": 1234567893,
         }
 
         # Send first event
@@ -1130,7 +1086,9 @@ class TestSlackWebhook:
         events = db_session.query(EventRaw).filter_by(source="slack").all()
         assert len(events) == 1
 
-    def test_slack_webhook_member_joined_channel(self, client: TestClient, db_session: Session):
+    def test_slack_webhook_member_joined_channel(
+        self, client: TestClient, db_session: Session
+    ):
         """Test Slack member_joined_channel event."""
         from services.gateway.app.models.events import EventRaw
 
@@ -1147,11 +1105,11 @@ class TestSlackWebhook:
                 "channel": "C123ABC",
                 "channel_type": "C",
                 "team": "T123ABC",
-                "inviter": "U456DEF"
+                "inviter": "U456DEF",
             },
             "type": "event_callback",
             "event_id": "Ev111JOIN222",
-            "event_time": 1234567894
+            "event_time": 1234567894,
         }
 
         response = client.post("/webhooks/slack", json=payload)
@@ -1161,3 +1119,564 @@ class TestSlackWebhook:
         assert event is not None
         assert event.event_type == "member_joined_channel"
         assert event.payload is not None
+
+
+class TestNewRelicWebhook:
+    """Tests for POST /webhooks/newrelic endpoint."""
+
+    def test_newrelic_webhook_alert_open(self, client: TestClient, db_session: Session):
+        """Test New Relic alert open event."""
+        from services.gateway.app.models.events import EventRaw
+
+        # Clean events
+        db_session.query(EventRaw).delete()
+        db_session.commit()
+
+        payload = {
+            "incident_id": "12345",
+            "condition_name": "High CPU Usage",
+            "current_state": {"state": "open", "incident_id": "12345"},
+            "account_id": "123456",
+            "timestamp": 1234567890,
+        }
+
+        response = client.post("/webhooks/newrelic", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "ok"
+        assert "id" in data
+
+        # Verify event was stored
+        event = db_session.query(EventRaw).filter_by(source="newrelic").first()
+        assert event is not None
+        assert event.source == "newrelic"
+        assert event.event_type == "alert_open"
+        assert "newrelic-12345" in event.delivery_id
+
+        # Verify payload contains alert data
+        assert "High CPU Usage" in event.payload
+        assert "12345" in event.payload
+
+    def test_newrelic_webhook_alert_closed(
+        self, client: TestClient, db_session: Session
+    ):
+        """Test New Relic alert closed event."""
+        from services.gateway.app.models.events import EventRaw
+
+        db_session.query(EventRaw).delete()
+        db_session.commit()
+
+        payload = {
+            "incident_id": "67890",
+            "condition_name": "Memory Alert",
+            "current_state": {"state": "closed", "incident_id": "67890"},
+        }
+
+        response = client.post("/webhooks/newrelic", json=payload)
+        assert response.status_code == 200
+
+        event = db_session.query(EventRaw).filter_by(source="newrelic").first()
+        assert event is not None
+        assert event.event_type == "alert_closed"
+        assert "Memory Alert" in event.payload
+
+    def test_newrelic_webhook_deployment(self, client: TestClient, db_session: Session):
+        """Test New Relic deployment marker event."""
+        from services.gateway.app.models.events import EventRaw
+
+        db_session.query(EventRaw).delete()
+        db_session.commit()
+
+        payload = {
+            "deployment": {
+                "revision": "v1.2.3",
+                "changelog": "Bug fixes",
+                "description": "Production deployment",
+                "user": "deploy-bot",
+            },
+            "application_name": "my-app",
+        }
+
+        response = client.post("/webhooks/newrelic", json=payload)
+        assert response.status_code == 200
+
+        event = db_session.query(EventRaw).filter_by(source="newrelic").first()
+        assert event is not None
+        assert event.event_type == "deployment"
+        assert "v1.2.3" in event.payload
+
+    def test_newrelic_webhook_duplicate_delivery(
+        self, client: TestClient, db_session: Session
+    ):
+        """Test that duplicate New Relic webhook deliveries are rejected."""
+        from services.gateway.app.models.events import EventRaw
+
+        # Clean and create existing event
+        db_session.query(EventRaw).delete()
+        existing = EventRaw(
+            source="newrelic",
+            event_type="alert_open",
+            delivery_id="newrelic-duplicate-123",
+            payload=json.dumps({"incident_id": "duplicate-123"}),
+        )
+        db_session.add(existing)
+        db_session.commit()
+        existing_id = existing.id
+
+        # Try to send duplicate
+        payload = {
+            "incident_id": "duplicate-123",
+            "current_state": {"state": "open", "incident_id": "duplicate-123"},
+        }
+
+        response = client.post("/webhooks/newrelic", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "duplicate"
+        assert data["id"] == existing_id
+
+        # Verify no new event was created
+        count = (
+            db_session.query(EventRaw)
+            .filter_by(delivery_id="newrelic-duplicate-123")
+            .count()
+        )
+        assert count == 1
+
+    def test_newrelic_webhook_malformed_payload(
+        self, client: TestClient, db_session: Session
+    ):
+        """Test New Relic webhook with malformed payload uses fallback delivery_id."""
+        from services.gateway.app.models.events import EventRaw
+
+        db_session.query(EventRaw).delete()
+        db_session.commit()
+
+        # Malformed payload (no standard fields)
+        payload = {"something": "else"}
+
+        response = client.post("/webhooks/newrelic", json=payload)
+        assert response.status_code == 200
+
+        # Should create event with timestamp-based delivery_id
+        event = db_session.query(EventRaw).filter_by(source="newrelic").first()
+        assert event is not None
+        assert event.delivery_id.startswith("newrelic-")
+        assert event.event_type == "unknown"
+
+
+class TestPrometheusWebhook:
+    """Tests for POST /webhooks/prometheus endpoint."""
+
+    def test_prometheus_webhook_alert_firing(
+        self, client: TestClient, db_session: Session
+    ):
+        """Test Prometheus Alertmanager firing alert."""
+        from services.gateway.app.models.events import EventRaw
+
+        # Clean events
+        db_session.query(EventRaw).delete()
+        db_session.commit()
+
+        payload = {
+            "status": "firing",
+            "groupKey": "alertgroup-123",
+            "alerts": [
+                {
+                    "status": "firing",
+                    "labels": {
+                        "alertname": "HighCPU",
+                        "severity": "critical",
+                        "instance": "prod-1",
+                    },
+                    "annotations": {
+                        "summary": "CPU usage above 90%",
+                        "description": "Server prod-1 CPU usage is 95%",
+                    },
+                    "startsAt": "2025-11-09T10:00:00Z",
+                    "endsAt": "0001-01-01T00:00:00Z",
+                }
+            ],
+            "commonLabels": {"severity": "critical"},
+            "commonAnnotations": {"summary": "CPU Alert"},
+        }
+
+        response = client.post("/webhooks/prometheus", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "ok"
+        assert "id" in data
+
+        # Verify event was stored
+        event = db_session.query(EventRaw).filter_by(source="prometheus").first()
+        assert event is not None
+        assert event.source == "prometheus"
+        assert event.event_type == "alert_firing"
+        assert "prometheus-" in event.delivery_id
+
+        # Verify payload contains alert data
+        assert "HighCPU" in event.payload
+        assert "critical" in event.payload
+
+    def test_prometheus_webhook_alert_resolved(
+        self, client: TestClient, db_session: Session
+    ):
+        """Test Prometheus Alertmanager resolved alert."""
+        from services.gateway.app.models.events import EventRaw
+
+        db_session.query(EventRaw).delete()
+        db_session.commit()
+
+        payload = {
+            "status": "resolved",
+            "groupKey": "alertgroup-456",
+            "alerts": [
+                {
+                    "status": "resolved",
+                    "labels": {"alertname": "HighMemory", "severity": "warning"},
+                    "startsAt": "2025-11-09T09:00:00Z",
+                    "endsAt": "2025-11-09T10:00:00Z",
+                }
+            ],
+        }
+
+        response = client.post("/webhooks/prometheus", json=payload)
+        assert response.status_code == 200
+
+        event = db_session.query(EventRaw).filter_by(source="prometheus").first()
+        assert event is not None
+        assert event.event_type == "alert_resolved"
+        assert "HighMemory" in event.payload
+
+    def test_prometheus_webhook_multiple_alerts(
+        self, client: TestClient, db_session: Session
+    ):
+        """Test Prometheus Alertmanager with multiple alerts in one webhook."""
+        from services.gateway.app.models.events import EventRaw
+
+        db_session.query(EventRaw).delete()
+        db_session.commit()
+
+        payload = {
+            "status": "firing",
+            "groupKey": "multi-alert-789",
+            "alerts": [
+                {
+                    "status": "firing",
+                    "labels": {"alertname": "DiskFull", "instance": "server-1"},
+                },
+                {
+                    "status": "firing",
+                    "labels": {"alertname": "DiskFull", "instance": "server-2"},
+                },
+                {
+                    "status": "resolved",
+                    "labels": {"alertname": "DiskFull", "instance": "server-3"},
+                },
+            ],
+        }
+
+        response = client.post("/webhooks/prometheus", json=payload)
+        assert response.status_code == 200
+
+        event = db_session.query(EventRaw).filter_by(source="prometheus").first()
+        assert event is not None
+        assert event.event_type == "alert_firing"
+        # All alerts should be in payload
+        assert "server-1" in event.payload
+        assert "server-2" in event.payload
+        assert "server-3" in event.payload
+
+    def test_prometheus_webhook_duplicate_delivery(
+        self, client: TestClient, db_session: Session
+    ):
+        """Test that duplicate Prometheus webhook deliveries are rejected."""
+        from services.gateway.app.models.events import EventRaw
+
+        db_session.query(EventRaw).delete()
+        db_session.commit()
+
+        payload = {
+            "status": "firing",
+            "groupKey": "duplicate-group",
+            "alerts": [{"status": "firing", "labels": {"alertname": "Test"}}],
+        }
+
+        # Send first event
+        response1 = client.post("/webhooks/prometheus", json=payload)
+        assert response1.status_code == 200
+        first_id = response1.json()["id"]
+
+        # Send duplicate
+        response2 = client.post("/webhooks/prometheus", json=payload)
+        assert response2.status_code == 200
+        data2 = response2.json()
+        assert data2["status"] == "duplicate"
+        assert data2["id"] == first_id
+
+        # Verify only one event was stored
+        count = db_session.query(EventRaw).filter_by(source="prometheus").count()
+        assert count == 1
+
+    def test_prometheus_webhook_malformed_payload(
+        self, client: TestClient, db_session: Session
+    ):
+        """Test Prometheus webhook with malformed payload uses fallback delivery_id."""
+        from services.gateway.app.models.events import EventRaw
+
+        db_session.query(EventRaw).delete()
+        db_session.commit()
+
+        # Malformed payload (no standard fields)
+        payload = {"something": "else"}
+
+        response = client.post("/webhooks/prometheus", json=payload)
+        assert response.status_code == 200
+
+        event = db_session.query(EventRaw).filter_by(source="prometheus").first()
+        assert event is not None
+        assert event.delivery_id.startswith("prometheus-")
+        assert event.event_type == "alert_unknown"
+
+
+class TestCloudWatchWebhook:
+    """Tests for POST /webhooks/cloudwatch endpoint."""
+
+    def test_cloudwatch_webhook_alarm_triggered(
+        self, client: TestClient, db_session: Session
+    ):
+        """Test CloudWatch alarm ALARM state via SNS."""
+        from services.gateway.app.models.events import EventRaw
+
+        # Clean events
+        db_session.query(EventRaw).delete()
+        db_session.commit()
+
+        # CloudWatch alarms come through SNS with nested JSON
+        alarm_message = json.dumps(
+            {
+                "AlarmName": "HighCPUAlarm",
+                "AlarmDescription": "CPU usage above 80%",
+                "NewStateValue": "ALARM",
+                "OldStateValue": "OK",
+                "NewStateReason": "Threshold crossed",
+                "StateChangeTime": "2025-11-09T10:00:00.000Z",
+                "Region": "us-east-1",
+                "Trigger": {
+                    "MetricName": "CPUUtilization",
+                    "Namespace": "AWS/EC2",
+                    "Threshold": 80.0,
+                },
+            }
+        )
+
+        payload = {
+            "Type": "Notification",
+            "MessageId": "sns-msg-123",
+            "Message": alarm_message,
+            "Timestamp": "2025-11-09T10:00:00.000Z",
+            "Subject": "ALARM: HighCPUAlarm",
+        }
+        headers = {
+            "x-amz-sns-message-type": "Notification",
+            "x-amz-sns-message-id": "sns-msg-123",
+        }
+
+        response = client.post("/webhooks/cloudwatch", json=payload, headers=headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "ok"
+        assert "id" in data
+
+        # Verify event was stored
+        event = db_session.query(EventRaw).filter_by(source="cloudwatch").first()
+        assert event is not None
+        assert event.source == "cloudwatch"
+        assert event.event_type == "alarm_alarm"
+        assert "cloudwatch-sns-msg-123" in event.delivery_id
+
+        # Verify payload contains alarm data
+        assert "HighCPUAlarm" in event.payload
+        assert "CPUUtilization" in event.payload
+
+    def test_cloudwatch_webhook_alarm_ok(self, client: TestClient, db_session: Session):
+        """Test CloudWatch alarm OK state via SNS."""
+        from services.gateway.app.models.events import EventRaw
+
+        db_session.query(EventRaw).delete()
+        db_session.commit()
+
+        alarm_message = json.dumps(
+            {
+                "AlarmName": "MemoryAlarm",
+                "NewStateValue": "OK",
+                "OldStateValue": "ALARM",
+                "NewStateReason": "Threshold no longer crossed",
+            }
+        )
+
+        payload = {
+            "Type": "Notification",
+            "MessageId": "sns-msg-456",
+            "Message": alarm_message,
+        }
+        headers = {
+            "x-amz-sns-message-type": "Notification",
+            "x-amz-sns-message-id": "sns-msg-456",
+        }
+
+        response = client.post("/webhooks/cloudwatch", json=payload, headers=headers)
+        assert response.status_code == 200
+
+        event = db_session.query(EventRaw).filter_by(source="cloudwatch").first()
+        assert event is not None
+        assert event.event_type == "alarm_ok"
+        assert "MemoryAlarm" in event.payload
+
+    def test_cloudwatch_webhook_subscription_confirmation(self, client: TestClient):
+        """Test CloudWatch SNS subscription confirmation request."""
+        payload = {
+            "Type": "SubscriptionConfirmation",
+            "SubscribeURL": "https://sns.us-east-1.amazonaws.com/?Action=ConfirmSubscription&Token=abc123",
+            "Token": "abc123",
+            "TopicArn": "arn:aws:sns:us-east-1:123456789:CloudWatchAlarms",
+        }
+        headers = {"x-amz-sns-message-type": "SubscriptionConfirmation"}
+
+        response = client.post("/webhooks/cloudwatch", json=payload, headers=headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "subscription_confirmation_required"
+        assert "SubscribeURL" in data["subscribe_url"]
+
+    def test_cloudwatch_webhook_eventbridge_event(
+        self, client: TestClient, db_session: Session
+    ):
+        """Test CloudWatch EventBridge event via SNS."""
+        from services.gateway.app.models.events import EventRaw
+
+        db_session.query(EventRaw).delete()
+        db_session.commit()
+
+        eventbridge_message = json.dumps(
+            {
+                "version": "0",
+                "id": "12345678-1234-1234-1234-123456789012",
+                "detail-type": "EC2 Instance State-change Notification",
+                "source": "aws.ec2",
+                "account": "123456789012",
+                "time": "2025-11-09T10:00:00Z",
+                "region": "us-east-1",
+                "detail": {"instance-id": "i-1234567890abcdef0", "state": "stopped"},
+            }
+        )
+
+        payload = {
+            "Type": "Notification",
+            "MessageId": "sns-eventbridge-789",
+            "Message": eventbridge_message,
+        }
+        headers = {
+            "x-amz-sns-message-type": "Notification",
+            "x-amz-sns-message-id": "sns-eventbridge-789",
+        }
+
+        response = client.post("/webhooks/cloudwatch", json=payload, headers=headers)
+        assert response.status_code == 200
+
+        event = db_session.query(EventRaw).filter_by(source="cloudwatch").first()
+        assert event is not None
+        assert event.event_type == "eventbridge_ec2_instance_state-change_notification"
+        assert "i-1234567890abcdef0" in event.payload
+
+    def test_cloudwatch_webhook_duplicate_delivery(
+        self, client: TestClient, db_session: Session
+    ):
+        """Test that duplicate CloudWatch webhook deliveries are rejected."""
+        from services.gateway.app.models.events import EventRaw
+
+        # Clean and create existing event
+        db_session.query(EventRaw).delete()
+        existing = EventRaw(
+            source="cloudwatch",
+            event_type="alarm_alarm",
+            delivery_id="cloudwatch-duplicate-sns-123",
+            payload=json.dumps({"test": "data"}),
+        )
+        db_session.add(existing)
+        db_session.commit()
+        existing_id = existing.id
+
+        # Try to send duplicate
+        alarm_message = json.dumps({"AlarmName": "Test", "NewStateValue": "ALARM"})
+        payload = {
+            "Type": "Notification",
+            "MessageId": "duplicate-sns-123",
+            "Message": alarm_message,
+        }
+        headers = {
+            "x-amz-sns-message-type": "Notification",
+            "x-amz-sns-message-id": "duplicate-sns-123",
+        }
+
+        response = client.post("/webhooks/cloudwatch", json=payload, headers=headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "duplicate"
+        assert data["id"] == existing_id
+
+        # Verify no new event was created
+        count = (
+            db_session.query(EventRaw)
+            .filter_by(delivery_id="cloudwatch-duplicate-sns-123")
+            .count()
+        )
+        assert count == 1
+
+    def test_cloudwatch_webhook_malformed_payload(
+        self, client: TestClient, db_session: Session
+    ):
+        """Test CloudWatch webhook with malformed payload uses fallback delivery_id."""
+        from services.gateway.app.models.events import EventRaw
+
+        db_session.query(EventRaw).delete()
+        db_session.commit()
+
+        # Malformed payload (no standard fields)
+        payload = {"something": "else"}
+
+        response = client.post("/webhooks/cloudwatch", json=payload)
+        assert response.status_code == 200
+
+        event = db_session.query(EventRaw).filter_by(source="cloudwatch").first()
+        assert event is not None
+        assert event.delivery_id.startswith("cloudwatch-")
+        assert event.event_type == "unknown"
+
+    def test_cloudwatch_webhook_raw_message(
+        self, client: TestClient, db_session: Session
+    ):
+        """Test CloudWatch webhook with non-JSON message content."""
+        from services.gateway.app.models.events import EventRaw
+
+        db_session.query(EventRaw).delete()
+        db_session.commit()
+
+        # Some SNS messages might have raw text instead of JSON
+        payload = {
+            "Type": "Notification",
+            "MessageId": "sns-raw-msg",
+            "Message": "Plain text alarm notification",
+        }
+        headers = {
+            "x-amz-sns-message-type": "Notification",
+            "x-amz-sns-message-id": "sns-raw-msg",
+        }
+
+        response = client.post("/webhooks/cloudwatch", json=payload, headers=headers)
+        assert response.status_code == 200
+
+        event = db_session.query(EventRaw).filter_by(source="cloudwatch").first()
+        assert event is not None
+        assert event.event_type == "unknown"  # Can't determine type from raw text
+        assert "Plain text" in event.payload

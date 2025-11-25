@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2025-11-25
+
+### Added - Complete Integrations
+
+**3 New Observability Platform Integrations:**
+- **New Relic** (`POST /webhooks/newrelic`)
+  - Alert notifications (open, closed, acknowledged)
+  - APM events (error rate, throughput, response time)
+  - Deployment markers
+  - Infrastructure alerts
+  - Synthetics monitor events
+
+- **Prometheus Alertmanager** (`POST /webhooks/prometheus`)
+  - Alert notifications (firing, resolved)
+  - Grouped alerts support
+  - Custom alert labels and annotations
+  - Idempotency via groupKey + status hashing
+
+- **AWS CloudWatch** (`POST /webhooks/cloudwatch`)
+  - CloudWatch Alarm notifications via SNS (ALARM, OK, INSUFFICIENT_DATA)
+  - EventBridge events via SNS
+  - SNS subscription confirmation handling
+  - Nested JSON message parsing
+
+**Total Integrations: 21** (up from 18)
+
+### Changed
+
+- Updated feature flags to enable new integrations by default
+- Updated API Reference documentation with new webhook endpoints
+- Updated README with 21 integrations list
+
+### Testing
+
+- Added comprehensive tests for all 3 new webhook handlers
+- Tests cover: basic success, event type extraction, duplicate detection, malformed payloads
+
+---
+
 ## [1.0.0] - 2025-11-24 🎉 DORA COMPLETE!
 
 ### 🎯 Major Milestone

@@ -102,10 +102,7 @@ async def github_webhook(
                 conclusion = workflow_run.get("conclusion", "unknown")
 
                 # Filter for deployment workflows
-                if (
-                    "deploy" in workflow_name.lower()
-                    or "production" in workflow_name.lower()
-                ):
+                if "deploy" in workflow_name.lower() or "production" in workflow_name.lower():
                     repo = payload_json.get("repository", {})
                     repo_name = repo.get("full_name", "unknown")
 
@@ -121,9 +118,7 @@ async def github_webhook(
                             updated_at = datetime.fromisoformat(
                                 updated_at_str.replace("Z", "+00:00")
                             )
-                            duration_seconds = int(
-                                (updated_at - created_at).total_seconds()
-                            )
+                            duration_seconds = int((updated_at - created_at).total_seconds())
                         except Exception:
                             pass
 
@@ -161,9 +156,7 @@ async def jira_webhook(
     delivery = x_atlassian_webhook_identifier or ""
     if delivery:
         exists = session.execute(
-            select(EventRaw).where(
-                EventRaw.source == "jira", EventRaw.delivery_id == delivery
-            )
+            select(EventRaw).where(EventRaw.source == "jira", EventRaw.delivery_id == delivery)
         ).scalar_one_or_none()
         if exists:
             return {"status": "duplicate", "id": exists.id}
@@ -233,9 +226,7 @@ async def shortcut_webhook(
     # Idempotency check
     if delivery:
         exists = session.execute(
-            select(EventRaw).where(
-                EventRaw.source == "shortcut", EventRaw.delivery_id == delivery
-            )
+            select(EventRaw).where(EventRaw.source == "shortcut", EventRaw.delivery_id == delivery)
         ).scalar_one_or_none()
         if exists:
             return {"status": "duplicate", "id": exists.id}
@@ -326,9 +317,7 @@ async def linear_webhook(
     # Idempotency check
     if delivery:
         exists = session.execute(
-            select(EventRaw).where(
-                EventRaw.source == "linear", EventRaw.delivery_id == delivery
-            )
+            select(EventRaw).where(EventRaw.source == "linear", EventRaw.delivery_id == delivery)
         ).scalar_one_or_none()
         if exists:
             return {"status": "duplicate", "id": exists.id}
@@ -419,9 +408,7 @@ async def pagerduty_webhook(
     # Idempotency check
     if delivery:
         exists = session.execute(
-            select(EventRaw).where(
-                EventRaw.source == "pagerduty", EventRaw.delivery_id == delivery
-            )
+            select(EventRaw).where(EventRaw.source == "pagerduty", EventRaw.delivery_id == delivery)
         ).scalar_one_or_none()
         if exists:
             return {"status": "duplicate", "id": exists.id}
@@ -469,9 +456,7 @@ async def pagerduty_webhook(
 async def slack_webhook(
     request: Request,
     session: Session = Depends(get_db_session),
-    x_slack_request_timestamp: str | None = Header(
-        None, alias="X-Slack-Request-Timestamp"
-    ),
+    x_slack_request_timestamp: str | None = Header(None, alias="X-Slack-Request-Timestamp"),
     x_slack_signature: str | None = Header(None, alias="X-Slack-Signature"),
 ) -> dict:
     """
@@ -512,9 +497,7 @@ async def slack_webhook(
 
         # Use event_id as delivery_id for idempotency
         # Slack's event_id is globally unique
-        delivery = (
-            f"slack-{event_id}" if event_id else f"slack-{int(time.time() * 1000)}"
-        )
+        delivery = f"slack-{event_id}" if event_id else f"slack-{int(time.time() * 1000)}"
     except Exception:
         # If parsing fails, use a timestamp-based ID
         delivery = f"slack-{int(time.time() * 1000)}"
@@ -523,9 +506,7 @@ async def slack_webhook(
     # Idempotency check
     if delivery:
         exists = session.execute(
-            select(EventRaw).where(
-                EventRaw.source == "slack", EventRaw.delivery_id == delivery
-            )
+            select(EventRaw).where(EventRaw.source == "slack", EventRaw.delivery_id == delivery)
         ).scalar_one_or_none()
         if exists:
             return {"status": "ok", "id": exists.id}
@@ -608,22 +589,18 @@ async def datadog_webhook(
         # Datadog sends different structures for monitors vs events
         # Monitor alerts have 'alert_id', events have 'event_id'
         event_id = (
-            payload_json.get("id")
-            or payload_json.get("alert_id")
-            or payload_json.get("event_id")
+            payload_json.get("id") or payload_json.get("alert_id") or payload_json.get("event_id")
         )
-        event_type = payload_json.get(
-            "event_type", "alert"
-        )  # alert, event, metric, etc.
+        event_type = payload_json.get("event_type", "alert")  # alert, event, metric, etc.
 
         # Extract alert/monitor info if present
         if "alert_type" in payload_json:
-            event_type = f"monitor_{payload_json['alert_type']}"  # e.g., monitor_error, monitor_warning
+            event_type = (
+                f"monitor_{payload_json['alert_type']}"  # e.g., monitor_error, monitor_warning
+            )
 
         # Use event_id or timestamp for delivery_id
-        delivery = (
-            f"datadog-{event_id}" if event_id else f"datadog-{int(time.time() * 1000)}"
-        )
+        delivery = f"datadog-{event_id}" if event_id else f"datadog-{int(time.time() * 1000)}"
     except Exception:
         delivery = f"datadog-{int(time.time() * 1000)}"
         event_type = "unknown"
@@ -631,9 +608,7 @@ async def datadog_webhook(
     # Idempotency check
     if delivery:
         exists = session.execute(
-            select(EventRaw).where(
-                EventRaw.source == "datadog", EventRaw.delivery_id == delivery
-            )
+            select(EventRaw).where(EventRaw.source == "datadog", EventRaw.delivery_id == delivery)
         ).scalar_one_or_none()
         if exists:
             return {"status": "ok", "id": exists.id}
@@ -703,22 +678,14 @@ async def sentry_webhook(
         payload_json = json.loads(body)
 
         # Sentry webhook format
-        action = payload_json.get(
-            "action", "unknown"
-        )  # e.g., created, resolved, assigned
+        action = payload_json.get("action", "unknown")  # e.g., created, resolved, assigned
         resource = sentry_hook_resource or "unknown"  # issue, event, installation
 
         # Extract issue/event ID for idempotency
         data = payload_json.get("data", {})
-        issue_id = (
-            data.get("issue", {}).get("id")
-            if isinstance(data.get("issue"), dict)
-            else None
-        )
+        issue_id = data.get("issue", {}).get("id") if isinstance(data.get("issue"), dict) else None
         event_id = (
-            data.get("event", {}).get("event_id")
-            if isinstance(data.get("event"), dict)
-            else None
+            data.get("event", {}).get("event_id") if isinstance(data.get("event"), dict) else None
         )
 
         # Construct event type
@@ -734,9 +701,7 @@ async def sentry_webhook(
     # Idempotency check
     if delivery:
         exists = session.execute(
-            select(EventRaw).where(
-                EventRaw.source == "sentry", EventRaw.delivery_id == delivery
-            )
+            select(EventRaw).where(EventRaw.source == "sentry", EventRaw.delivery_id == delivery)
         ).scalar_one_or_none()
         if exists:
             return {"status": "ok", "id": exists.id}
@@ -803,9 +768,7 @@ async def circleci_webhook(
         payload_json = json.loads(body)
 
         # CircleCI webhook format
-        event_type = payload_json.get(
-            "type", "unknown"
-        )  # workflow-completed, job-completed, ping
+        event_type = payload_json.get("type", "unknown")  # workflow-completed, job-completed, ping
 
         # Handle ping events
         if event_type == "ping":
@@ -819,9 +782,7 @@ async def circleci_webhook(
 
         # Use workflow_id for delivery_id
         delivery = (
-            f"circleci-{workflow_id}"
-            if workflow_id
-            else f"circleci-{int(time.time() * 1000)}"
+            f"circleci-{workflow_id}" if workflow_id else f"circleci-{int(time.time() * 1000)}"
         )
     except Exception:
         delivery = f"circleci-{int(time.time() * 1000)}"
@@ -830,9 +791,7 @@ async def circleci_webhook(
     # Idempotency check
     if delivery:
         exists = session.execute(
-            select(EventRaw).where(
-                EventRaw.source == "circleci", EventRaw.delivery_id == delivery
-            )
+            select(EventRaw).where(EventRaw.source == "circleci", EventRaw.delivery_id == delivery)
         ).scalar_one_or_none()
         if exists:
             return {"status": "ok", "id": exists.id}
@@ -901,9 +860,7 @@ async def jenkins_webhook(
         # Common fields: build, name, url, status, result
         build_info = payload_json.get("build", {})
         build_number = build_info.get("number") or payload_json.get("number")
-        job_name = (
-            payload_json.get("name") or build_info.get("full_url", "").split("/")[-2]
-        )
+        job_name = payload_json.get("name") or build_info.get("full_url", "").split("/")[-2]
 
         # Event type based on status/result
         result = payload_json.get("result") or build_info.get("status", "unknown")
@@ -921,9 +878,7 @@ async def jenkins_webhook(
     # Idempotency check
     if delivery:
         exists = session.execute(
-            select(EventRaw).where(
-                EventRaw.source == "jenkins", EventRaw.delivery_id == delivery
-            )
+            select(EventRaw).where(EventRaw.source == "jenkins", EventRaw.delivery_id == delivery)
         ).scalar_one_or_none()
         if exists:
             return {"status": "ok", "id": exists.id}
@@ -1000,7 +955,9 @@ async def gitlab_webhook(
         # Extract ID based on object kind
         if object_kind == "pipeline":
             event_id = payload_json.get("object_attributes", {}).get("id")
-            event_type = f"pipeline_{payload_json.get('object_attributes', {}).get('status', 'unknown')}"
+            event_type = (
+                f"pipeline_{payload_json.get('object_attributes', {}).get('status', 'unknown')}"
+            )
         elif object_kind == "build":
             event_id = payload_json.get("build_id")
             event_type = f"job_{payload_json.get('build_status', 'unknown')}"
@@ -1008,15 +965,11 @@ async def gitlab_webhook(
             event_id = payload_json.get("deployment_id")
             event_type = f"deployment_{payload_json.get('status', 'unknown')}"
         else:
-            event_id = payload_json.get("id") or payload_json.get(
-                "object_attributes", {}
-            ).get("id")
+            event_id = payload_json.get("id") or payload_json.get("object_attributes", {}).get("id")
             event_type = object_kind
 
         # Use event_id for delivery_id
-        delivery = (
-            f"gitlab-{event_id}" if event_id else f"gitlab-{int(time.time() * 1000)}"
-        )
+        delivery = f"gitlab-{event_id}" if event_id else f"gitlab-{int(time.time() * 1000)}"
     except Exception:
         delivery = f"gitlab-{int(time.time() * 1000)}"
         event_type = "unknown"
@@ -1024,9 +977,7 @@ async def gitlab_webhook(
     # Idempotency check
     if delivery:
         exists = session.execute(
-            select(EventRaw).where(
-                EventRaw.source == "gitlab", EventRaw.delivery_id == delivery
-            )
+            select(EventRaw).where(EventRaw.source == "gitlab", EventRaw.delivery_id == delivery)
         ).scalar_one_or_none()
         if exists:
             return {"status": "ok", "id": exists.id}
@@ -1082,9 +1033,7 @@ async def kubernetes_webhook(
     """
     settings = get_settings()
     if not settings.integrations_kubernetes_enabled:
-        raise HTTPException(
-            status_code=503, detail="Kubernetes integration is disabled"
-        )
+        raise HTTPException(status_code=503, detail="Kubernetes integration is disabled")
 
     body = await request.body()
 
@@ -1103,7 +1052,9 @@ async def kubernetes_webhook(
             # Admission webhook format
             req = payload_json.get("request", {})
             obj = req.get("object", {})
-            event_type = f"{req.get('operation', 'unknown').lower()}_{obj.get('kind', 'unknown').lower()}"
+            event_type = (
+                f"{req.get('operation', 'unknown').lower()}_{obj.get('kind', 'unknown').lower()}"
+            )
             event_id = req.get("uid")
         else:
             # Event object format
@@ -1275,10 +1226,7 @@ async def ecs_webhook(
             last_status = detail.get("lastStatus", "unknown")
             event_type = f"task_{last_status.lower()}"
             event_id = task_arn.split("/")[-1] if task_arn else None
-        elif (
-            "ECS Service Action" in detail_type
-            or "ECS Deployment State Change" in detail_type
-        ):
+        elif "ECS Service Action" in detail_type or "ECS Deployment State Change" in detail_type:
             event_type = detail.get("eventName", "deployment").lower()
             event_id = detail.get("deploymentId") or payload_json.get("id")
         else:
@@ -1294,9 +1242,7 @@ async def ecs_webhook(
     # Idempotency check
     if delivery:
         exists = session.execute(
-            select(EventRaw).where(
-                EventRaw.source == "ecs", EventRaw.delivery_id == delivery
-            )
+            select(EventRaw).where(EventRaw.source == "ecs", EventRaw.delivery_id == delivery)
         ).scalar_one_or_none()
         if exists:
             return {"status": "ok", "id": exists.id}
@@ -1373,9 +1319,7 @@ async def heroku_webhook(
         event_type = f"{resource}_{action}"
 
         # Use event_id or webhook_id for delivery_id
-        delivery = (
-            f"heroku-{event_id}" if event_id else f"heroku-{int(time.time() * 1000)}"
-        )
+        delivery = f"heroku-{event_id}" if event_id else f"heroku-{int(time.time() * 1000)}"
     except Exception:
         delivery = (
             f"heroku-{heroku_webhook_id}"
@@ -1387,9 +1331,7 @@ async def heroku_webhook(
     # Idempotency check
     if delivery:
         exists = session.execute(
-            select(EventRaw).where(
-                EventRaw.source == "heroku", EventRaw.delivery_id == delivery
-            )
+            select(EventRaw).where(EventRaw.source == "heroku", EventRaw.delivery_id == delivery)
         ).scalar_one_or_none()
         if exists:
             return {"status": "ok", "id": exists.id}
@@ -1476,9 +1418,7 @@ async def codecov_webhook(
     # Idempotency check
     if delivery:
         exists = session.execute(
-            select(EventRaw).where(
-                EventRaw.source == "codecov", EventRaw.delivery_id == delivery
-            )
+            select(EventRaw).where(EventRaw.source == "codecov", EventRaw.delivery_id == delivery)
         ).scalar_one_or_none()
         if exists:
             return {"status": "ok", "id": exists.id}
@@ -1519,9 +1459,7 @@ async def codecov_webhook(
 async def sonarqube_webhook(
     request: Request,
     session: Session = Depends(get_db_session),
-    x_sonar_webhook_hmac: str | None = Header(
-        None, alias="X-Sonar-Webhook-HMAC-SHA256"
-    ),
+    x_sonar_webhook_hmac: str | None = Header(None, alias="X-Sonar-Webhook-HMAC-SHA256"),
 ) -> dict:
     """
     SonarQube webhook handler for code quality events.
@@ -1559,8 +1497,7 @@ async def sonarqube_webhook(
 
         # Extract task info for idempotency
         task_id = (
-            payload_json.get("taskId")
-            or payload_json.get("serverUrl", "").split("task?id=")[-1]
+            payload_json.get("taskId") or payload_json.get("serverUrl", "").split("task?id=")[-1]
         )
 
         # Use task_id or project_key for delivery_id
@@ -1576,9 +1513,7 @@ async def sonarqube_webhook(
     # Idempotency check
     if delivery:
         exists = session.execute(
-            select(EventRaw).where(
-                EventRaw.source == "sonarqube", EventRaw.delivery_id == delivery
-            )
+            select(EventRaw).where(EventRaw.source == "sonarqube", EventRaw.delivery_id == delivery)
         ).scalar_one_or_none()
         if exists:
             return {"status": "ok", "id": exists.id}
@@ -1602,6 +1537,318 @@ async def sonarqube_webhook(
         asyncio.create_task(
             get_event_bus().publish_json(
                 subject="events.sonarqube",
+                payload={
+                    "id": evt.id,
+                    "event_type": evt.event_type,
+                    "delivery_id": evt.delivery_id,
+                },
+            )
+        )
+    except Exception:
+        pass
+
+    return {"status": "ok", "id": evt.id}
+
+
+@router.post("/newrelic")
+async def newrelic_webhook(
+    request: Request,
+    session: Session = Depends(get_db_session),
+) -> dict:
+    """
+    New Relic webhook handler for alerts, APM events, and deployment markers.
+
+    Supports:
+    - Alert notifications (open, close, acknowledge)
+    - APM events (error rate, throughput, response time)
+    - Deployment markers
+    - Infrastructure alerts
+    - Synthetics monitor events
+
+    See: https://docs.newrelic.com/docs/alerts-applied-intelligence/notifications/notification-integrations/
+    """
+    settings = get_settings()
+    if not settings.integrations_newrelic_enabled:
+        raise HTTPException(status_code=503, detail="New Relic integration is disabled")
+
+    body = await request.body()
+
+    # Parse payload to extract event info
+    import json
+    import time
+
+    try:
+        payload_json = json.loads(body)
+
+        # New Relic sends different formats for different event types
+        # Alert notifications have 'condition_name', deployments have 'deployment'
+        incident_id = payload_json.get("incident_id") or payload_json.get("current_state", {}).get(
+            "incident_id"
+        )
+        condition_name = payload_json.get("condition_name")
+
+        # Determine event type
+        if "deployment" in payload_json:
+            event_type = "deployment"
+        elif "current_state" in payload_json:
+            # Alert notification format
+            state = payload_json.get("current_state", {}).get("state", "unknown")
+            event_type = f"alert_{state}"  # alert_open, alert_closed, alert_acknowledged
+        elif condition_name:
+            event_type = "alert"
+        else:
+            event_type = payload_json.get("event_type", "unknown")
+
+        # Use incident_id or timestamp for delivery_id
+        delivery = (
+            f"newrelic-{incident_id}" if incident_id else f"newrelic-{int(time.time() * 1000)}"
+        )
+    except Exception:
+        delivery = f"newrelic-{int(time.time() * 1000)}"
+        event_type = "unknown"
+
+    # Idempotency check
+    if delivery:
+        exists = session.execute(
+            select(EventRaw).where(EventRaw.source == "newrelic", EventRaw.delivery_id == delivery)
+        ).scalar_one_or_none()
+        if exists:
+            return {"status": "duplicate", "id": exists.id}
+
+    # Store event
+    evt = EventRaw(
+        source="newrelic",
+        event_type=event_type,
+        delivery_id=delivery,
+        signature=None,
+        headers=dict(request.headers),
+        payload=body.decode("utf-8", errors="replace"),
+    )
+    session.add(evt)
+    session.commit()
+
+    # Publish to event bus
+    try:
+        import asyncio
+
+        asyncio.create_task(
+            get_event_bus().publish_json(
+                subject="events.newrelic",
+                payload={
+                    "id": evt.id,
+                    "event_type": evt.event_type,
+                    "delivery_id": evt.delivery_id,
+                },
+            )
+        )
+    except Exception:
+        pass
+
+    return {"status": "ok", "id": evt.id}
+
+
+@router.post("/prometheus")
+async def prometheus_webhook(
+    request: Request,
+    session: Session = Depends(get_db_session),
+) -> dict:
+    """
+    Prometheus Alertmanager webhook handler for alerts.
+
+    Supports:
+    - Alert notifications (firing, resolved)
+    - Grouped alerts from Alertmanager
+    - Custom alert labels and annotations
+
+    Expected format: Prometheus Alertmanager webhook format
+    See: https://prometheus.io/docs/alerting/latest/configuration/#webhook_config
+    """
+    settings = get_settings()
+    if not settings.integrations_prometheus_enabled:
+        raise HTTPException(status_code=503, detail="Prometheus integration is disabled")
+
+    body = await request.body()
+
+    # Parse payload to extract event info
+    import json
+    import time
+
+    try:
+        payload_json = json.loads(body)
+
+        # Alertmanager webhook format
+        # status: "firing" or "resolved"
+        status = payload_json.get("status", "unknown")  # firing, resolved
+        group_key = payload_json.get("groupKey", "")
+
+        # Event type based on overall status
+        event_type = f"alert_{status}"  # alert_firing, alert_resolved
+
+        # Use groupKey + status for delivery_id (alerts can transition states)
+        if group_key:
+            # Hash the group key to keep delivery_id reasonable length
+            import hashlib
+
+            group_hash = hashlib.md5(group_key.encode()).hexdigest()[:12]
+            delivery = f"prometheus-{group_hash}-{status}"
+        else:
+            delivery = f"prometheus-{int(time.time() * 1000)}"
+    except Exception:
+        delivery = f"prometheus-{int(time.time() * 1000)}"
+        event_type = "unknown"
+
+    # Idempotency check
+    if delivery:
+        exists = session.execute(
+            select(EventRaw).where(
+                EventRaw.source == "prometheus", EventRaw.delivery_id == delivery
+            )
+        ).scalar_one_or_none()
+        if exists:
+            return {"status": "duplicate", "id": exists.id}
+
+    # Store event
+    evt = EventRaw(
+        source="prometheus",
+        event_type=event_type,
+        delivery_id=delivery,
+        signature=None,
+        headers=dict(request.headers),
+        payload=body.decode("utf-8", errors="replace"),
+    )
+    session.add(evt)
+    session.commit()
+
+    # Publish to event bus
+    try:
+        import asyncio
+
+        asyncio.create_task(
+            get_event_bus().publish_json(
+                subject="events.prometheus",
+                payload={
+                    "id": evt.id,
+                    "event_type": evt.event_type,
+                    "delivery_id": evt.delivery_id,
+                },
+            )
+        )
+    except Exception:
+        pass
+
+    return {"status": "ok", "id": evt.id}
+
+
+@router.post("/cloudwatch")
+async def cloudwatch_webhook(
+    request: Request,
+    session: Session = Depends(get_db_session),
+    x_amz_sns_message_type: str | None = Header(None, alias="x-amz-sns-message-type"),
+    x_amz_sns_message_id: str | None = Header(None, alias="x-amz-sns-message-id"),
+) -> dict:
+    """
+    AWS CloudWatch webhook handler via SNS.
+
+    Supports:
+    - CloudWatch Alarm notifications (ALARM, OK, INSUFFICIENT_DATA)
+    - EventBridge events via SNS
+    - SNS subscription confirmation
+
+    CloudWatch alarms are typically delivered via SNS topics.
+    See: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/AlarmThatSendsEmail.html
+    """
+    settings = get_settings()
+    if not settings.integrations_cloudwatch_enabled:
+        raise HTTPException(status_code=503, detail="CloudWatch integration is disabled")
+
+    body = await request.body()
+
+    # Parse payload to extract event info
+    import json
+    import time
+
+    try:
+        payload_json = json.loads(body)
+
+        # Handle SNS subscription confirmation
+        if x_amz_sns_message_type == "SubscriptionConfirmation":
+            # Return the subscribe URL for manual confirmation
+            # In production, you might auto-confirm by fetching the SubscribeURL
+            subscribe_url = payload_json.get("SubscribeURL", "")
+            return {
+                "status": "subscription_confirmation_required",
+                "subscribe_url": subscribe_url,
+                "message": "Please confirm the SNS subscription by visiting the SubscribeURL",
+            }
+
+        # SNS wraps the actual message in a "Message" field (as string)
+        message_str = payload_json.get("Message", "{}")
+        if isinstance(message_str, str):
+            try:
+                message = json.loads(message_str)
+            except json.JSONDecodeError:
+                message = {"raw": message_str}
+        else:
+            message = message_str
+
+        # CloudWatch Alarm format
+        alarm_name = message.get("AlarmName")
+        new_state = message.get("NewStateValue", "unknown")  # ALARM, OK, INSUFFICIENT_DATA
+
+        # EventBridge format
+        detail_type = message.get("detail-type")
+
+        # Determine event type
+        if alarm_name:
+            event_type = (
+                f"alarm_{new_state.lower()}"  # alarm_alarm, alarm_ok, alarm_insufficient_data
+            )
+        elif detail_type:
+            # EventBridge event
+            event_type = f"eventbridge_{detail_type.lower().replace(' ', '_')}"
+        else:
+            event_type = "unknown"
+
+        # Use SNS message ID or alarm name + state for delivery_id
+        if x_amz_sns_message_id:
+            delivery = f"cloudwatch-{x_amz_sns_message_id}"
+        elif alarm_name:
+            delivery = f"cloudwatch-{alarm_name}-{new_state}-{int(time.time())}"
+        else:
+            delivery = f"cloudwatch-{int(time.time() * 1000)}"
+    except Exception:
+        delivery = f"cloudwatch-{int(time.time() * 1000)}"
+        event_type = "unknown"
+
+    # Idempotency check
+    if delivery:
+        exists = session.execute(
+            select(EventRaw).where(
+                EventRaw.source == "cloudwatch", EventRaw.delivery_id == delivery
+            )
+        ).scalar_one_or_none()
+        if exists:
+            return {"status": "duplicate", "id": exists.id}
+
+    # Store event
+    evt = EventRaw(
+        source="cloudwatch",
+        event_type=event_type,
+        delivery_id=delivery,
+        signature=None,
+        headers=dict(request.headers),
+        payload=body.decode("utf-8", errors="replace"),
+    )
+    session.add(evt)
+    session.commit()
+
+    # Publish to event bus
+    try:
+        import asyncio
+
+        asyncio.create_task(
+            get_event_bus().publish_json(
+                subject="events.cloudwatch",
                 payload={
                     "id": evt.id,
                     "event_type": evt.event_type,
