@@ -196,3 +196,69 @@ class SlackClient:
             except Exception:
                 pass
         return res
+
+    def post_deployment_notification(
+        self,
+        *,
+        workflow_name: str,
+        conclusion: str,
+        repo_name: str,
+        duration_seconds: int | None = None,
+        workflow_url: str | None = None,
+        channel: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Post a deployment notification to Slack.
+
+        Args:
+            workflow_name: Name of the GitHub Actions workflow
+            conclusion: Workflow conclusion (success, failure, cancelled, etc.)
+            repo_name: Repository name (e.g., "acme/api-service")
+            duration_seconds: Optional workflow duration in seconds
+            workflow_url: Optional link to the workflow run
+            channel: Optional channel override (defaults to slack_default_channel)
+
+        Returns:
+            Response dict with 'ok' status
+        """
+        # Determine emoji based on conclusion
+        emoji_map = {
+            "success": "✅",
+            "failure": "❌",
+            "cancelled": "🚫",
+            "skipped": "⏭️",
+            "timed_out": "⏰",
+        }
+        emoji = emoji_map.get(conclusion, "🔔")
+
+        # Build message
+        message_parts = [
+            f"{emoji} *{workflow_name}* - {conclusion}",
+            f"Repository: `{repo_name}`",
+        ]
+
+        if duration_seconds is not None:
+            if duration_seconds < 60:
+                duration_str = f"{duration_seconds}s"
+            elif duration_seconds < 3600:
+                duration_str = f"{duration_seconds // 60}m {duration_seconds % 60}s"
+            else:
+                hours = duration_seconds // 3600
+                minutes = (duration_seconds % 3600) // 60
+                duration_str = f"{hours}h {minutes}m"
+            message_parts.append(f"Duration: {duration_str}")
+
+        if workflow_url:
+            message_parts.append(f"<{workflow_url}|View Workflow>")
+
+        message = "\n".join(message_parts)
+
+        # Use blocks for richer formatting
+        blocks = [
+            {
+                "type": "section",
+                "text": {"type": "mrkdwn", "text": message},
+            }
+        ]
+
+        return self.post_blocks(text=message, blocks=blocks, channel=channel)

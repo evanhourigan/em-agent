@@ -82,6 +82,60 @@ async def github_webhook(
         )
     except Exception:
         pass
+
+    # Send Slack notification for deployment workflow completions
+    if x_github_event == "workflow_run":
+        try:
+            import json
+            from datetime import datetime
+
+            from ...services.slack_client import SlackClient
+
+            payload_json = json.loads(body)
+            action = payload_json.get("action")
+            workflow_run = payload_json.get("workflow_run", {})
+
+            # Only notify on completed workflows
+            if action == "completed":
+                workflow_name = workflow_run.get("name", "Unknown Workflow")
+                conclusion = workflow_run.get("conclusion", "unknown")
+
+                # Filter for deployment workflows
+                if "deploy" in workflow_name.lower() or "production" in workflow_name.lower():
+                    repo = payload_json.get("repository", {})
+                    repo_name = repo.get("full_name", "unknown")
+
+                    # Calculate duration
+                    duration_seconds = None
+                    created_at_str = workflow_run.get("created_at")
+                    updated_at_str = workflow_run.get("updated_at")
+                    if created_at_str and updated_at_str:
+                        try:
+                            created_at = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
+                            updated_at = datetime.fromisoformat(updated_at_str.replace("Z", "+00:00"))
+                            duration_seconds = int((updated_at - created_at).total_seconds())
+                        except Exception:
+                            pass
+
+                    # Get workflow URL
+                    workflow_url = workflow_run.get("html_url")
+
+                    # Send notification (async, don't block webhook response)
+                    slack_client = SlackClient()
+                    asyncio.create_task(
+                        asyncio.to_thread(
+                            slack_client.post_deployment_notification,
+                            workflow_name=workflow_name,
+                            conclusion=conclusion,
+                            repo_name=repo_name,
+                            duration_seconds=duration_seconds,
+                            workflow_url=workflow_url,
+                        )
+                    )
+        except Exception:
+            # Don't fail webhook if Slack notification fails
+            pass
+
     return {"status": "ok", "id": evt.id}
 
 
