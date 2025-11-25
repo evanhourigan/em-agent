@@ -7,10 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### To Be Released in v0.6.0
-- Datadog integration for metrics and APM traces
-- Sentry integration for error tracking and releases
-- Change Failure Rate metric calculation
+### To Be Released in v0.7.0
+- CircleCI integration for CI/CD pipeline tracking
+- Jenkins integration for build and deployment tracking
+- GitLab CI integration for pipeline events
+
+## [0.6.0] - 2025-11-25
+
+### Added - Phase 2: Observability & Change Failure Rate
+- Datadog webhook handler (POST /webhooks/datadog)
+  - Monitor alerts (triggered, recovered, no data)
+  - Events and custom webhooks
+  - APM trace alert support
+- Sentry webhook handler (POST /webhooks/sentry)
+  - Issue lifecycle tracking (created, resolved, assigned, ignored)
+  - Event alerts
+  - Sentry-Hook-Resource header parsing
+
+### Changed
+- Updated change_fail_rate.sql with real incident correlation
+  - Correlates deployments with incidents within 24-hour window
+  - Aggregates from Sentry, Datadog, and PagerDuty
+  - Weekly grouping with percentage calculation
+- Updated mttr.sql to include all observability sources
+  - PagerDuty: triggered → resolved
+  - Sentry: issue.created → issue.resolved
+  - Datadog: monitor trigger → recovery
+  - Outputs MTTR in hours and minutes
+- Enabled feature flags:
+  - integrations_github_actions_enabled = True
+  - integrations_datadog_enabled = True
+  - integrations_sentry_enabled = True
+
+### Fixed
+- Added missing get_settings import to webhooks router
 
 ## [0.5.0] - 2025-11-24
 
