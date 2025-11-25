@@ -75,8 +75,8 @@ class Settings(BaseSettings):
     integrations_kubernetes_enabled: bool = True  # Enabled in v0.8.0
     integrations_ecs_enabled: bool = True  # Enabled in v0.8.0
     integrations_heroku_enabled: bool = True  # Enabled in v0.8.0
-    integrations_codecov_enabled: bool = False
-    integrations_sonarqube_enabled: bool = False
+    integrations_codecov_enabled: bool = True  # Enabled in v0.9.0
+    integrations_sonarqube_enabled: bool = True  # Enabled in v0.9.0
     integrations_newrelic_enabled: bool = False
     integrations_prometheus_enabled: bool = False
     integrations_cloudwatch_enabled: bool = False

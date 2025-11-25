@@ -1368,3 +1368,182 @@ async def heroku_webhook(
         pass
 
     return {"status": "ok", "id": evt.id}
+
+
+@router.post("/codecov")
+async def codecov_webhook(
+    request: Request,
+    session: Session = Depends(get_db_session),
+) -> dict:
+    """
+    Codecov webhook handler for code coverage events.
+
+    Supports:
+    - Coverage upload events
+    - Coverage change notifications
+    - Status check updates
+    - Pull request coverage reports
+
+    See: https://docs.codecov.com/docs/notifications#webhooks
+    """
+    settings = get_settings()
+    if not settings.integrations_codecov_enabled:
+        raise HTTPException(status_code=503, detail="Codecov integration is disabled")
+
+    body = await request.body()
+
+    # Parse payload to extract event info
+    import json
+    import time
+
+    try:
+        payload_json = json.loads(body)
+
+        # Codecov webhook format
+        event_type = payload_json.get("event", "unknown")  # coverage, status, etc.
+        
+        # Extract coverage info
+        commit = payload_json.get("commit", {})
+        repo = payload_json.get("repo", {})
+        coverage = payload_json.get("coverage", {})
+        
+        commit_sha = commit.get("commitid") or commit.get("sha")
+        repo_name = repo.get("name")
+        
+        # Use commit_sha for delivery_id
+        delivery = f"codecov-{commit_sha}-{event_type}" if commit_sha else f"codecov-{int(time.time() * 1000)}"
+    except Exception:
+        delivery = f"codecov-{int(time.time() * 1000)}"
+        event_type = "unknown"
+
+    # Idempotency check
+    if delivery:
+        exists = session.execute(
+            select(EventRaw).where(
+                EventRaw.source == "codecov", EventRaw.delivery_id == delivery
+            )
+        ).scalar_one_or_none()
+        if exists:
+            return {"status": "ok", "id": exists.id}
+
+    # Store event
+    evt = EventRaw(
+        source="codecov",
+        event_type=event_type,
+        delivery_id=delivery,
+        signature=None,
+        headers=dict(request.headers),
+        payload=body.decode("utf-8", errors="replace"),
+    )
+    session.add(evt)
+    session.commit()
+
+    # Publish to event bus
+    try:
+        import asyncio
+
+        asyncio.create_task(
+            get_event_bus().publish_json(
+                subject="events.codecov",
+                payload={
+                    "id": evt.id,
+                    "event_type": evt.event_type,
+                    "delivery_id": evt.delivery_id,
+                },
+            )
+        )
+    except Exception:
+        pass
+
+    return {"status": "ok", "id": evt.id}
+
+
+@router.post("/sonarqube")
+async def sonarqube_webhook(
+    request: Request,
+    session: Session = Depends(get_db_session),
+    x_sonar_webhook_hmac: str | None = Header(None, alias="X-Sonar-Webhook-HMAC-SHA256"),
+) -> dict:
+    """
+    SonarQube webhook handler for code quality events.
+
+    Supports:
+    - Quality Gate status changes
+    - Analysis completion events
+    - Issue creation/resolution
+    - Security hotspot updates
+
+    See: https://docs.sonarqube.org/latest/project-administration/webhooks/
+    """
+    settings = get_settings()
+    if not settings.integrations_sonarqube_enabled:
+        raise HTTPException(status_code=503, detail="SonarQube integration is disabled")
+
+    body = await request.body()
+
+    # Parse payload to extract event info
+    import json
+    import time
+
+    try:
+        payload_json = json.loads(body)
+
+        # SonarQube webhook format
+        project = payload_json.get("project", {})
+        quality_gate = payload_json.get("qualityGate", {})
+        
+        project_key = project.get("key")
+        qg_status = quality_gate.get("status", "unknown")  # OK, ERROR, WARN
+        
+        # Event type based on quality gate status
+        event_type = f"quality_gate_{qg_status.lower()}"
+        
+        # Extract task info for idempotency
+        task_id = payload_json.get("taskId") or payload_json.get("serverUrl", "").split("task?id=")[-1]
+        
+        # Use task_id or project_key for delivery_id
+        delivery = f"sonarqube-{task_id}" if task_id else f"sonarqube-{project_key}-{int(time.time() * 1000)}"
+    except Exception:
+        delivery = f"sonarqube-{int(time.time() * 1000)}"
+        event_type = "unknown"
+
+    # Idempotency check
+    if delivery:
+        exists = session.execute(
+            select(EventRaw).where(
+                EventRaw.source == "sonarqube", EventRaw.delivery_id == delivery
+            )
+        ).scalar_one_or_none()
+        if exists:
+            return {"status": "ok", "id": exists.id}
+
+    # Store event
+    evt = EventRaw(
+        source="sonarqube",
+        event_type=event_type,
+        delivery_id=delivery,
+        signature=x_sonar_webhook_hmac,
+        headers=dict(request.headers),
+        payload=body.decode("utf-8", errors="replace"),
+    )
+    session.add(evt)
+    session.commit()
+
+    # Publish to event bus
+    try:
+        import asyncio
+
+        asyncio.create_task(
+            get_event_bus().publish_json(
+                subject="events.sonarqube",
+                payload={
+                    "id": evt.id,
+                    "event_type": evt.event_type,
+                    "delivery_id": evt.delivery_id,
+                },
+            )
+        )
+    except Exception:
+        pass
+
+    return {"status": "ok", "id": evt.id}
