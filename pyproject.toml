@@ -1,0 +1,27 @@
+[tool.black]
+line-length = 100
+target-version = ["py311", "py312"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+  "E",   # pycodestyle errors
+  "F",   # pyflakes
+  "I",   # isort
+  "B",   # flake8-bugbear
+  "UP",  # pyupgrade
+  "SIM", # simplify
+  "C4",  # comprehensions
+]
+ignore = [
+  "E501",  # Line too long (SQL strings, f-strings)
+  "B008",  # FastAPI Depends in argument defaults
+  "B904",  # Exception chaining
+  "SIM105",  # try-except-pass pattern
+  "SIM108",  # Ternary operator suggestions
+  "SIM117",  # Nested with statements
+  "UP031",  # Format specifiers (% formatting OK for SQL)
+]
