@@ -1547,7 +1547,7 @@ class TestCloudWatchWebhook:
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "subscription_confirmation_required"
-        assert "SubscribeURL" in data["subscribe_url"]
+        assert "sns.us-east-1.amazonaws.com" in data["subscribe_url"]
 
     def test_cloudwatch_webhook_eventbridge_event(
         self, client: TestClient, db_session: Session
