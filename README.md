@@ -79,7 +79,7 @@ curl -sS -X POST http://localhost:8000/v1/slack/commands \
 - ✅ Phase 5: Slack integration (commands, reports, approvals), admin UI
 - ✅ Phase 6: Testing (467 tests, 88% coverage), security hardening, production optimization, CI/CD
 
-**18 Production-Ready Integrations:**
+**21 Production-Ready Integrations:**
 1. **GitHub** - Pull Requests, Issues, GitHub Actions workflows
 2. **Jira** - Issue tracking and project management
 3. **Shortcut** - Story and epic tracking
@@ -97,7 +97,9 @@ curl -sS -X POST http://localhost:8000/v1/slack/commands \
 15. **Heroku** - Platform-as-a-Service deployments
 16. **Codecov** - Code coverage tracking
 17. **SonarQube** - Code quality and security analysis
-18. **New Relic** - APM and observability (coming soon)
+18. **New Relic** - APM, alerts, and deployment markers
+19. **Prometheus** - Alertmanager webhook integration
+20. **AWS CloudWatch** - Alarms and EventBridge via SNS
 
 **Complete DORA Metrics Suite:**
 - ✅ **Deployment Frequency** - Track deployments across 8 platforms (GitHub Actions, CircleCI, Jenkins, GitLab, Kubernetes, ArgoCD, ECS, Heroku)

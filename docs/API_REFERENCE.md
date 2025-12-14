@@ -1,4 +1,4 @@
-# API Reference - v1.0.0
+# API Reference - v1.1.0
 
 Complete API documentation for EM Agent Gateway.
 
@@ -10,7 +10,7 @@ Complete API documentation for EM Agent Gateway.
 
 1. [Health & Metrics](#health--metrics)
 2. [DORA Metrics](#dora-metrics)
-3. [Webhooks - All 18 Integrations](#webhooks---all-18-integrations)
+3. [Webhooks - All 21 Integrations](#webhooks---all-21-integrations)
 4. [Projects](#projects)
 5. [Signals & Policy](#signals--policy)
 6. [Workflows & Approvals](#workflows--approvals)
@@ -173,7 +173,7 @@ Code coverage and quality gate trends (weekly).
 
 ---
 
-## Webhooks - All 18 Integrations
+## Webhooks - All 21 Integrations
 
 All webhook endpoints follow the pattern: `POST /webhooks/{integration}`
 
@@ -325,6 +325,72 @@ All webhook endpoints follow the pattern: `POST /webhooks/{integration}`
 **Supported Events:**
 - Quality Gate status changes
 - Analysis completion
+
+### Observability Platforms (v1.1.0)
+
+#### POST /webhooks/newrelic
+**Supported Events:**
+- Alert notifications (open, closed, acknowledged)
+- APM events (error rate, throughput, response time)
+- Deployment markers
+- Infrastructure alerts
+- Synthetics monitor events
+
+**Event Types:**
+- `alert_open`, `alert_closed`, `alert_acknowledged`
+- `deployment`
+
+#### POST /webhooks/prometheus
+Prometheus Alertmanager webhook format.
+
+**Supported Events:**
+- Alert notifications (firing, resolved)
+- Grouped alerts from Alertmanager
+- Custom alert labels and annotations
+
+**Event Types:**
+- `alert_firing`, `alert_resolved`
+
+**Example Payload:**
+```json
+{
+  "status": "firing",
+  "groupKey": "alertgroup-123",
+  "alerts": [
+    {
+      "status": "firing",
+      "labels": {"alertname": "HighCPU", "severity": "critical"},
+      "annotations": {"summary": "CPU above 90%"}
+    }
+  ]
+}
+```
+
+#### POST /webhooks/cloudwatch
+AWS CloudWatch alarms delivered via SNS.
+
+**Headers:**
+- `x-amz-sns-message-type`: SNS message type (Notification, SubscriptionConfirmation)
+- `x-amz-sns-message-id`: Unique message ID (for idempotency)
+
+**Supported Events:**
+- CloudWatch Alarm state changes (ALARM, OK, INSUFFICIENT_DATA)
+- EventBridge events via SNS
+- SNS subscription confirmation
+
+**Event Types:**
+- `alarm_alarm`, `alarm_ok`, `alarm_insufficient_data`
+- `eventbridge_*` (for EventBridge events)
+
+**Example Payload (via SNS):**
+```json
+{
+  "Type": "Notification",
+  "MessageId": "sns-msg-123",
+  "Message": "{\"AlarmName\":\"HighCPU\",\"NewStateValue\":\"ALARM\"}",
+  "Timestamp": "2025-11-25T10:00:00.000Z"
+}
+```
 
 ---
 
